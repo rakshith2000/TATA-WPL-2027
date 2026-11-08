@@ -1,0 +1,575 @@
+/* ==========================================================================
+   WPL 2027 · Admin control room (/update)
+   A grid of single-purpose action cards, one per POST endpoint.
+   Shares the visual language of css/pointstable.css.
+   ========================================================================== */
+
+:root {
+  --uc-bg-1: #16060f;
+  --uc-bg-2: #340d24;
+  --uc-ink: #fceef6;
+  --uc-ink-2: #deb6ce;
+  --uc-ink-3: #b587a2;
+  --uc-line: rgba(255, 255, 255, 0.09);
+  --uc-line-2: rgba(255, 255, 255, 0.16);
+  --uc-gold: #ffc247;
+  --uc-green: #2ee27a;
+  --uc-red: #ff6a52;
+  --uc-cyan: #29c5e8;
+  --uc-violet: #c77dff;
+  --uc-r-lg: 20px;
+  --uc-r-md: 14px;
+  --uc-r-sm: 10px;
+}
+
+/* --------------------------------------------------------------- page shell */
+
+body {
+  margin: 0;
+  padding: 72px 0 56px;
+  min-height: 100vh;
+  color: var(--uc-ink);
+  font-family: 'Inter', 'Exo 2', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  background-color: var(--uc-bg-1);
+  background-image:
+    radial-gradient(1000px 580px at 8% -10%, rgba(76, 201, 240, 0.20), transparent 60%),
+    radial-gradient(880px 520px at 94% 2%, rgba(205, 88, 255, 0.19), transparent 62%),
+    radial-gradient(1100px 720px at 50% 108%, rgba(46, 226, 122, 0.11), transparent 66%),
+    linear-gradient(180deg, var(--uc-bg-2) 0%, var(--uc-bg-1) 58%, #0d0409 100%);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  overflow-x: hidden;
+}
+
+body::-webkit-scrollbar { width: 6px; }
+body::-webkit-scrollbar-track { background: transparent; }
+body::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--uc-cyan), var(--uc-violet));
+  border-radius: 99px;
+}
+
+.uc-wrap {
+  width: min(1180px, calc(100% - 32px));
+  margin: 0 auto;
+}
+
+/* --------------------------------------------------------------------- hero */
+
+.uc-hero {
+  text-align: center;
+  padding: 26px 0 8px;
+}
+
+.uc-hero__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 14px;
+  border: 1px solid var(--uc-line-2);
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(8px);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--uc-ink-2);
+}
+
+.uc-hero__eyebrow .material-icons-round { font-size: 14px; color: var(--uc-gold); }
+
+.uc-hero__title {
+  margin: 14px 0 6px;
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-size: clamp(1.9rem, 5.2vw, 3rem);
+  font-weight: 800;
+  line-height: 1.03;
+  letter-spacing: -0.025em;
+  background: linear-gradient(100deg, #ffffff 12%, #ffcfec 45%, var(--uc-gold) 90%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.uc-hero__sub {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--uc-ink-3);
+}
+
+/* ------------------------------------------------------------------ section */
+
+.uc-section { margin-top: 34px; }
+
+.uc-section__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.uc-section__title {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--uc-ink-2);
+  white-space: nowrap;
+}
+
+.uc-section__head::after {
+  content: '';
+  flex: 1 1 auto;
+  height: 1px;
+  background: linear-gradient(90deg, var(--uc-line-2), transparent);
+}
+
+/* `start`, not stretch: cards already match height (see .uc-card__desc
+   min-height), and stretching would leave dead space in the sibling cards
+   whenever one card grows to show a flash message. */
+.uc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(312px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+/* --------------------------------------------------------------------- card */
+
+.uc-card {
+  --accent: var(--uc-cyan);
+  --accent-2: var(--uc-violet);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0;
+  padding: 18px;
+  overflow: hidden;
+  border: 1px solid var(--uc-line);
+  border-radius: var(--uc-r-lg);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.03));
+  backdrop-filter: blur(14px);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+/* accent wash bleeding in from the top-left */
+.uc-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(420px 180px at 0% 0%, var(--accent), transparent 70%);
+  opacity: 0.12;
+}
+
+/* top hairline in the card's accent */
+.uc-card::after {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2) 65%, transparent);
+}
+
+.uc-card > * { position: relative; z-index: 1; }
+
+.uc-card:focus-within {
+  border-color: var(--uc-line-2);
+  box-shadow: 0 22px 52px rgba(0, 0, 0, 0.46), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.uc-card--cyan   { --accent: #29c5e8; --accent-2: #ec008c; }
+.uc-card--gold   { --accent: #ffc247; --accent-2: #ff8a3d; }
+.uc-card--red    { --accent: #ff6a52; --accent-2: #c1121f; }
+.uc-card--violet { --accent: #c77dff; --accent-2: #9333ea; }
+.uc-card--green  { --accent: #2ee27a; --accent-2: #0f9b63; }
+.uc-card--rose   { --accent: #ff7a9c; --accent-2: #b5179e; }
+
+/* card header ------------------------------------------------------------- */
+
+.uc-card__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.uc-card__icon {
+  flex: none;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(145deg, var(--accent), var(--accent-2));
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.uc-card__icon .material-icons-round {
+  font-size: 22px;
+  color: #1f0816;
+}
+
+.uc-card--violet .uc-card__icon .material-icons-round,
+.uc-card--red .uc-card__icon .material-icons-round { color: #fff; }
+
+.uc-card__title {
+  margin: 1px 0 3px;
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-size: 1.06rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #fff;
+}
+
+/* reserve two lines so the fields below line up across a row of cards */
+.uc-card__desc {
+  margin: 0;
+  min-height: 36px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--uc-ink-3);
+}
+
+/* fields ------------------------------------------------------------------ */
+
+.uc-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.uc-field label {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--uc-ink-3);
+}
+
+.uc-field input,
+.uc-field select {
+  width: 100%;
+  height: 44px;
+  padding: 0 13px;
+  border: 1px solid var(--uc-line-2);
+  border-radius: var(--uc-r-sm);
+  background: rgba(0, 0, 0, 0.32);
+  color: var(--uc-ink);
+  /* 16px keeps iOS Safari from zooming the page on focus */
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.uc-field input::placeholder { color: rgba(255, 255, 255, 0.3); font-weight: 500; }
+
+.uc-field input:hover,
+.uc-field select:hover { background: rgba(0, 0, 0, 0.42); }
+
+.uc-field input:focus,
+.uc-field select:focus {
+  border-color: var(--accent);
+  background: rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.07);
+}
+
+/* native dropdown list is OS-rendered, so force readable option colours */
+.uc-field select option {
+  background: #2e1021;
+  color: var(--uc-ink);
+}
+
+.uc-field select {
+  padding-right: 38px;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238798b5' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 17px;
+  cursor: pointer;
+}
+
+.uc-hint {
+  margin: 0;
+  font-size: 11px;
+  color: var(--uc-ink-3);
+}
+
+.uc-hint code {
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--uc-ink-2);
+  font-size: 10.5px;
+}
+
+/* button ------------------------------------------------------------------ */
+
+.uc-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  margin-top: auto;
+  padding: 12px 18px;
+  border: 0;
+  border-radius: var(--uc-r-sm);
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #1d0614;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+}
+
+.uc-card--violet .uc-btn,
+.uc-card--red .uc-btn,
+.uc-card--rose .uc-btn { color: #fff; }
+
+.uc-btn .material-icons-round { font-size: 17px; }
+
+.uc-btn:hover {
+  transform: translateY(-2px);
+  filter: saturate(1.15);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.42);
+}
+
+.uc-btn:active { transform: translateY(0); }
+
+.uc-btn:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+/* ------------------------------------------------------------------- alerts */
+
+/* .alert is kept so Bootstrap's data-dismiss handler still closes these */
+.uc-alert.alert {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 0;
+  padding: 11px 34px 11px 12px;
+  border: 1px solid var(--uc-line);
+  border-left: 3px solid var(--tone, var(--uc-cyan));
+  border-radius: var(--uc-r-sm);
+  background: rgba(0, 0, 0, 0.3);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--uc-ink);
+}
+
+.uc-alert--error   { --tone: var(--uc-red); }
+.uc-alert--success { --tone: var(--uc-green); }
+.uc-alert--warning { --tone: var(--uc-gold); }
+
+.uc-alert__icon { flex: none; font-size: 17px; color: var(--tone); }
+
+.uc-alert__body { min-width: 0; }
+
+.uc-alert a {
+  color: var(--tone);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.uc-alert .close {
+  position: absolute;
+  top: 5px;
+  right: 7px;
+  padding: 2px 5px;
+  border: 0;
+  background: none;
+  color: var(--uc-ink-3);
+  font-size: 18px;
+  line-height: 1;
+  opacity: 1;
+  text-shadow: none;
+  cursor: pointer;
+}
+
+.uc-alert .close:hover { color: #fff; }
+
+/* -------------------------------------------------------------------- modal */
+
+.uc-modal .modal-dialog { max-width: 560px; }
+
+.uc-modal .modal-content {
+  border: 1px solid var(--uc-line-2);
+  border-radius: var(--uc-r-lg);
+  background: #2e1021;
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02));
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.6);
+  color: var(--uc-ink);
+  overflow: hidden;
+}
+
+.uc-modal .modal-header,
+.uc-modal .modal-footer {
+  border-color: var(--uc-line);
+  padding: 14px 18px;
+}
+
+.uc-modal .modal-title {
+  margin: 0;
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.uc-modal .modal-header .close {
+  margin: 0 0 0 auto;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--uc-ink-3);
+  font-size: 22px;
+  line-height: 1;
+  opacity: 1;
+  text-shadow: none;
+}
+
+.uc-modal .modal-header .close:hover { color: #fff; }
+
+.uc-modal .modal-body {
+  max-height: 62vh;
+  overflow-y: auto;
+  padding: 14px 18px;
+}
+
+.uc-modal .modal-body::-webkit-scrollbar { width: 6px; }
+.uc-modal .modal-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 99px;
+}
+
+.uc-modal .btn-secondary {
+  border: 1px solid var(--uc-line-2);
+  border-radius: var(--uc-r-sm);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--uc-ink);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 9px 18px;
+}
+
+.uc-modal .btn-secondary:hover { background: rgba(255, 255, 255, 0.16); color: #fff; }
+
+/* match rows inside the modal */
+.uc-match {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 12px;
+  border: 1px solid var(--uc-line);
+  border-radius: var(--uc-r-sm);
+  background: rgba(0, 0, 0, 0.26);
+}
+
+.uc-match + .uc-match { margin-top: 7px; }
+
+.uc-match__no {
+  flex: none;
+  min-width: 46px;
+  padding: 4px 8px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.1);
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
+  color: #fff;
+}
+
+.uc-match__teams {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--uc-ink);
+}
+
+.uc-match__vs {
+  margin: 0 5px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--uc-ink-3);
+}
+
+.uc-match__won {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 99px;
+  background: rgba(46, 226, 122, 0.16);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--uc-green);
+}
+
+.uc-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  padding: 26px 12px;
+  text-align: center;
+  color: var(--uc-ink-3);
+  font-size: 13px;
+}
+
+.uc-empty .material-icons-round { font-size: 30px; opacity: 0.5; }
+
+/* --------------------------------------------------------------- footnote */
+
+.uc-note {
+  margin: 26px auto 0;
+  max-width: 640px;
+  text-align: center;
+  font-size: 11.5px;
+  line-height: 1.7;
+  color: var(--uc-ink-3);
+}
+
+.uc-note b { color: var(--uc-ink-2); }
+
+/* --------------------------------------------------------------- responsive */
+
+@media (max-width: 720px) {
+  body { padding-top: 66px; }
+  .uc-wrap { width: calc(100% - 22px); }
+  .uc-grid { grid-template-columns: 1fr; gap: 13px; }
+  .uc-section { margin-top: 26px; }
+  .uc-card { padding: 15px; border-radius: var(--uc-r-md); }
+  .uc-hero { padding: 18px 0 4px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

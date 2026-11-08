@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+{% block head %}
+{{ super() }}
+<title>WPL 2027 Points Table | Team Standings and Rankings</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='extended_beauty.css') }}" />
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/bottom-nav.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/pointstable.css') }}">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+
+{#  ------------------------------------------------------------------ data #}
+{% set HEAD = PT[0] %}
+{% set TIPS = {
+    'P': 'Matches played',
+    'W': 'Matches won',
+    'L': 'Matches lost',
+    'NR': 'No result / abandoned',
+    'Pts': 'Points',
+    'NRR': 'Net run rate',
+    'Last 5': 'Last 5 results — most recent on the right',
+    'Next': 'Next opponent',
+    'Win %': 'Win percentage (a no-result counts as half a win)',
+    'Qual %': 'Chance of qualifying for the playoffs',
+    'Top 1': 'Chance of finishing first — a bye straight into the Final'
+} %}
+
+{#  ---------------------------------------------------------------- macros #}
+{% from "macros/points.html" import rank_cell, delta_pill, form_pills, next_chip, meter, win_pct, crest_grad %}
+
+<div class="pt-wrap">
+
+    <header class="pt-hero">
+        <span class="pt-hero__eyebrow">TATA WPL 2027 &middot; Standings</span>
+        <h1 class="pt-hero__title">Points Table</h1>
+        <p class="pt-hero__sub">Live team rankings, form guide and qualification probabilities</p>
+
+        <div class="pt-legend">
+            <span class="pt-chip"><span class="pt-chip__dot pt-chip__dot--top2"></span>1st &mdash; straight to the Final</span>
+            <span class="pt-chip"><span class="pt-chip__dot pt-chip__dot--q"></span>Qualified for playoffs</span>
+            <span class="pt-chip"><span class="pt-chip__dot pt-chip__dot--e"></span>Eliminated</span>
+            <span class="pt-chip"><span class="pt-chip__dot pt-chip__dot--live"></span>Still in contention</span>
+        </div>
+    </header>
+
+    {# ============================================================ DESKTOP #}
+    <div class="pt-card">
+        <div class="pt-scroll" id="ptScroll">
+            <table class="pt-table">
+                <caption class="sr-only">WPL 2027 points table</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">{{ HEAD[0] }}</th>
+                        <th scope="col">{{ HEAD[2] }}</th>
+                        {% for col in HEAD[3:] %}
+                        <th scope="col"><abbr title="{{ TIPS.get(col, col) }}">{{ col }}</abbr></th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for i in range(TABV | length) %}
+                    {% set abv = TABV[i] %}
+
+                    {#- row status drives the tint, accent stripe and badge -#}
+                    {% if PT[1][i] == 'Champions' %}{% set status = 'champ' %}
+                    {% elif PT[12][i] == 'Q' and i == 0 %}{% set status = 'top2' %}
+                    {% elif PT[12][i] == 'Q' %}{% set status = 'q' %}
+                    {% elif PT[12][i] == 'E' %}{% set status = 'e' %}
+                    {% else %}{% set status = '' %}
+                    {% endif %}
+
+                    <tr data-status="{{ status }}"
+                        class="{{ 'is-cutoff' if i == SPOTS - 1 and not loop.last }}"
+                        style="{{ crest_grad(abv, clr) }}">
+
+                        <td>{{ rank_cell(PT[1][i], PT[15][i]) }}</td>
+
+                        <td>
+                            <a class="pt-team" href="{{ url_for('main.displayFR') }}?fteam={{ abv }}"
+                               title="See all {{ PT[3][i] }} fixtures">
+                                <span class="pt-team__crest">
+                                    <img src="/static/images/squad_logos/{{ abv }}.png" alt="{{ PT[3][i] }} logo">
+                                    {% if status == 'top2' or status == 'champ' %}<span class="pt-flag pt-flag--top2" title="Top of the table">Q</span>
+                                    {% elif status == 'q' %}<span class="pt-flag pt-flag--q" title="Qualified">Q</span>
+                                    {% elif status == 'e' %}<span class="pt-flag pt-flag--e" title="Eliminated">E</span>
+                                    {% endif %}
+                                </span>
+                                <span class="pt-team__names">
+                                    <span class="pt-team__full">{{ PT[3][i] }}</span>
+                                    <span class="pt-team__abv">{{ abv }}</span>
+                                </span>
+                            </a>
+                        </td>
+
+                        {% for j in range(4, 8) %}
+                        <td class="pt-num {{ 'pt-num--zero' if PT[j][i] == 0 }}">{{ PT[j][i] }}</td>
+                        {% endfor %}
+
+                        <td><span class="pt-pts">{{ PT[8][i] }}</span></td>
+
+                        {% set nrr = PT[9][i]|float %}
+                        <td class="pt-nrr {{ 'pt-nrr--pos' if nrr > 0 else ('pt-nrr--neg' if nrr < 0 else '') }}">
+                            {{ "%+.3f"|format(nrr) }}
+                        </td>
+
+                        <td>{{ form_pills(PT[10][i]) }}</td>
+                        <td>{{ next_chip(PT[11][i]) }}</td>
+                        <td>{{ win_pct(PT[4][i], PT[5][i], PT[7][i]) }}</td>
+                        <td>{{ meter(PT[13][i], 'Qualification chance') }}</td>
+                        <td>{{ meter(PT[14][i], 'Chance of finishing first') }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="pt-hint">
+            <span>Swipe to see all stats</span>
+            <span class="pt-hint__arrow">&rarr;</span>
+        </div>
+    </div>
+
+    {# ============================================================= MOBILE #}
+    <div class="pt-cards">
+        {% for i in range(TABV | length) %}
+        {% set abv = TABV[i] %}
+
+        {% if PT[1][i] == 'Champions' %}{% set status, badge = 'champ', 'Champions' %}
+        {% elif PT[12][i] == 'Q' and i == 0 %}{% set status, badge = 'top2', 'Top 1' %}
+        {% elif PT[12][i] == 'Q' %}{% set status, badge = 'q', 'Qualified' %}
+        {% elif PT[12][i] == 'E' %}{% set status, badge = 'e', 'Eliminated' %}
+        {% else %}{% set status, badge = '', '' %}
+        {% endif %}
+
+        <article class="ptc" data-status="{{ status }}" style="{{ crest_grad(abv, clr) }}">
+            <header class="ptc__top">
+                <div class="ptc__rank">
+                    {% if PT[1][i] == 'Champions' %}
+                    <img class="pt-trophy" src="/static/images/trophy.png" alt="Champions">
+                    {% else %}
+                    <span class="ptc__rankno">{{ PT[1][i] }}</span>
+                    {{ delta_pill(PT[15][i]) }}
+                    {% endif %}
+                </div>
+
+                <div class="ptc__crest">
+                    <img src="/static/images/squad_logos/{{ abv }}.png" alt="{{ PT[3][i] }} logo">
+                </div>
+
+                <div class="ptc__id">
+                    <a class="ptc__name" href="{{ url_for('main.displayFR') }}?fteam={{ abv }}"
+                       aria-label="{{ PT[3][i] }} fixtures">{{ abv }}</a>
+                    <div class="ptc__meta">
+                        {% if badge %}<span class="ptc__badge ptc__badge--{{ status }}">{{ badge }}</span>{% endif %}
+                        <span class="ptc__full">{{ PT[3][i] }}</span>
+                    </div>
+                </div>
+
+                <div class="ptc__pts">
+                    <b>{{ PT[8][i] }}</b>
+                    <span>PTS</span>
+                </div>
+            </header>
+
+            {% set nrr = PT[9][i]|float %}
+            <dl class="ptc__stats">
+                <div class="ptc__stat"><dt>P</dt><dd>{{ PT[4][i] }}</dd></div>
+                <div class="ptc__stat"><dt>W</dt><dd>{{ PT[5][i] }}</dd></div>
+                <div class="ptc__stat"><dt>L</dt><dd>{{ PT[6][i] }}</dd></div>
+                <div class="ptc__stat"><dt>NR</dt><dd>{{ PT[7][i] }}</dd></div>
+                <div class="ptc__stat">
+                    <dt>NRR</dt>
+                    <dd class="{{ 'pt-nrr--pos' if nrr > 0 else ('pt-nrr--neg' if nrr < 0 else '') }}">{{ "%+.3f"|format(nrr) }}</dd>
+                </div>
+            </dl>
+
+            <div class="ptc__row">
+                <div class="ptc__group">
+                    <span class="ptc__label">Last 5</span>
+                    {{ form_pills(PT[10][i]) }}
+                </div>
+                <div class="ptc__group">
+                    <span class="ptc__label">Win</span>
+                    {{ win_pct(PT[4][i], PT[5][i], PT[7][i]) }}
+                </div>
+            </div>
+
+            <div class="ptc__probs">
+                <div class="ptc__prob">
+                    <span class="ptc__label">Qualify</span>
+                    {{ meter(PT[13][i], 'Qualification chance') }}
+                </div>
+                <div class="ptc__prob">
+                    <span class="ptc__label">Top 1</span>
+                    {{ meter(PT[14][i], 'Chance of finishing first') }}
+                </div>
+                <div class="ptc__prob">
+                    <span class="ptc__label">Next</span>
+                    {{ next_chip(PT[11][i]) }}
+                </div>
+            </div>
+        </article>
+        {#- the line under the last side that still makes the playoffs -#}
+        {% if loop.index == SPOTS and not loop.last %}
+        <div class="pt-cut"><span>Playoff cut-off</span></div>
+        {% endif %}
+        {% endfor %}
+    </div>
+
+    <p class="pt-note">
+        <b>Qualify</b> and <b>Top 1</b> are simulated chances based on the remaining fixtures.
+        Teams level on points are split by wins, then net run rate.
+    </p>
+
+</div>
+
+<nav class="bottom-nav">
+    <div class="bottom-nav-item">
+        <a href="{{ url_for('main.displayFR') }}">
+      <span class="material-icons-round">event</span>
+      <span class="bottom-nav-label">MATCHES</span>
+      </a>
+    </div>
+    <div class="bottom-nav-item active">
+        <a href="{{ url_for('main.displayPT') }}">
+      <span class="material-icons-round">table_chart</span>
+      <span class="bottom-nav-label">STANDINGS</span>
+      </a>
+    </div>
+    <div class="bottom-nav-item spacer"></div>
+    <div class="bottom-nav-item live">
+        <a href="{{ url_for('main.displayFR', filter='live') }}">
+      <div class="live-circle"></div>
+      <div class="live-content">
+        <span class="material-icons-round zoomInOut">play_arrow</span>
+        <span class="bottom-nav-label">LIVE</span>
+      </div>
+      </a>
+    </div>
+    <div class="bottom-nav-item spacer"></div>
+    <div class="bottom-nav-item">
+      <a href="{{ url_for('main.teams') }}">
+      <span class="material-icons-round">groups</span>
+      <span class="bottom-nav-label">TEAMS</span>
+      </a>
+    </div>
+    <div class="bottom-nav-item">
+      <a href="{{ url_for('main.battingstats') }}">
+      <span class="material-icons-round">bar_chart</span>
+      <span class="bottom-nav-label">STATS</span>
+      </a>
+    </div>
+  </nav>
+
+<script>
+    // Drop-shadow on the frozen team column once the table is scrolled sideways.
+    document.addEventListener('DOMContentLoaded', function () {
+        var scroller = document.getElementById('ptScroll');
+        if (!scroller) return;
+        var sync = function () {
+            scroller.classList.toggle('is-scrolled', scroller.scrollLeft > 4);
+        };
+        scroller.addEventListener('scroll', sync, { passive: true });
+        sync();
+    });
+</script>
+
+{% endblock %}

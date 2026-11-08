@@ -1,0 +1,89 @@
+Player_ID,Team,Name,URL_ID,Captain,Wicket Keeper,Overseas,Role,Player URL,Nationality,DOB,Debut,Batting Style,Bowling Style
+1,DCW,Chinelle Henry,,N,N,Y,All Rounder,,West Indies,17 August 1995,2025,Right Handed,Right-Arm Fast Medium
+2,DCW,Marizanne Kapp,,N,N,Y,All Rounder,,South Africa,04 January 1990,2023,Right Handed,Right-Arm Fast Medium
+3,DCW,Uma Kashvi,,N,N,N,All Rounder,,India,09 April 2011,-,Right Handed,Right-Arm Off Break
+4,DCW,Nazma Khan,,N,N,N,All Rounder,,India,08 May 1996,-,Right Handed,Right-Arm Off Break
+5,DCW,Kiran Navgire,,N,N,N,Batter,,India,18 September 1994,2023,Right Handed,Right-Arm Off Break
+6,DCW,Niki Prasad,,N,N,N,All Rounder,,India,25 October 2005,2025,Right Handed,Right-Arm Off Break
+7,DCW,Jemimah Rodrigues,,Y,N,N,Batter,,India,05 September 2000,2023,Right Handed,Right-Arm Off Break
+8,DCW,Shafali Verma,,N,N,N,Batter,,India,28 January 2004,2023,Right Handed,Right-Arm Off Break
+9,DCW,Laura Wolvaardt,,N,N,Y,Batter,,South Africa,26 April 1999,2023,Right Handed,Right-Arm Medium
+10,DCW,Deeya Yadav,,N,N,N,Batter,,India,09 October 2009,2026,Right Handed,Left-Arm Orthodox
+11,DCW,Annabel Sutherland,,N,N,Y,All Rounder,,Australia,12 October 2001,2023,Right Handed,Right-Arm Fast Medium
+12,DCW,Madiwala Mamatha,,N,Y,N,Wicket Keeper,,India,22 March 2003,-,Right Handed,Right-Arm Fast Medium
+13,DCW,Kirstie Gordon,,N,N,Y,Bowler,,Scotland,20 October 1997,-,Right Handed,Left-Arm Orthodox
+14,DCW,Lucy Hamilton,,N,N,Y,All Rounder,,Australia,08 May 2006,2026,Left Handed,Left-Arm Medium Fast
+15,DCW,Minnu Mani,,N,N,N,All Rounder,,India,24 March 1999,2023,Left Handed,Right-Arm Off Break
+16,DCW,Nandani Sharma,,N,N,N,Bowler,,India,20 September 2001,2026,Right Handed,Right-Arm Fast Medium
+17,DCW,Sree Charani,,N,N,N,Bowler,,India,04 August 2004,2025,Left Handed,Left-Arm Orthodox
+1,GG,Kanika Ahuja,,N,N,N,All Rounder,,India,07 August 2002,2023,Left Handed,Right-Arm Off Break
+2,GG,Bharti Fulmali,,N,N,N,Batter,,India,11 October 1994,2024,Right Handed,Right-Arm Medium Pace
+3,GG,Ashleigh Gardner,,Y,N,Y,All Rounder,,Australia,15 April 1997,2023,Right Handed,Right-Arm Off Break
+4,GG,Gunalan Kamalini,,N,N,N,Wicket Keeper,,India,20 July 2008,2025,Left Handed,Right-Arm Leg Break
+5,GG,Orla Prendergast,,N,N,Y,All Rounder,,Ireland,01 June 2002,-,Right Handed,Right-Arm Fast Medium
+6,GG,Samaira Raghav,,N,N,N,All Rounder,,India,29 August 2003,-,Right Handed,Right-Arm Leg Break
+7,GG,Anushka Sharma,,N,N,N,Batter,,India,05 April 2003,2026,Right Handed,Right-Arm Off Break
+8,GG,Georgia Wareham,,N,N,Y,All Rounder,,Australia,26 May 1999,2023,Right Handed,Right-Arm Leg Break
+9,GG,Sophie Devine,,N,N,Y,All Rounder,,New Zealand,01 September 1989,2023,Right Handed,Right-Arm Fast Medium
+10,GG,Yastika Bhatia,,N,Y,N,Wicket Keeper,,India,01 November 2000,2023,Left Handed,Left-Arm Orthodox
+11,GG,Beth Mooney,,N,Y,Y,Wicket Keeper,,Australia,14 January 1994,2023,Left Handed,-
+12,GG,Kim Garth,,N,N,Y,Bowler,,Australia,25 April 1996,2023,Right Handed,Right-Arm Fast Medium
+13,GG,Kashvee Gautam,,N,N,N,All Rounder,,India,18 April 2003,2025,Right Handed,Right-Arm Medium
+14,GG,Rajeshwari Gayakwad,,N,N,N,Bowler,,India,01 June 1991,2023,Right Handed,Left-Arm Orthodox
+15,GG,Jintimani Kalita,,N,N,N,All Rounder,,India,25 December 2003,2023,Left Handed,Right-Arm Medium Pace
+16,GG,Tanuja Kanwer,,N,N,N,Bowler,,India,28 January 1996,2023,Left Handed,Left-Arm Orthodox
+17,GG,Happy Kumari,,N,N,N,Bowler,,India,03 February 2007,2026,Right Handed,Right-Arm Medium Fast
+18,GG,Renuka Singh Thakur,,N,N,N,Bowler,,India,02 January 1996,2023,Right Handed,Right-Arm Medium Fast
+1,MIW,Akshita Bhagat,,N,N,N,All Rounder,,India,12 October 2006,-,Right Handed,Right-Arm Medium
+2,MIW,Nicola Carey,,N,N,Y,All Rounder,,Australia,10 September 1993,2026,Left Handed,Right-Arm Fast Medium
+3,MIW,Sanika Chalke,,N,N,N,Batter,,India,23 January 2006,-,Left Handed,Right-Arm Off Break
+4,MIW,Disha Kasat,,N,N,N,Batter,,India,19 September 1997,2023,Right Handed,Right-Arm Medium Pace
+5,MIW,Harmanpreet Kaur,,Y,N,N,All Rounder,,India,08 March 1989,2023,Right Handed,Right-Arm Off Break
+6,MIW,Sajeevan Sajana,,N,N,N,All Rounder,,India,04 January 1995,2024,Right Handed,Right-Arm Off Break
+7,MIW,Shweta Sehrawat,,N,N,N,Wicket Keeper,,India,26 February 2004,2023,Right Handed,Right-Arm Off Break
+8,MIW,Sanskriti Gupta,,N,N,N,Bowler,,India,02 December 2004,2025,Left Handed,Right-Arm Off Break
+9,MIW,Shabnim Ismail,,N,N,Y,Bowler,,South Africa,05 October 1988,2023,Left Handed,Right-Arm Fast
+10,MIW,Tara Norris,,N,N,Y,Bowler,,United States of America,04 June 1998,2023,Left Handed,Left-Arm Medium Fast
+11,MIW,Bharti Rawal,,N,N,N,Bowler,,India,02 October 2003,-,Right Handed,Left-Arm Orthodox
+12,MIW,Vaishnavi Sharma,,N,N,N,All Rounder,,India,18 December 2005,2026,Left Handed,Left-Arm Orthodox
+13,MIW,Amanjot Kaur,,N,N,N,All Rounder,,India,25 August 2000,2023,Right Handed,Right-Arm Fast Medium
+14,MIW,Melie Kerr,,N,N,Y,All Rounder,,New Zealand,13 October 2000,2023,Right Handed,Right-Arm Leg Break
+15,MIW,Hayley Matthews,,N,N,Y,All Rounder,,West Indies,19 March 1998,2023,Right Handed,Right-Arm Off Break
+16,MIW,Natalie Sciver Brunt,,N,N,Y,All Rounder,,England,20 August 1992,2023,Right Handed,Right-Arm Medium Fast
+17,MIW,Rahila Firdous,,N,Y,N,Wicket Keeper,,India,05 March 1998,2026,Right Handed,-
+18,MIW,Latika Inamdar,,N,Y,N,Wicket Keeper,,India,06 December 1999,-,Left Handed,-
+1,RCBW,Vrinda Dinesh,,N,N,N,Batter,,India,02 March 2001,2024,Right Handed,Right-Arm Leg Break
+2,RCBW,Tejal Hasabnis,,N,N,N,All Rounder,,India,16 August 1997,-,Right Handed,Right-Arm Off Break
+3,RCBW,Jess Jonassen,,N,N,Y,All Rounder,,Australia,05 November 1992,2023,Left Handed,Left-Arm Orthodox
+4,RCBW,Smriti Mandhana,,Y,N,N,Batter,,India,18 July 1996,2023,Left Handed,Right-Arm Medium
+5,RCBW,Chloe Tryon,,N,N,Y,All Rounder,,South Africa,25 January 1994,2026,Right Handed,Left-Arm Orthodox
+6,RCBW,Pooja Vastrakar,,N,N,N,All Rounder,,India,25 September 1999,2023,Right Handed,Right-Arm Fast Medium
+7,RCBW,Georgia Voll,,N,N,Y,Batter,,Australia,05 August 2003,2025,Right Handed,Right-Arm Off Break
+8,RCBW,Lauren Bell,,N,N,Y,Bowler,,England,02 January 2001,2026,Right Handed,Right-Arm Fast Medium
+9,RCBW,Shreyanka Patil,,N,N,N,Bowler,,India,31 July 2002,2023,Right Handed,Right-Arm Off Break
+10,RCBW,Prema Rawat,,N,N,N,Bowler,,India,12 November 2001,2025,Right Handed,Right-Arm Leg Break
+11,RCBW,Arundhati Reddy,,N,N,N,Bowler,,India,10 April 1997,2023,Right Handed,Right-Arm Medium Fast
+12,RCBW,Sayali Satghare,,N,N,N,All Rounder,,India,02 July 2000,2024,Right Handed,Right-Arm Medium
+13,RCBW,Radha Yadav,,N,N,N,Bowler,,India,21 April 2000,2023,Right Handed,Left-Arm Orthodox
+14,RCBW,Nadine de Klerk,,N,N,Y,All Rounder,,South Africa,16 January 2000,2024,Right Handed,Right-Arm Fast Medium
+15,RCBW,Ellyse Perry,,N,N,Y,All Rounder,,Australia,03 November 1990,2023,Right Handed,Right-Arm Fast Medium
+16,RCBW,Richa Ghosh,,N,Y,N,Wicket Keeper,,India,28 September 2003,2023,Right Handed,Right-Arm Medium
+17,RCBW,Prathyoosha Kumar,,N,Y,N,Wicket Keeper,,India,22 April 1999,-,Right Handed,-
+1,UPW,Harleen Deol,,N,N,N,All Rounder,,India,21 June 1998,2023,Right Handed,Right-Arm Off Break
+2,UPW,Grace Harris,,N,N,Y,All Rounder,,Australia,18 September 1993,2023,Right Handed,Right-Arm Off Break
+3,UPW,Meg Lanning,,Y,N,Y,Batter,,Australia,25 March 1992,2023,Right Handed,Right-Arm Medium
+4,UPW,Phoebe Litchfield,,N,N,Y,Batter,,Australia,18 April 2003,2024,Left Handed,Right-Arm Leg Break
+5,UPW,Sophie Molineux,,N,N,Y,All Rounder,,Australia,17 January 1998,2024,Left Handed,Left-Arm Orthodox
+6,UPW,Pratika Rawal,,N,N,N,Batter,,India,01 September 2000,-,Right Handed,Right-Arm Off Break
+7,UPW,Simran Shaikh,,N,N,N,Batter,,India,12 January 2002,2023,Right Handed,Leg Break and Googly
+8,UPW,Manali Dakshini,,N,N,N,All Rounder,,India,29 September 1997,-,Right Handed,Right-Arm Fast Medium
+9,UPW,Sophie Ecclestone,,N,N,Y,Bowler,,England,06 May 1999,2023,Right Handed,Left-Arm Orthodox
+10,UPW,Kranti Gaud,,N,N,N,Bowler,,India,11 August 2003,2025,Right Handed,Right-Arm Fast Medium
+11,UPW,Shikha Pandey,,N,N,N,All Rounder,,India,12 May 1989,2023,Right Handed,Right-Arm Medium Fast
+12,UPW,Sahana Pawar,,N,N,N,Bowler,,India,20 November 1996,2023,Right Handed,Left-Arm Orthodox
+13,UPW,Sneh Rana,,N,N,N,All Rounder,,India,18 February 1994,2023,Right Handed,Right-Arm Off Break
+14,UPW,Asha Sobhana,,N,N,N,Bowler,,India,16 March 1991,2023,Right Handed,Right-Arm Leg Break
+15,UPW,Kathryn Bryce,,N,N,Y,All Rounder,,Scotland,17 November 1997,2024,Right Handed,Right-Arm Medium
+16,UPW,Deepti Sharma,,N,N,N,All Rounder,,India,24 August 1997,2023,Left Handed,Right-Arm Off Break
+17,UPW,Shipra Giri,,N,Y,N,Wicket Keeper,,India,24 June 2002,2026,Right Handed,-
+18,UPW,Sushma Verma,,N,Y,N,Wicket Keeper,,India,03 November 1992,2023,Right Handed,-

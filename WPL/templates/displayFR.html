@@ -1,0 +1,942 @@
+{% extends "base.html" %}
+{% block head %}
+{{ super() }}
+<title>WPL 2027 Fixtures | Complete Match Schedule &amp; Results</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='extended_beauty.css') }}" />
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/bottom-nav.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/fixtures-modern.css') }}">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+
+{#  ------------------------------------------------------------------ data #}
+{#- the filter bar's team list, in config order and without the TBA placeholder -#}
+{% set teams = fn.keys() | reject('equalto', 'TBA') | list %}
+
+{#  Season / team totals for the summary chips and the filter counters.
+    A match is "live" once its start time has passed but no winner is set. #}
+{% set S = namespace(total=0, up=0, live=0, done=0, w=0, l=0, nr=0) %}
+{% for m in FR[1:] %}
+    {% set S.total = S.total + 1 %}
+    {% if m[1] > current_date %}
+        {% set S.up = S.up + 1 %}
+    {% elif m[7] == 'TBA' %}
+        {% set S.live = S.live + 1 %}
+    {% else %}
+        {% set S.done = S.done + 1 %}
+        {% if m[7] == 'NA' %}
+            {% set S.nr = S.nr + 1 %}
+        {% elif m[7] == hint %}
+            {% set S.w = S.w + 1 %}
+        {% else %}
+            {% set S.l = S.l + 1 %}
+        {% endif %}
+    {% endif %}
+{% endfor %}
+
+{#  ---------------------------------------------------------------- macros #}
+
+{# Per-team crest gradient — same two-colour picks used on the points table.
+   The names differ from crest_grad()'s --team-a/--team-b because this page's
+   CSS predates that macro; the picks themselves are the same. #}
+{% macro grad(t) -%}
+    {%- if t in ['RCBW'] -%}--c1: {{ clr[t]['c3'] }}; --c2: {{ clr[t]['c1'] }};
+    {%- elif t == 'UPW' -%}--c1: {{ clr[t]['c1'] }}; --c2: {{ clr[t]['c3'] }};
+    {%- else -%}--c1: {{ clr[t]['c1'] }}; --c2: {{ clr[t]['c2'] }};
+    {%- endif -%}
+{%- endmacro %}
+
+{# Primary brand colour, used for the card's top strip #}
+{% macro brand(t) -%}
+    {{- "#fff" if t not in sqclr else (sqclr[t]['c2'] if t in ['UPW', 'RCBW', "DCW", 'MIW'] else sqclr[t]['c1']) -}}
+{%- endmacro %}
+
+{% macro crest(t, extra, winner) -%}
+    <span class="fx-crest {{ extra }}" style="{{ grad(t) }}">
+        <img src="/static/images/squad_logos/{{ t }}.png" alt="{{ fn[t] }} logo" loading="lazy">
+        {%- if winner -%}
+        <span class="fx-crest__trophy" title="Winner"><span class="material-icons-round">emoji_events</span></span>
+        {%- endif -%}
+    </span>
+{%- endmacro %}
+
+{% macro team_name(t) -%}
+    <span class="fx-team__name"><span class="fx-team__full">{{ fn[t] }}</span><span class="fx-team__abv">{{ t }}</span></span>
+{%- endmacro %}
+
+{# Score for one innings. `so` stacks the regular score and every super over
+   under it - a tied super over is replayed, so there can be more than one, and
+   the last is the one that settled the match, so it takes the win tone. #}
+{% macro score_cell(sc, won, playoff, so) -%}
+    {%- set tone = ('is-playoff' if playoff else 'is-win') if won else '' -%}
+    {%- set sos = super_overs(sc) if so else [] -%}
+    {%- if sos -%}
+        <span class="fx-score">
+            <span class="fx-score__line fx-score__line--prior">{{ sc['runs'] }}{{ '' if sc['wkts'] == 10 else '/' ~ sc['wkts'] }}<i>({{ sc['overs'] }})</i></span>
+            {%- for s in sos %}
+            <span class="fx-score__line fx-score__line--so {{ tone if loop.last else '' }}"><span class="fx-so-tag">SO{{ ' ' ~ loop.index if sos | length > 1 else '' }}</span>{{ s['runs'] }}{{ '' if s['wkts'] == 10 else '/' ~ s['wkts'] }}<i>({{ s['overs'] }})</i></span>
+            {%- endfor %}
+        </span>
+    {%- elif sc['overs'] == 0 and sc['runs'] == 0 and sc['wkts'] == 0 -%}
+        {#- nothing bowled — the team name alone carries the row -#}
+    {%- else -%}
+        <span class="fx-score {{ tone }}">{{ sc['runs'] }}{{ '' if sc['wkts'] == 10 else '/' ~ sc['wkts'] }}<i>({{ sc['overs'] }})</i></span>
+    {%- endif -%}
+{%- endmacro %}
+
+{# The four-tile countdown shown on upcoming matches #}
+{% macro clock(dt) -%}
+    <div class="fx-clock" data-deadline="{{ dt.strftime('%Y-%m-%dT%H:%M:%S') }}">
+        <div class="fx-clock__unit"><span class="fx-clock__n" data-u="d">0</span><span class="fx-clock__u">Days</span></div>
+        <div class="fx-clock__unit"><span class="fx-clock__n" data-u="h">0</span><span class="fx-clock__u">Hrs</span></div>
+        <div class="fx-clock__unit"><span class="fx-clock__n" data-u="m">0</span><span class="fx-clock__u">Min</span></div>
+        <div class="fx-clock__unit"><span class="fx-clock__n" data-u="s">0</span><span class="fx-clock__u">Sec</span></div>
+    </div>
+{%- endmacro %}
+
+<div class="fx-wrap">
+
+    <header class="fx-hero">
+        <span class="fx-hero__eyebrow">TATA WPL 2027 &middot; {{ 'All Fixtures' if hint == 'All' else fn[hint] }}</span>
+        <h1 class="fx-hero__title">{{ 'Match Schedule' if hint == 'All' else 'Team Fixtures' }}</h1>
+        <p class="fx-hero__sub">Results, live games and countdowns to every remaining match</p>
+
+        <div class="fx-stats">
+            {% if hint == 'All' %}
+            <span class="fx-stat"><b>{{ S.total }}</b> Matches</span>
+            <span class="fx-stat"><b>{{ S.done }}</b> Completed</span>
+            {% if S.live %}<span class="fx-stat fx-stat--live"><b>{{ S.live }}</b> In progress</span>{% endif %}
+            <span class="fx-stat"><b>{{ S.up }}</b> Upcoming</span>
+            {% else %}
+            <span class="fx-stat"><b>{{ S.done }}</b> Played</span>
+            <span class="fx-stat fx-stat--w"><b>{{ S.w }}</b> Won</span>
+            <span class="fx-stat fx-stat--l"><b>{{ S.l }}</b> Lost</span>
+            {% if S.nr %}<span class="fx-stat"><b>{{ S.nr }}</b> No result</span>{% endif %}
+            {#- same convention as the points table: a no-result counts as half a win -#}
+            <span class="fx-stat"><b>{{ (((S.w + 0.5 * S.nr) / S.done * 100) | round | int) if S.done else 0 }}%</b> Win rate</span>
+            <span class="fx-stat"><b>{{ S.up }}</b> Left</span>
+            {% endif %}
+        </div>
+    </header>
+
+    {# =========================================================== toolbar #}
+    <div class="fx-bar" id="fxBar">
+
+        {# Team filter — a real disclosure widget, so it works without JS too #}
+        <details class="fx-dd" id="fxTeamDD">
+            <summary class="fx-dd__btn" aria-label="Filter fixtures by team">
+                {% if hint == 'All' %}
+                <span class="fx-opt__all"><span class="material-icons-round">apps</span></span>
+                {% else %}
+                {{ crest(hint, 'fx-crest--xs', false) }}
+                {% endif %}
+                <span class="fx-dd__label">
+                    <span class="fx-dd__cap">Team</span>
+                    {#- the crest already identifies the team, so phones get the short form -#}
+                    <span class="fx-dd__val">
+                        <span class="fx-dd__long">{{ 'All Teams' if hint == 'All' else fn[hint] }}</span>
+                        <span class="fx-dd__short">{{ 'All' if hint == 'All' else hint }}</span>
+                    </span>
+                </span>
+                <span class="material-icons-round fx-dd__chev">expand_more</span>
+            </summary>
+
+            <div class="fx-dd__menu" role="listbox" aria-label="Teams">
+                <a class="fx-opt {{ 'is-active' if hint == 'All' }}" role="option"
+                   aria-selected="{{ 'true' if hint == 'All' else 'false' }}"
+                   href="{{ url_for('main.displayFR', fteam='All') }}">
+                    <span class="fx-opt__all"><span class="material-icons-round">apps</span></span>
+                    <span class="fx-opt__name">All Teams</span>
+                    <span class="material-icons-round fx-opt__tick">check</span>
+                </a>
+                {% for t in teams %}
+                <a class="fx-opt {{ 'is-active' if hint == t }}" role="option"
+                   aria-selected="{{ 'true' if hint == t else 'false' }}"
+                   href="{{ url_for('main.displayFR', fteam=t) }}">
+                    {{ crest(t, 'fx-crest--xs', false) }}
+                    <span class="fx-opt__name">{{ fn[t] }}</span>
+                    <span class="material-icons-round fx-opt__tick">check</span>
+                </a>
+                {% endfor %}
+            </div>
+        </details>
+
+        {# Status filter — instant, client side #}
+        <div class="fx-seg" role="group" aria-label="Filter by match status">
+            <button type="button" class="fx-seg__btn" data-filter="all" aria-pressed="true">
+                <span class="fx-seg__long">All</span><span class="fx-seg__short">All</span>
+                <span class="fx-seg__n">{{ S.total }}</span>
+            </button>
+            <button type="button" class="fx-seg__btn" data-filter="upcoming" aria-pressed="false">
+                <span class="fx-seg__long">Upcoming</span><span class="fx-seg__short">Next</span>
+                <span class="fx-seg__n">{{ S.up }}</span>
+            </button>
+            {#- always rendered, even at zero: LIVE is a nav destination, and it
+                has to be able to say "nothing is on" rather than silently
+                falling back to All -#}
+            <button type="button" class="fx-seg__btn" data-filter="live" aria-pressed="false">
+                <span class="fx-seg__long">Live</span><span class="fx-seg__short">Live</span>
+                <span class="fx-seg__n">{{ S.live }}</span>
+            </button>
+            <button type="button" class="fx-seg__btn" data-filter="done" aria-pressed="false">
+                <span class="fx-seg__long">Results</span><span class="fx-seg__short">Done</span>
+                <span class="fx-seg__n">{{ S.done }}</span>
+            </button>
+        </div>
+
+        <button type="button" class="fx-now" id="fxNow" title="Jump to the current or next match">
+            <span class="material-icons-round">my_location</span><span>Now</span>
+        </button>
+    </div>
+
+    <p class="fx-count">Showing <b id="fxShown">{{ S.total }}</b> of <b>{{ S.total }}</b> matches</p>
+
+    {# ============================================================== list #}
+    <div class="fx-list" id="fxList">
+    {% set ns = namespace(month='') %}
+    {% for i in FR[1:] %}
+
+        {% set state = 'upcoming' if i[1] > current_date else ('live' if i[7] == 'TBA' else 'done') %}
+        {% set playoff = i[0] | int(default=None) is none %}
+        {% set label = i[1].strftime('%B %Y') %}
+
+        {% if label != ns.month %}
+        {% set ns.month = label %}
+        <div class="fx-month" data-month="{{ label }}"><span>{{ label }}</span></div>
+        {% endif %}
+
+        {#- left/right split: the side that batted first goes on the left, so the
+            two scores read in the order the innings were actually played -#}
+        {% set TA, TB, TA_S, TB_S = i[3], i[4], i[5], i[6] %}
+        {% set so = false %}
+        {#- a tie the super over could not settle is a no result, Win_T 'NA', and
+            its reason names the super over - so it is not a super-over result -#}
+        {% set tied_nr = i[7] == 'NA' and i[10].startswith('Match tied') %}
+        {% if state == 'done' %}
+            {% set so = 'Super over' in i[10] and i[7] != 'NA' %}
+            {% if not so %}
+                {% if i[7] == i[3] and i[8] == 'runs' %}
+                    {% set TA, TB, TA_S, TB_S = i[3], i[4], i[5], i[6] %}
+                {% elif i[7] == i[3] and i[8] == 'wickets' %}
+                    {% set TA, TB, TA_S, TB_S = i[4], i[3], i[6], i[5] %}
+                {% elif i[7] == i[4] and i[8] == 'runs' %}
+                    {% set TA, TB, TA_S, TB_S = i[4], i[3], i[6], i[5] %}
+                {% else %}
+                    {% set TA, TB, TA_S, TB_S = i[3], i[4], i[5], i[6] %}
+                {% endif %}
+            {% else %}
+                {% if i[7] == i[3] and i[8] == 'runs' %}
+                    {% set TA, TB, TA_S, TB_S = i[4], i[3], i[6], i[5] %}
+                {% elif i[7] == i[3] and i[8] == 'wickets' %}
+                    {% set TA, TB, TA_S, TB_S = i[3], i[4], i[5], i[6] %}
+                {% elif i[7] == i[4] and i[8] == 'runs' %}
+                    {% set TA, TB, TA_S, TB_S = i[3], i[4], i[5], i[6] %}
+                {% else %}
+                    {% set TA, TB, TA_S, TB_S = i[4], i[3], i[6], i[5] %}
+                {% endif %}
+            {% endif %}
+        {% endif %}
+
+        {% set link = url_for('main.FRScore', match=i[0], source='displayFR', fteam=hint) %}
+        {#- the tag is upper-cased in CSS, so keep the readable form for screen readers -#}
+        {% set title = ('Match ' ~ i[0]) if not playoff else i[0] %}
+
+        <article class="fx-card" id="m-{{ i[0] | replace(' ', '-') }}" data-state="{{ state }}"
+                 data-start="{{ i[1].strftime('%Y-%m-%dT%H:%M:%S') }}"
+                 {% if state == 'live' %}data-match="{{ i[0] }}"{% endif %}
+                 style="--ha: {{ brand(i[3]) }}; --hb: {{ brand(i[4]) }};">
+
+            <a class="fx-card__hit" href="{{ link }}"
+               aria-label="{{ title }}: {{ fn[i[3]] }} versus {{ fn[i[4]] }}, {{ i[1].strftime('%d %B %Y') }}"></a>
+
+            <header class="fx-card__head">
+                <span class="fx-tag {{ 'fx-tag--playoff' if playoff }}">{{ title }}</span>
+                <span class="fx-head__date">{{ i[1].strftime('%a, %d %b %Y') }} &middot; {{ i[1].strftime('%I:%M %p') }} IST</span>
+
+                {% if state == 'live' %}
+                <span class="fx-badge fx-badge--live"><span class="fx-badge__dot"></span>Live</span>
+                {% endif %}
+
+                <span class="fx-actions">
+                    {% if state == 'upcoming' %}
+                    <button type="button" class="fx-icon-btn fx-cal" title="Add to calendar"
+                            data-title="{{ title }}: {{ i[3] }} vs {{ i[4] }}"
+                            data-venue="{{ i[2] }}">
+                        <span class="material-icons-round">event</span>
+                    </button>
+                    {% endif %}
+                    <button type="button" class="fx-icon-btn fx-share" title="Share this match"
+                            data-url="{{ link }}"
+                            data-title="{{ title }}: {{ fn[i[3]] }} vs {{ fn[i[4]] }}">
+                        <span class="material-icons-round">share</span>
+                    </button>
+                </span>
+            </header>
+
+            <div class="fx-card__grid">
+                <div class="fx-card__main">
+
+                    <div class="fx-venue">
+                        <span class="material-icons-round">place</span><span>{{ i[2] }}</span>
+                    </div>
+
+                    <div class="fx-teams">
+                        <div class="fx-team fx-team--l {{ 'is-win' if state == 'done' and TA == i[7] else ('is-loss' if state == 'done' and i[7] not in ['NA', TA]) }}">
+                            {{ crest(TA, '', state == 'done' and TA == i[7]) }}
+                            <span class="fx-team__id">
+                                {{ team_name(TA) }}
+                                {% if state == 'done' %}{{ score_cell(TA_S, TA == i[7], playoff, so) }}
+                                {%- elif state == 'live' %}<span class="fx-score fx-score--live" data-live-score="{{ TA }}"><span class="fx-score__wait">&mdash;</span></span>
+                                {%- endif %}
+                            </span>
+                        </div>
+
+                        <div class="fx-mid">
+                            {% if playoff and i[0] == 'Final' %}
+                            <img src="/static/images/final.png" alt="Final">
+                            {% elif playoff %}
+                            <img src="/static/images/eliminator.png" alt="Playoff">
+                            {% else %}
+                            <span class="fx-vs">VS</span>
+                            {% endif %}
+                        </div>
+
+                        <div class="fx-team fx-team--r {{ 'is-win' if state == 'done' and TB == i[7] else ('is-loss' if state == 'done' and i[7] not in ['NA', TB]) }}">
+                            {{ crest(TB, '', state == 'done' and TB == i[7]) }}
+                            <span class="fx-team__id">
+                                {{ team_name(TB) }}
+                                {% if state == 'done' %}{{ score_cell(TB_S, TB == i[7], playoff, so) }}
+                                {%- elif state == 'live' %}<span class="fx-score fx-score--live" data-live-score="{{ TB }}"><span class="fx-score__wait">&mdash;</span></span>
+                                {%- endif %}
+                            </span>
+                        </div>
+                    </div>
+
+                    {% if state == 'upcoming' %}
+                        {% if current_date.date() == i[1].date() %}
+                        <div class="fx-result fx-result--soon">Starts today <span class="fx-result__time">&bull; {{ i[1].strftime('%I:%M %p') }} IST</span></div>
+                        {% elif i[1].date() == (current_date | add_days(1)).date() %}
+                        <div class="fx-result fx-result--soon">Starts tomorrow <span class="fx-result__time">&bull; {{ i[1].strftime('%I:%M %p') }} IST</span></div>
+                        {% else %}
+                        <div class="fx-result fx-result--soon">Starts {{ i[1].strftime('%a, %d %b') }} <span class="fx-result__time">&bull; {{ i[1].strftime('%I:%M %p') }} IST</span></div>
+                        {% endif %}
+                    {% elif state == 'live' %}
+                    {#- filled from the feed's "info" line; the fallback stands until the first poll lands -#}
+                    <div class="fx-result fx-result--live" data-live-info><span class="fx-blink">Match is in progress</span></div>
+                    {% elif i[7] == 'NA' %}
+                    <div class="fx-result fx-result--na">{{ i[10] }}</div>
+                    {% else %}
+                    <div class="fx-result fx-result--won">
+                        <span class="fx-winner"><span class="fx-team__full">{{ fn[i[7]] }}</span><span class="fx-team__abv">{{ i[7] }}</span></span>
+                        {{ i[10] if '1' not in i[10].split(' ') else (i[10].replace('runs', 'run') if 'runs' in i[10] else i[10].replace('wickets', 'wicket')) }}
+                    </div>
+                    {% endif %}
+                </div>
+
+                <aside class="fx-card__side 
+                    {% if state == 'live' or i[7] == 'NA' or i[11][0] == 'NA' %}
+                    fx-card__side--mobile-hide
+                    {% endif %}">
+
+                    {% if state == 'upcoming' %}
+                    <span class="fx-side__label">Match starts in</span>
+                    {{ clock(i[1]) }}
+
+                    {% elif state == 'live' %}
+                    <span class="fx-side__label">Live now</span>
+                    <div class="fx-duel">
+                        {{ crest(i[3], '', false) }}
+                        <span class="fx-duel__vs">VS</span>
+                        {{ crest(i[4], '', false) }}
+                    </div>
+
+                    {% elif i[7] == 'NA' or i[11][0] == 'NA' %}
+                    <span class="fx-side__label">{{ 'Match tied' if tied_nr else ('Match abandoned' if i[7] == 'NA' else 'Match completed') }}</span>
+                    <div class="fx-duel">
+                        {{ crest(i[3], '', false) }}
+                        <span class="fx-duel__vs">VS</span>
+                        {{ crest(i[4], '', false) }}
+                    </div>
+
+                    {% else %}
+                    <span class="fx-side__label">Player of the match</span>
+                    <a class="fx-potm" href="/team-{{ i[11][1] }}/squad_details/{{ i[11][0] }}">
+                        <span class="fx-potm__img" style="{{ grad(i[11][1]) }}">
+                            <img src="/static/images/squads/{{ i[11][1] }}-MICRO/{{ i[11][0].replace(' ', '-') }}.png"
+                                 alt="{{ i[11][0] }}" loading="lazy">
+                        </span>
+                        <span class="fx-potm__id">
+                            <span class="fx-potm__name">{{ i[11][0] }}</span>
+                            <span class="fx-potm__team">
+                                <img src="/static/images/squad_logos/{{ i[11][1] }}.png" alt="" loading="lazy">
+                                <span>{{ fn[i[11][1]] }}</span>
+                            </span>
+                        </span>
+                    </a>
+                    {% endif %}
+                </aside>
+            </div>
+        </article>
+    {% endfor %}
+    </div>
+
+    <div class="fx-empty" id="fxEmpty" data-team="{{ 'All' if hint == 'All' else fn[hint] }}">
+        <span class="material-icons-round" id="fxEmptyIcon">sports_cricket</span>
+        <b id="fxEmptyTitle">No matches here</b>
+        <p id="fxEmptyText">Try a different status filter or pick another team.</p>
+    </div>
+
+    <p class="fx-note">
+        All times are shown in IST. Tap any card for the full scorecard.
+    </p>
+</div>
+
+{#  LIVE is now a view of this same page, so the highlighted nav item follows
+    the status filter. Rendering the ?filter=live case server side avoids a
+    flash of the wrong item; the script keeps it in sync from then on. #}
+{% set nav_live = request.args.get('filter') == 'live' %}
+
+<nav class="bottom-nav">
+    <div class="bottom-nav-item {{ '' if nav_live else 'active' }}" data-nav="matches">
+        <a href="{{ url_for('main.displayFR') }}">
+      <span class="material-icons-round">event</span>
+      <span class="bottom-nav-label">MATCHES</span>
+      </a>
+    </div>
+    <div class="bottom-nav-item">
+        <a href="{{ url_for('main.displayPT') }}">
+      <span class="material-icons-round">table_chart</span>
+      <span class="bottom-nav-label">STANDINGS</span>
+      </a>
+    </div>
+    <div class="bottom-nav-item spacer"></div>
+    <div class="bottom-nav-item live {{ 'active' if nav_live }}" data-nav="live">
+        <a href="{{ url_for('main.displayFR', filter='live') }}">
+      <div class="live-circle"></div>
+      <div class="live-content">
+        <span class="material-icons-round zoomInOut">play_arrow</span>
+        <span class="bottom-nav-label">LIVE</span>
+      </div>
+      </a>
+    </div>
+    <div class="bottom-nav-item spacer"></div>
+    <div class="bottom-nav-item">
+      <a href="{{ url_for('main.teams') }}">
+      <span class="material-icons-round">groups</span>
+      <span class="bottom-nav-label">TEAMS</span>
+      </a>
+    </div>
+    <div class="bottom-nav-item">
+      <a href="{{ url_for('main.battingstats') }}">
+      <span class="material-icons-round">bar_chart</span>
+      <span class="bottom-nav-label">STATS</span>
+      </a>
+    </div>
+  </nav>
+
+<div class="fx-toast" id="fxToast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  var list   = document.getElementById('fxList');
+  var bar    = document.getElementById('fxBar');
+  var empty  = document.getElementById('fxEmpty');
+  var shown  = document.getElementById('fxShown');
+  var toastEl = document.getElementById('fxToast');
+  var cards  = Array.prototype.slice.call(document.querySelectorAll('.fx-card'));
+  var STORE  = 'fx-status-filter';
+
+  /* ------------------------------------------------------------- helpers */
+
+  function toast(msg) {
+    if (!toastEl) return;
+    toastEl.textContent = msg;
+    toastEl.classList.add('is-on');
+    clearTimeout(toast._t);
+    toast._t = setTimeout(function () { toastEl.classList.remove('is-on'); }, 2200);
+  }
+
+  function navHeight() {
+    var nav = document.querySelector('nav.navbar');
+    return nav ? nav.getBoundingClientRect().height : 66;
+  }
+
+  /* The navbar is fixed, so the toolbar has to stick just below it. Its height
+     varies with the viewport, hence the measurement instead of a constant. */
+  function syncStick() {
+    document.documentElement.style.setProperty('--fx-stick', (navHeight() + 8) + 'px');
+  }
+
+  syncStick();
+  window.addEventListener('resize', syncStick);
+
+  /* Scroll offset = fixed navbar + the sticky toolbar sitting under it. */
+  function topOffset() {
+    return navHeight() + (bar ? bar.getBoundingClientRect().height : 0) + 16;
+  }
+
+  function goTo(el, smooth) {
+    if (!el) return;
+    var y = el.getBoundingClientRect().top + window.pageYOffset - topOffset();
+    window.scrollTo({ top: y < 0 ? 0 : y, behavior: smooth ? 'smooth' : 'auto' });
+  }
+
+  /* ---------------------------------------------------------- countdowns */
+
+  /* Deadlines are IST wall-clock strings. Comparing them against "now"
+     re-expressed in IST keeps the countdown correct in any timezone. */
+  function istNow() {
+    return new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })).getTime();
+  }
+
+  var clocks = Array.prototype.slice.call(document.querySelectorAll('.fx-clock')).map(function (el) {
+    return {
+      el: el,
+      end: new Date(el.getAttribute('data-deadline')).getTime(),
+      out: {
+        d: el.querySelector('[data-u="d"]'),
+        h: el.querySelector('[data-u="h"]'),
+        m: el.querySelector('[data-u="m"]'),
+        s: el.querySelector('[data-u="s"]')
+      },
+      last: null
+    };
+  });
+
+  function tick() {
+    var now = istNow();
+    clocks.forEach(function (c) {
+      var t = c.end - now;
+      if (t < 0) t = 0;
+      var d = Math.floor(t / 86400000);
+      var h = Math.floor((t % 86400000) / 3600000);
+      var m = Math.floor((t % 3600000) / 60000);
+      var s = Math.floor((t % 60000) / 1000);
+      var key = d + ':' + h + ':' + m + ':' + s;
+      if (key === c.last) return;          /* skip DOM writes when unchanged */
+      c.last = key;
+      c.out.d.textContent = d;
+      c.out.h.textContent = h;
+      c.out.m.textContent = m;
+      c.out.s.textContent = s;
+      c.el.classList.toggle('is-soon', t > 0 && t < 3600000);
+      c.el.classList.toggle('is-over', t === 0);
+    });
+  }
+
+  if (clocks.length) {
+    tick();
+    setInterval(tick, 1000);
+  }
+
+  /* --------------------------------------------------------- live scores */
+
+  /* Polls our own /api/match-<no>/liveStrip, which proxies the score feed.
+     A direct call to the feed is impossible from the browser: it only sends
+     Access-Control-Allow-Origin for www.sportskeeda.com. */
+  var LIVE_MS = 10000;
+  var liveCards = cards.filter(function (c) { return c.getAttribute('data-match'); });
+
+  /* One innings: "174/8 (20 ov)" -> bold runs with the overs set smaller.
+     Built as nodes rather than innerHTML because this is third-party text. */
+  function scoreLine(text, cls) {
+    var line = document.createElement('span');
+    line.className = 'fx-score__line' + (cls ? ' ' + cls : '');
+    var re = /\(([^)]*)\)/g;
+    var at = 0, m;
+    while ((m = re.exec(text)) !== null) {
+      if (m.index > at) line.appendChild(document.createTextNode(text.slice(at, m.index)));
+      var ov = document.createElement('i');
+      ov.textContent = '(' + m[1].replace(/ ov/g, '') + ')';
+      line.appendChild(ov);
+      at = m.index + m[0].length;
+    }
+    if (at < text.length) line.appendChild(document.createTextNode(text.slice(at)));
+    return line;
+  }
+
+  /* A super over arrives as one string joined by "&", with the regular innings
+     usually carrying no overs: "155/8 & 1/2 (0.3 ov)". Stack it the same way a
+     finished super over is shown — innings above, decider below with an SO tag.
+     A second super over, bowled when the first is tied as well, joins on as a
+     third part and gets a line of its own; only then are they numbered. */
+  function paintScore(el, raw, batting) {
+    var text = String(raw || '').replace(/^\*/, '').trim();
+    if (el.getAttribute('data-shown') === text) {
+      el.classList.toggle('is-batting', !!batting);
+      return;                                   /* nothing moved since last poll */
+    }
+    var had = el.getAttribute('data-shown');
+    el.setAttribute('data-shown', text);
+    el.textContent = '';
+    el.classList.toggle('is-batting', !!batting);
+    if (had) {                                  /* flash only on a real change */
+      el.classList.remove('is-bump');
+      void el.offsetWidth;                      /* restart the animation */
+      el.classList.add('is-bump');
+    }
+
+    var box = document.createElement('span');
+    box.className = 'fx-score__lines';
+    el.appendChild(box);
+
+    if (!text) {
+      var wait = document.createElement('span');
+      wait.className = 'fx-score__wait';
+      wait.textContent = 'Yet to bat';
+      box.appendChild(wait);
+      el.classList.remove('has-so');
+      return;
+    }
+
+    var halves = text.split('&');
+    if (halves.length > 1) {
+      box.appendChild(scoreLine(halves[0].trim(), 'fx-score__line--prior'));
+      for (var i = 1; i < halves.length; i++) {
+        var so = scoreLine(halves[i].trim(), 'fx-score__line--so');
+        var tag = document.createElement('span');
+        tag.className = 'fx-so-tag';
+        tag.textContent = halves.length > 2 ? 'SO ' + i : 'SO';
+        so.insertBefore(tag, so.firstChild);
+        box.appendChild(so);
+      }
+      el.classList.add('has-so');
+    } else {
+      box.appendChild(scoreLine(text, ''));
+      el.classList.remove('has-so');
+    }
+  }
+
+  function paintCard(card, data) {
+    if (!data || !data.ok) return;              /* keep whatever is on screen */
+
+    (data.teams || []).forEach(function (t) {
+      /* the name is third-party, so keep it out of the selector unless plain */
+      if (!t || !t.team || !/^[A-Za-z0-9]+$/.test(t.team)) return;
+      var el = card.querySelector('[data-live-score="' + t.team + '"]');
+      if (el) paintScore(el, t.score, t.batting);
+    });
+
+    var info = card.querySelector('[data-live-info]');
+    if (info && data.info) info.textContent = data.info;
+  }
+
+  var inFlight = {};
+
+  function pollCard(card) {
+    var no = card.getAttribute('data-match');
+    if (!no || inFlight[no]) return;
+    inFlight[no] = true;
+    fetch('/api/match-' + encodeURIComponent(no) + '/liveStrip', { credentials: 'same-origin' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) { paintCard(card, d); })
+      .catch(function () { /* offline or upstream down — leave the last score up */ })
+      .then(function () { inFlight[no] = false; });
+  }
+
+  function pollLive() {
+    if (document.hidden) return;               /* don't poll a backgrounded tab */
+    liveCards.forEach(pollCard);
+  }
+
+  if (liveCards.length) {
+    pollLive();
+    setInterval(pollLive, LIVE_MS);
+    /* catch up straight away when the tab comes back */
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden) pollLive();
+    });
+  }
+
+  /* ------------------------------------------------------ status filter */
+
+  /* An empty list should say what is missing — "no live matches" reads very
+     differently from "no results yet", and LIVE lands here whenever nothing
+     is in progress. */
+  var EMPTY = {
+    live: ['videocam_off', 'No live matches',
+           'No match is in progress right now.', ' are not playing right now.'],
+    upcoming: ['event_busy', 'No upcoming matches',
+               'Every fixture has been played.', ' have no fixtures left.'],
+    done: ['history', 'No results yet',
+           'No match has finished yet.', ' have not finished a match yet.'],
+    all: ['sports_cricket', 'No matches here',
+          'Try another team.', ' have no matches.']
+  };
+
+  function describeEmpty(mode) {
+    var copy = EMPTY[mode] || EMPTY.all;
+    var team = empty.getAttribute('data-team');
+    var icon = document.getElementById('fxEmptyIcon');
+    var title = document.getElementById('fxEmptyTitle');
+    var text = document.getElementById('fxEmptyText');
+    if (icon) icon.textContent = copy[0];
+    if (title) title.textContent = copy[1];
+    if (text) text.textContent = (team && team !== 'All') ? team + copy[3] : copy[2];
+  }
+
+  function applyFilter(mode) {
+    var count = 0;
+    cards.forEach(function (card) {
+      var show = mode === 'all' || card.getAttribute('data-state') === mode;
+      card.hidden = !show;
+      if (show) count++;
+    });
+
+    /* Drop month dividers that no longer head any visible card. */
+    var nodes = Array.prototype.slice.call(list.children);
+    for (var i = 0; i < nodes.length; i++) {
+      if (!nodes[i].classList.contains('fx-month')) continue;
+      var any = false;
+      for (var j = i + 1; j < nodes.length; j++) {
+        if (nodes[j].classList.contains('fx-month')) break;
+        if (!nodes[j].hidden) { any = true; break; }
+      }
+      nodes[i].hidden = !any;
+    }
+
+    if (shown) shown.textContent = count;
+    if (empty) {
+      empty.classList.toggle('is-on', count === 0);
+      if (count === 0) describeEmpty(mode);
+    }
+
+    Array.prototype.forEach.call(bar.querySelectorAll('.fx-seg__btn'), function (b) {
+      b.setAttribute('aria-pressed', String(b.getAttribute('data-filter') === mode));
+    });
+
+    /* On the narrowest phones the segment strip can still overflow; make sure
+       the selected one is the one you can see. */
+    var seg = bar.querySelector('.fx-seg');
+    var on = bar.querySelector('.fx-seg__btn[aria-pressed="true"]');
+    if (seg && on && seg.scrollWidth > seg.clientWidth) {
+      on.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    }
+
+    /* LIVE and MATCHES are the same page, so light up whichever one the
+       current filter represents. */
+    var navMatches = document.querySelector('.bottom-nav-item[data-nav="matches"]');
+    var navLive = document.querySelector('.bottom-nav-item[data-nav="live"]');
+    if (navMatches) navMatches.classList.toggle('active', mode !== 'live');
+    if (navLive) navLive.classList.toggle('active', mode === 'live');
+
+    /* Same story in the desktop navbar, which reads the URL — so this must run
+       after syncUrl. (Undefined on first load: base.js loads later and does its
+       own initial pass.) */
+    if (window.syncNavActive) window.syncNavActive();
+  }
+
+  /* Keep ?filter= in step with the buttons, so a refresh or a shared link
+     reproduces what is on screen instead of the value we arrived with. */
+  function syncUrl(mode) {
+    if (!window.history || !history.replaceState) return;
+    try {
+      var u = new URL(location.href);
+      if (mode === 'all') u.searchParams.delete('filter');
+      else u.searchParams.set('filter', mode);
+      history.replaceState(null, '', u.toString());
+    } catch (e) { /* ignore */ }
+  }
+
+  Array.prototype.forEach.call(bar.querySelectorAll('.fx-seg__btn'), function (btn) {
+    btn.addEventListener('click', function () {
+      var mode = btn.getAttribute('data-filter');
+      syncUrl(mode);          /* URL first — the navbar highlighter reads it */
+      applyFilter(mode);
+      remember(mode);
+      goTo(list, true);
+    });
+  });
+
+  /* ?filter=live (used by the LIVE shortcut in the bottom nav) beats whatever
+     the session remembered — an explicit link should always land where it says.
+     Falls back to 'all' if that state has no button, e.g. no live match today. */
+  /* the value reaches us from a URL and from storage, so keep it to [a-z]
+     rather than interpolating it straight into a selector */
+  function segFor(mode) {
+    if (!mode || !/^[a-z]+$/.test(mode)) return null;
+    return bar.querySelector('.fx-seg__btn[data-filter="' + mode + '"]');
+  }
+
+  /* 'live' is a nav destination rather than a view preference — it is only ever
+     honoured from an explicit ?filter=live. Remembering it would make the
+     MATCHES button, which links to a bare /fixtures, look like it does nothing. */
+  function remember(mode) {
+    try {
+      if (mode === 'live') sessionStorage.removeItem(STORE);
+      else sessionStorage.setItem(STORE, mode);
+    } catch (e) { /* private mode */ }
+  }
+
+  function initialFilter() {
+    var fromUrl = null;
+    try { fromUrl = new URLSearchParams(location.search).get('filter'); } catch (e) { /* ignore */ }
+    if (segFor(fromUrl)) {
+      remember(fromUrl);
+      return fromUrl;
+    }
+    var saved = null;
+    try { saved = sessionStorage.getItem(STORE); } catch (e) { /* ignore */ }
+    return segFor(saved) ? saved : 'all';
+  }
+
+  var start = initialFilter();
+
+  /* If the URL asked for something we cannot honour — ?filter=live on a day
+     with no live match — correct it before base.js reads it for the navbar,
+     otherwise the two navs would disagree. */
+  var asked = null;
+  try { asked = new URLSearchParams(location.search).get('filter'); } catch (e) { /* ignore */ }
+  if (asked !== null && asked !== start) syncUrl(start);
+
+  applyFilter(start);
+
+  /* -------------------------------------------------- team dropdown UX */
+
+  var dd = document.getElementById('fxTeamDD');
+  if (dd) {
+    document.addEventListener('click', function (e) {
+      if (dd.open && !dd.contains(e.target)) dd.open = false;
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && dd.open) {
+        dd.open = false;
+        dd.querySelector('summary').focus();
+      }
+    });
+    /* Arrow keys walk the option list once the menu is open. */
+    dd.addEventListener('keydown', function (e) {
+      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+      var opts = Array.prototype.slice.call(dd.querySelectorAll('.fx-opt'));
+      if (!opts.length) return;
+      if (!dd.open) { dd.open = true; opts[0].focus(); e.preventDefault(); return; }
+      var at = opts.indexOf(document.activeElement);
+      var next = e.key === 'ArrowDown' ? at + 1 : at - 1;
+      if (next < 0) next = opts.length - 1;
+      if (next >= opts.length) next = 0;
+      opts[next].focus();
+      e.preventDefault();
+    });
+    if (dd.querySelector('.fx-opt.is-active')) {
+      dd.addEventListener('toggle', function () {
+        if (dd.open) dd.querySelector('.fx-opt.is-active').scrollIntoView({ block: 'nearest' });
+      });
+    }
+  }
+
+  /* ------------------------------------------- next / live match anchor */
+
+  function currentCard() {
+    var live = cards.filter(function (c) { return !c.hidden && c.getAttribute('data-state') === 'live'; });
+    if (live.length) return live[0];
+    var up = cards.filter(function (c) { return !c.hidden && c.getAttribute('data-state') === 'upcoming'; });
+    if (up.length) return up[0];
+    var done = cards.filter(function (c) { return !c.hidden && c.getAttribute('data-state') === 'done'; });
+    return done.length ? done[done.length - 1] : null;
+  }
+
+  var next = cards.filter(function (c) { return c.getAttribute('data-state') === 'upcoming'; })[0];
+  var anyLive = cards.some(function (c) { return c.getAttribute('data-state') === 'live'; });
+  if (next && !anyLive) {
+    next.classList.add('is-next');
+    var head = next.querySelector('.fx-card__head');
+    var badge = document.createElement('span');
+    badge.className = 'fx-badge fx-badge--next';
+    badge.textContent = 'Next up';
+    head.insertBefore(badge, head.querySelector('.fx-actions'));
+  }
+
+  var nowBtn = document.getElementById('fxNow');
+  if (nowBtn) {
+    nowBtn.addEventListener('click', function () {
+      var target = currentCard();
+      if (target) goTo(target, true);
+      else toast('No matches to jump to');
+    });
+  }
+
+  /* Open the page where the action is, unless we were sent to an anchor. */
+  if (!location.hash) {
+    window.addEventListener('load', function () {
+      var target = currentCard();
+      if (target) goTo(target, false);
+    });
+  }
+
+  /* ---------------------------------------------------------- card tools */
+
+  function pad(n) { return n < 10 ? '0' + n : String(n); }
+
+  function gcalStamp(d) {
+    return d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) +
+           'T' + pad(d.getHours()) + pad(d.getMinutes()) + '00';
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll('.fx-cal'), function (btn) {
+    btn.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      var card = btn.closest('.fx-card');
+      var start = new Date(card.getAttribute('data-start'));
+      var end = new Date(start.getTime() + 3.5 * 3600000);   /* a T20 runs ~3h30m */
+      var url = 'https://calendar.google.com/calendar/render?action=TEMPLATE' +
+        '&text=' + encodeURIComponent('WPL 2027 \u2014 ' + btn.getAttribute('data-title')) +
+        '&dates=' + gcalStamp(start) + '/' + gcalStamp(end) +
+        '&ctz=Asia/Kolkata' +
+        '&location=' + encodeURIComponent(btn.getAttribute('data-venue') || '');
+      window.open(url, '_blank', 'noopener');
+      btn.classList.add('is-done');
+    });
+  });
+
+  Array.prototype.forEach.call(document.querySelectorAll('.fx-share'), function (btn) {
+    btn.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      var url = location.origin + btn.getAttribute('data-url');
+      var title = btn.getAttribute('data-title');
+      if (navigator.share) {
+        navigator.share({ title: title, url: url }).catch(function () { /* dismissed */ });
+      } else if (navigator.clipboard) {
+        navigator.clipboard.writeText(url).then(function () {
+          btn.classList.add('is-done');
+          toast('Match link copied');
+        });
+      } else {
+        window.prompt('Copy this link', url);
+      }
+    });
+  });
+
+  /* --------------------------------------------------- sticky bar state */
+
+  var barTop = bar ? bar.offsetTop : 0;
+  var moveTop = document.createElement('button');
+  moveTop.type = 'button';
+  moveTop.id = 'moveTopBtn';
+  moveTop.className = 'floating-move-top-btn';
+  moveTop.title = 'Back to top';
+  moveTop.setAttribute('aria-label', 'Back to top');
+  moveTop.innerHTML = '<span class="material-icons-round">arrow_upward</span>';
+  document.body.appendChild(moveTop);
+  moveTop.addEventListener('click', function () {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  var ticking = false;
+  window.addEventListener('scroll', function () {
+    if (ticking) return;
+    ticking = true;
+    window.requestAnimationFrame(function () {
+      if (bar) bar.classList.toggle('is-stuck', window.pageYOffset > barTop - 80);
+      moveTop.classList.toggle('is-on', window.pageYOffset > 500);
+      ticking = false;
+    });
+  }, { passive: true });
+})();
+</script>
+
+{% endblock %}

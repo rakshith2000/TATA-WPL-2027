@@ -1,0 +1,747 @@
+/* ==========================================================================
+   WPL 2027 · Update match result (/updatematch, hint=before)
+   Match summary card + a modal form whose sections swap on match status.
+   Winner / win-type / toss pickers are segmented radio groups, not selects.
+   ========================================================================== */
+
+:root {
+  --um-bg-1: #16060f;
+  --um-bg-2: #340d24;
+  --um-ink: #fceef6;
+  --um-ink-2: #deb6ce;
+  --um-ink-3: #b587a2;
+  --um-line: rgba(255, 255, 255, 0.09);
+  --um-line-2: rgba(255, 255, 255, 0.16);
+  --um-gold: #ffc247;
+  --um-green: #2ee27a;
+  --um-red: #ff6a52;
+  --um-cyan: #29c5e8;
+  --um-violet: #c77dff;
+  --um-r-lg: 20px;
+  --um-r-md: 14px;
+  --um-r-sm: 10px;
+}
+
+/* --------------------------------------------------------------- page shell */
+
+body {
+  margin: 0;
+  padding: 72px 0 48px;
+  min-height: 100vh;
+  color: var(--um-ink);
+  font-family: 'Inter', 'Exo 2', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  background-color: var(--um-bg-1);
+  background-image:
+    radial-gradient(980px 560px at 10% -12%, rgba(76, 201, 240, 0.20), transparent 60%),
+    radial-gradient(860px 520px at 92% 0%, rgba(205, 88, 255, 0.19), transparent 62%),
+    radial-gradient(1050px 700px at 50% 110%, rgba(46, 226, 122, 0.11), transparent 66%),
+    linear-gradient(180deg, var(--um-bg-2) 0%, var(--um-bg-1) 58%, #0d0409 100%);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  overflow-x: hidden;
+}
+
+body::-webkit-scrollbar { width: 6px; }
+body::-webkit-scrollbar-track { background: transparent; }
+body::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--um-cyan), var(--um-violet));
+  border-radius: 99px;
+}
+
+.um-wrap {
+  width: min(660px, calc(100% - 32px));
+  margin: 0 auto;
+}
+
+/* ------------------------------------------------------------------ header */
+
+.um-top {
+  text-align: center;
+  padding: 24px 0 18px;
+}
+
+.um-top__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 14px;
+  border: 1px solid var(--um-line-2);
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--um-ink-2);
+}
+
+.um-top__eyebrow .material-icons-round { font-size: 14px; color: var(--um-cyan); }
+
+.um-top__title {
+  margin: 13px 0 5px;
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-size: clamp(1.7rem, 5vw, 2.5rem);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.025em;
+  background: linear-gradient(100deg, #ffffff 15%, #ffcfec 50%, var(--um-gold) 95%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.um-top__sub {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--um-ink-3);
+}
+
+/* ------------------------------------------------------------- match card */
+
+.um-card {
+  position: relative;
+  overflow: hidden;
+  padding: 20px;
+  border: 1px solid var(--um-line);
+  border-radius: var(--um-r-lg);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+  backdrop-filter: blur(14px);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.um-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--um-cyan), var(--um-violet) 60%, var(--um-gold));
+}
+
+/* meta chips row */
+.um-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 7px;
+  margin-bottom: 18px;
+}
+
+.um-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border: 1px solid var(--um-line);
+  border-radius: 99px;
+  background: rgba(0, 0, 0, 0.26);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--um-ink-2);
+  white-space: nowrap;
+}
+
+.um-chip .material-icons-round { font-size: 14px; color: var(--um-ink-3); }
+.um-chip b { color: #fff; font-weight: 800; }
+
+/* the two teams */
+.um-teams {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 10px;
+}
+
+.um-team {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  padding: 14px 8px;
+  border: 1px solid var(--um-line);
+  border-radius: var(--um-r-md);
+  background: rgba(0, 0, 0, 0.24);
+  text-align: center;
+}
+
+/* Squad crests are drawn for light backgrounds — some (RR, GT, LSG) are almost
+   black and vanish on a dark panel. Every crest sits on a light chip instead. */
+.um-team__crest {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(145deg, var(--team-a, #ffffff), var(--team-b, #f8e3f0));
+  /*border: 1px solid rgba(255, 255, 255, 0.5);*/
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.ud-team__crest {
+  width: 42px;
+  height: 42px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(145deg, var(--team-a, #ffffff), var(--team-b, #f8e3f0));
+  /*border: 1px solid rgba(255, 255, 255, 0.5);*/
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.um-team__crest img { width: 40px; height: 40px; object-fit: contain; }
+
+.ud-team__crest img { width: 34px; height: 34px; object-fit: contain; }
+
+.um-team__abv {
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-size: 1.15rem;
+  font-weight: 800;
+  line-height: 1;
+  color: #fff;
+}
+
+.um-team__full {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--um-ink-3);
+}
+
+.um-vs {
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--um-ink-3);
+}
+
+/* page-level actions */
+.um-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.um-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  margin-top: 16px;
+  width: 100%;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--um-ink-3);
+  text-decoration: none;
+}
+
+.um-back:hover { color: var(--um-cyan); text-decoration: none; }
+.um-back .material-icons-round { font-size: 15px; }
+
+/* ------------------------------------------------------------------ buttons */
+
+.um-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 13px 20px;
+  border: 0;
+  border-radius: var(--um-r-sm);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease,
+              background-color 0.18s ease, opacity 0.18s ease;
+}
+
+.um-btn .material-icons-round { font-size: 18px; }
+
+.um-btn--primary {
+  background: linear-gradient(135deg, var(--um-cyan), #ec008c 72%, var(--um-violet));
+  color: #1d0614;
+  box-shadow: 0 8px 20px rgba(238, 67, 156, 0.3);
+}
+
+.um-btn--primary:hover {
+  transform: translateY(-2px);
+  filter: saturate(1.12);
+  box-shadow: 0 12px 26px rgba(238, 67, 156, 0.42);
+}
+
+.um-btn--ghost {
+  border: 1px solid var(--um-line-2);
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--um-ink);
+}
+
+.um-btn--ghost:hover { background: rgba(255, 255, 255, 0.14); }
+
+.um-btn--block { width: 100%; }
+.um-btn:active { transform: translateY(0); }
+.um-btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.um-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; box-shadow: none; }
+
+/* ======================================================================
+   Modal
+   ====================================================================== */
+
+.um-modal .modal-dialog { max-width: 680px; }
+
+.um-modal .modal-content {
+  border: 1px solid var(--um-line-2);
+  border-radius: var(--um-r-lg);
+  background: #290d1d;
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.015));
+  box-shadow: 0 34px 80px rgba(0, 0, 0, 0.65);
+  color: var(--um-ink);
+  overflow: hidden;
+}
+
+.um-modal .modal-header {
+  align-items: center;
+  gap: 12px;
+  padding: 15px 18px;
+  border-color: var(--um-line);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.um-modal .modal-title {
+  margin: 0;
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.um-modal .modal-title small {
+  display: block;
+  margin-top: 2px;
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--um-ink-3);
+}
+
+.um-modal .modal-header .close {
+  margin: 0 0 0 auto;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--um-ink-3);
+  font-size: 24px;
+  line-height: 1;
+  opacity: 1;
+  text-shadow: none;
+}
+
+.um-modal .modal-header .close:hover { color: #fff; }
+
+/* form spans body + footer so the submit button can sit in a sticky footer */
+.um-form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.um-modal .modal-body {
+  max-height: 66vh;
+  overflow-y: auto;
+  padding: 16px 18px;
+}
+
+.um-modal .modal-body::-webkit-scrollbar { width: 7px; }
+.um-modal .modal-body::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.04); }
+.um-modal .modal-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 99px;
+}
+
+.um-modal .modal-footer {
+  gap: 10px;
+  padding: 13px 18px;
+  border-color: var(--um-line);
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.um-modal .modal-footer > * { margin: 0; }
+
+/* ------------------------------------------------------------------ panels */
+
+.um-panel {
+  padding: 14px;
+  border: 1px solid var(--um-line);
+  border-radius: var(--um-r-md);
+  background: rgba(0, 0, 0, 0.24);
+}
+
+.um-panel + .um-panel,
+.um-stack > * + * { margin-top: 12px; }
+
+.um-panel__head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 12px;
+}
+
+.um-panel__head img {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  padding: 3px;
+  border-radius: 9px;
+  background: linear-gradient(145deg, var(--team-a, #ffffff), var(--team-b, #f8e3f0));
+  object-fit: contain;
+}
+
+.um-panel__title {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #fff;
+}
+
+.um-panel__title small {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--um-ink-3);
+}
+
+.um-panel__rule {
+  height: 1px;
+  margin: 14px 0;
+  background: var(--um-line);
+}
+
+/* --- repeatable super over ------------------------------------------------
+   Its head carries a remove button, pushed to the far edge so the crest-and-
+   title row it sits on reads the same as every other panel head. The first
+   block has no button: a tied match has at least one super over. */
+.um-so__del {
+  flex: none;
+  margin-left: auto;
+  padding: 6px;
+  border-radius: 999px;
+}
+
+.um-so__del[hidden] { display: none; }
+.um-so__del .material-icons-round { font-size: 16px; }
+
+/* A plain opt-in inside a panel — the segmented control is for choosing between
+   alternatives, this is for turning one extra section on. */
+.um-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--um-ink);
+  cursor: pointer;
+}
+
+.um-check input {
+  flex: none;
+  width: 17px;
+  height: 17px;
+  margin: 0;
+  accent-color: var(--um-cyan);
+  cursor: pointer;
+}
+
+/* section label above a group */
+.um-label {
+  display: block;
+  margin: 0 0 7px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--um-ink-3);
+}
+
+/* ------------------------------------------------------------------ fields */
+
+.um-field { display: flex; flex-direction: column; gap: 6px; }
+
+.um-field > label {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--um-ink-3);
+}
+
+.um-field input {
+  width: 100%;
+  height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--um-line-2);
+  border-radius: var(--um-r-sm);
+  background: rgba(0, 0, 0, 0.36);
+  color: var(--um-ink);
+  /* 16px keeps iOS Safari from zooming on focus */
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.um-field input[type='text'] { text-align: left; font-weight: 600; }
+
+/* number spinners add clutter at this size */
+.um-field input[type='number']::-webkit-outer-spin-button,
+.um-field input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.um-field input[type='number'] { -moz-appearance: textfield; }
+
+.um-field input::placeholder { color: rgba(255, 255, 255, 0.26); font-weight: 500; }
+
+.um-field input:hover { background: rgba(0, 0, 0, 0.46); }
+
+.um-field input:focus {
+  border-color: var(--um-cyan);
+  background: rgba(0, 0, 0, 0.54);
+  box-shadow: 0 0 0 3px rgba(76, 201, 240, 0.15);
+}
+
+/* runs / wickets / overs sit on one line */
+.um-grid3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 9px;
+}
+
+.um-grid2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 9px;
+}
+
+/* "won by" with a live unit suffix */
+.um-suffix { position: relative; }
+.um-suffix input { padding-right: 58px; text-align: left; }
+
+.um-suffix__unit {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--um-ink-3);
+  pointer-events: none;
+}
+
+/* ======================================================================
+   Segmented radio groups — replaces the winner / win-type / toss selects
+   ====================================================================== */
+
+.um-seg {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 8px;
+}
+
+/* 4 statuses: 2x2 on narrow screens, 4 across when there's room */
+.um-seg--wrap {
+  grid-auto-flow: row;
+  grid-template-columns: repeat(2, 1fr);
+  justify-content: center;
+}
+
+.um-seg-teams--wrap {
+  grid-auto-flow: row;
+  grid-template-columns: repeat(5, 1fr);
+  justify-content: center;
+}
+
+.um-seg-teams--wrap > :last-child:nth-child(5n + 1) {
+    grid-column: 3;
+}
+
+@media (min-width: 560px) {
+  .um-seg--wrap { grid-template-columns: repeat(4, 1fr); }
+  .um-seg-teams--wrap { grid-template-columns: repeat(5, 1fr); }
+}
+
+/* positioned so the hidden radio (and therefore any validation bubble)
+   anchors to its own option rather than the modal */
+.um-seg__opt {
+  position: relative;
+  margin: 0;
+  cursor: pointer;
+  min-width: 0;
+}
+
+/* the radio stays in the DOM (native name/value/required semantics) but
+   is visually replaced by .um-seg__body */
+.um-seg__opt input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.um-seg__body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 100%;
+  min-height: 46px;
+  padding: 9px 10px;
+  border: 1px solid var(--um-line-2);
+  border-radius: var(--um-r-sm);
+  background: rgba(0, 0, 0, 0.32);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--um-ink-2);
+  text-align: center;
+  transition: background-color 0.18s ease, border-color 0.18s ease,
+              color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+@media (max-width: 560px) {
+  .um-seg__body { flex-direction: column; }
+}
+
+.um-seg__body img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  flex: none;
+}
+
+.um-seg__body .material-icons-round { font-size: 17px; }
+
+.um-seg__opt:hover .um-seg__body {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.um-seg__opt input:checked + .um-seg__body {
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--um-cyan), #ec008c);
+  color: #1d0614;
+  box-shadow: 0 6px 16px rgba(238, 67, 156, 0.34);
+}
+
+/* keyboard focus must stay visible even though the input is hidden */
+.um-seg__opt input:focus-visible + .um-seg__body {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+/* tonal variants */
+.um-seg--status input:checked + .um-seg__body {
+  background: linear-gradient(135deg, var(--um-violet), #9333ea);
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(208, 51, 109, 0.36);
+}
+
+.um-seg--winner input:checked + .um-seg__body {
+  background: linear-gradient(135deg, var(--um-green), #0f9b63);
+  color: #04140c;
+  box-shadow: 0 6px 16px rgba(15, 155, 99, 0.34);
+}
+
+.um-seg--status .um-seg__body { flex-direction: column; gap: 4px; min-height: 62px; }
+.um-seg--status .um-seg__body .material-icons-round { font-size: 19px; }
+.um-seg--status .um-seg__body span:last-child { font-size: 11px; line-height: 1.2; }
+
+.um-seg--winner .um-seg__body {
+  flex-direction: column;
+  gap: 5px;
+  min-height: 72px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.um-seg--winner .um-seg__body img {
+  width: 32px;
+  height: 32px;
+  padding: 3px;
+  border-radius: 9px;
+  background: linear-gradient(145deg, var(--team-a, #ffffff), var(--team-b, #f8e3f0));
+}
+
+/* ------------------------------------------------------------------- hints */
+
+.um-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--um-line);
+  border-left: 3px solid var(--um-cyan);
+  border-radius: var(--um-r-sm);
+  background: rgba(76, 201, 240, 0.08);
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--um-ink-2);
+}
+
+.um-note .material-icons-round { flex: none; font-size: 16px; color: var(--um-cyan); }
+
+/* shown until a status is picked */
+.um-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 28px 14px;
+  text-align: center;
+  color: var(--um-ink-3);
+  font-size: 12.5px;
+}
+
+.um-placeholder .material-icons-round { font-size: 30px; opacity: 0.45; }
+
+/* --------------------------------------------------------------- responsive */
+
+@media (max-width: 560px) {
+  body { padding-top: 66px; }
+  .um-wrap { width: calc(100% - 22px); }
+  .um-card { padding: 16px; }
+  .um-teams { gap: 7px; }
+  .um-team { padding: 11px 5px; }
+  .um-team__crest { width: 46px; height: 46px; border-radius: 13px; }
+  .um-team__crest img { width: 32px; height: 32px; }
+  .um-team__abv { font-size: 1rem; }
+  .um-team__full { display: none; }
+  .um-modal .modal-dialog { margin: 8px; }
+  .um-modal .modal-body { max-height: 72vh; padding: 13px; }
+  .um-grid3 { gap: 6px; }
+  .um-field input { height: 42px; padding: 0 8px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

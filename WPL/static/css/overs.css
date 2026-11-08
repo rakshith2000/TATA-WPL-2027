@@ -1,0 +1,322 @@
+.over-container {
+    display: flex;
+    gap: 0px;
+    padding: 0px 0px 0px 0px;
+    border-inline: 4px solid #ecebeb;
+    border-block: 2px solid #ecebeb;
+    /*border-radius: 10px;*/
+}
+
+.over-left {
+    /*background: linear-gradient(145deg, var(--c), var(--c));*/
+    color: black;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: .15rem;
+    width: 16%;
+    padding: 5px 0px;
+    /*border-radius: 5px;*/
+}
+
+.over-left-items {
+    height: auto;
+    padding-bottom: 2px;
+    padding-top: 2px;
+}
+
+.over-left-over {
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.over-left-team {
+    background: linear-gradient(145deg, var(--c1) 10%, var(--c2) 70%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 15%;
+    box-shadow: 0px 5px 10px rgba(0, 0, 0, 0.2);
+}
+
+.over-left-team-img {
+    width: 32px;
+    height: 32px;
+}
+
+.over-left-score {
+    font-size: 13px;
+    /*color: #696868;*/
+}
+
+.over-center {
+    padding-left: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: .2rem;
+    width: 70%;
+    border-inline: 1px dashed #d9d9d9;
+}
+
+.over-center-info {
+    height: auto;
+    font-size: 13px;
+    padding-bottom: .25rem;
+    padding-top: .25rem;
+}
+
+.over-center-info span {
+    font-family: Arial, Helvetica, sans-serif;
+    color: #a5a5a5;
+}
+
+.over-center-item-balls {
+    display: flex;
+    flex-wrap: wrap;
+    height: auto;
+    padding-top: .25rem;
+    padding-bottom: .25rem;
+    gap: .4rem;
+}
+
+.over-center-balls {
+    font-family: Verdana, Geneva, Tahoma, sans-serif;
+    color: #fff;
+    font-size: 12.5px;
+    line-height: 1rem;
+    font-weight: normal;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 25%;
+    text-align: center;
+    width: 23px;
+    height: 23px;
+    /*box-shadow: 0px 10px 10px rgba(0, 0, 0, 0.2);*/
+}
+
+.over-right {
+    /*background: linear-gradient(145deg, var(--c1), var(--c2));*/
+    color: black;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: .15rem;
+    width: 14%;
+    padding: 5px 0px;
+    /*border-radius: 5px;*/
+}
+
+.over-right-runs {
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.bg-four {
+    background: linear-gradient(145deg, #d2007b, #8a0053);
+}
+
+.bg-six {
+    background: linear-gradient(145deg, #34c759, #239a3f);
+}
+
+.bg-dot {
+    background-color: white;
+    border: #888 solid 1px;
+}
+
+.bg-normal {
+    color: black;
+    background-color: white;
+    border: #888 solid 1px;
+}
+
+.bg-extra {
+    color: black;
+    background-color: white;
+    border: #888 solid 1px;
+}
+
+.bg-wicket {
+    background: linear-gradient(145deg, #ff3b30, #ad0404);
+}
+
+.ball-entry {
+    border-style: solid;
+    border-color: #d9d9d9;
+    border-width: 1px 0px 1px 0px;
+    border-radius: 10px;
+}
+
+.over-entry {
+    background: #d9d9d9;
+    border-style: solid;
+    border-color: #d9d9d9;
+    border-width: 1px 0px 1px 0px;
+    border-radius: 10px;
+    box-shadow: inset 5px 5px 10px #bcbcbc,
+                inset -5px -5px 10px #f0f0f0; 
+}
+
+
+
+
+/* Styles for the live over section horizontal scroller */
+.overs-section {
+    width: 100%;
+    position: relative;
+    overflow: hidden;
+}
+.overs-section::before,
+.overs-section::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    width: 32px;
+    height: 100%;
+    z-index: 2;
+    pointer-events: none;
+    transition: opacity 0.2s;
+}
+.overs-section::before {
+    left: 0;
+    background: linear-gradient(to right, #fff 50%, transparent 100%);
+    opacity: 1;
+}
+.overs-section::after {
+    right: 0;
+    background: linear-gradient(to left, #fff 50%, transparent 100%);
+    opacity: 1;
+}
+.overs-section.at-start::before {
+    opacity: 0;
+}
+.overs-section.at-end::after {
+    opacity: 0;
+}
+.overs-bar {
+    display: flex;
+    align-items: center;
+    overflow-x: auto;
+    gap: 0;
+    padding: 8px 16px;
+    background: #fff;
+    border-radius: 6px;
+    border: 1px solid #eee;
+}
+.overs-bar::-webkit-scrollbar {
+    display: none; /* Hide scrollbar for Chrome, Safari, Opera */
+}
+.over-group {
+    display: flex;
+    align-items: center;
+    margin-right: 12px;
+    padding-right: 12px;
+    position: relative;
+}
+.over-group:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    top: 10%;
+    height: 80%;
+    width: 1px;
+    background: #e0e0e0;
+}
+.over-group:last-child {
+    margin-right: 0;
+    padding-right: 0;
+}
+.over-label {
+    width: auto;
+    font-size: 14px;
+    color: #222;
+    margin-right: 5px;
+    font-weight: 400;
+}
+.over-balls {
+    display: flex;
+    gap: 4px;
+}
+.over-ball {
+    font-family: Verdana, Geneva, Tahoma, sans-serif;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 1px solid #d3d3d3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    background: #fff;
+    color: #222;
+    margin-right: 0;
+    transition: border 0.2s, background 0.2s;
+}
+.over-ball.filled {
+    border: 1px solid #888;
+    background: #fff;
+    color: #111;
+}
+.over-ball.filled.four {
+    background: #b8006a;
+    color: #fff;
+    border: 1px solid #b8006a;
+}
+.ball-four {
+    color: #b8006a
+}
+.over-ball.filled.six {
+    background: #27ae60;
+    color: #fff;
+    border: 1px solid #27ae60;
+}
+.ball-six {
+    color: #27ae60;
+}
+.over-ball.filled.wicket {
+    background: #e74c3c;
+    color: #fff;
+    border: 1px solid #e74c3c;
+}
+.ball-wicket {
+    color: #e74c3c;
+}
+.over-ball.filled.extra {
+    border: 1px solid #888;
+    background: #fff;
+    color: #111;
+}
+.over-ball.empty {
+    border: 1px solid #d3d3d3;
+    background: #fff;
+    color: transparent;
+}
+.over-total {
+    font-size: 14px;
+    color: #222;
+    margin-left: 12px;
+    font-weight: bold;
+}
+.over-divider {
+    width: 1px;
+    height: 40px;
+    background: #e0e0e0;
+    margin: 0 16px;
+    align-self: center;
+}
+.no-wrap {
+    white-space: nowrap;
+}
+
+.club-icon {
+          color: green;
+          font-size: 18px;
+          line-height: 1;
+          display: block;
+          transform: translateY(0px);
+        }

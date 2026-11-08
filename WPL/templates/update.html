@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+{% block head %}
+{{ super() }}
+<title>WPL 2027 | Update Records</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='extended_beauty.css') }}" />
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/update.css') }}">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+
+{#  --------------------------------------------------------------- options #}
+{#  Both come from config.json by way of create_app(), so the team list and
+    the playoff ties here can never drift from the ones the season is actually
+    played with. The keys match the abbreviations stored in
+    Pointstable.team_name, and the shorthand matches what admin.py accepts. #}
+{% set TEAMS = TEAM_LIST %}
+{% set PLAYOFFS = POFS | dictsort %}
+
+{#  ---------------------------------------------------------------- macros #}
+
+{# Flash messages for one card. Only the card matching `key` calls this, so the
+   flash queue is consumed exactly once per request. #}
+{% macro flashes() %}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for cat, msg in messages %}
+                {% if cat in ['error', 'success', 'warning'] %}
+                {% set icon = 'error_outline' if cat == 'error' else ('check_circle_outline' if cat == 'success' else 'warning') %}
+                <div class="alert uc-alert uc-alert--{{ cat }} fade show" role="alert">
+                    <span class="material-icons-round uc-alert__icon">{{ icon }}</span>
+                    <div class="uc-alert__body">
+                        {{ msg }}
+                        {% if cat == 'warning' %}
+                        <br><a href="#" data-toggle="modal" data-target="#mymodal">View valid matches</a>
+                        {% endif %}
+                    </div>
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                {% endif %}
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+{% endmacro %}
+
+{# One action card = one POST endpoint. The caller block supplies the field. #}
+{% macro card(tone, icon, title, desc, action, active, btn, btn_icon) %}
+<form class="uc-card uc-card--{{ tone }}" method="POST" action="{{ action }}">
+    <div class="uc-card__head">
+        <span class="uc-card__icon"><span class="material-icons-round">{{ icon }}</span></span>
+        <div>
+            <h2 class="uc-card__title">{{ title }}</h2>
+            <p class="uc-card__desc">{{ desc }}</p>
+        </div>
+    </div>
+    {% if active %}{{ flashes() }}{% endif %}
+    {{ caller() }}
+    <input type="hidden" name="hint" value="before">
+    <button type="submit" class="uc-btn">
+        {{ btn }}<span class="material-icons-round">{{ btn_icon }}</span>
+    </button>
+</form>
+{% endmacro %}
+
+{# Match-number text field + hint #}
+{% macro match_field(id, name) %}
+<div class="uc-field">
+    <label for="{{ id }}">Match number</label>
+    <input type="text" id="{{ id }}" name="{{ name }}" placeholder="e.g. 14 or E"
+           autocomplete="off" aria-describedby="{{ id }}Hint" required>
+</div>
+<p class="uc-hint" id="{{ id }}Hint">
+    League <code>1</code>&ndash;<code>{{ LEAGUE_MATCHES }}</code> &middot; Playoffs
+    {% for code in PLAYOFFS %}<code>{{ code[0] }}</code> {% endfor %}
+</p>
+{% endmacro %}
+
+{# Team picker used by both the qualify and eliminate cards #}
+{% macro team_select(id, name, label) %}
+<div class="uc-field">
+    <label for="{{ id }}">{{ label }}</label>
+    <select name="{{ name }}" id="{{ id }}" required>
+        <option value="" disabled selected>Select a team&hellip;</option>
+        {% for abv, full in TEAMS %}
+        <option value="{{ abv }}">{{ full }}</option>
+        {% endfor %}
+    </select>
+</div>
+{% endmacro %}
+
+<div class="uc-wrap">
+
+    <header class="uc-hero">
+        <span class="uc-hero__eyebrow">
+            <span class="material-icons-round">verified_user</span>Admin only
+        </span>
+        <h1 class="uc-hero__title">Control Room</h1>
+        <p class="uc-hero__sub">Update results, awards and qualification status for WPL 2027</p>
+    </header>
+
+    {# ==================================================== match records #}
+    <section class="uc-section">
+        <div class="uc-section__head">
+            <h2 class="uc-section__title">Match records</h2>
+        </div>
+
+        <div class="uc-grid">
+
+            {% call card('cyan', 'sports_cricket', 'Update match result', 'Record the scorecard and winner for a completed match.', '/updatematch', key == '1', 'Continue', 'arrow_forward') %}
+                {{ match_field('match', 'match') }}
+            {% endcall %}
+
+            {% call card('gold', 'military_tech', 'Update Player of the Match', 'Pick the POTM from the two squads that played.', '/updatepotm', key == '6', 'Continue', 'arrow_forward') %}
+                {{ match_field('potmmatch', 'potmmatch') }}
+            {% endcall %}
+
+            {% call card('red', 'delete_forever', 'Delete match result', 'Roll back a result so the match can be entered again.', '/deletematch', key == '2', 'Continue', 'arrow_forward') %}
+                {{ match_field('dmatch', 'dmatch') }}
+            {% endcall %}
+
+        </div>
+    </section>
+
+    {# ================================================ tournament status #}
+    <section class="uc-section">
+        <div class="uc-section__head">
+            <h2 class="uc-section__title">Tournament status</h2>
+        </div>
+
+        <div class="uc-grid">
+
+            {% call card('violet', 'account_tree', 'Update playoff teams', 'Set the two teams and venue once a playoff line-up is known.', '/updateplayoffs', key == '3', 'Continue', 'arrow_forward') %}
+                <div class="uc-field">
+                    <label for="pomatch">Playoff match</label>
+                    <select name="pomatch" id="pomatch" required>
+                        <option value="" disabled selected>Select a match&hellip;</option>
+                        {% for code, label in PLAYOFFS %}
+                        <option value="{{ code }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            {% endcall %}
+
+            {% call card('green', 'verified', 'Mark team as qualified', 'Flags the team with a Q in the points table.', '/updatequalification', key == '4', 'Mark qualified', 'check') %}
+                {{ team_select('qteam', 'qteam', 'Qualified team') }}
+            {% endcall %}
+
+            {% call card('rose', 'block', 'Mark team as eliminated', 'Flags the team with an E in the points table.', '/updateelimination', key == '5', 'Mark eliminated', 'check') %}
+                {{ team_select('eteam', 'eteam', 'Eliminated team') }}
+            {% endcall %}
+
+        </div>
+    </section>
+
+    <p class="uc-note">
+        Results and deletions run a qualification refresh in the background, so
+        <b>Qual %</b> and <b>Top 1</b> on the points table may take a moment to catch up.
+    </p>
+
+</div>
+
+<!-- Valid-match list, opened from a warning message -->
+<div id="mymodal" class="modal fade uc-modal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h6 class="modal-title">
+                    {% if key == '2' %}Deletable matches{% else %}Updatable matches{% endif %}
+                </h6>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+
+            <div class="modal-body">
+                {% if key == '2' %}
+                    {# already has a result, so it can be rolled back #}
+                    {% set rows = FR | rejectattr('Win_T', 'none') | list %}
+                {% else %}
+                    {# no result yet and both teams known #}
+                    {% set rows = FR | selectattr('Win_T', 'none')
+                                     | rejectattr('Team_A', 'equalto', 'TBA')
+                                     | rejectattr('Team_B', 'equalto', 'TBA') | list %}
+                {% endif %}
+
+                {% for i in rows %}
+                <div class="uc-match">
+                    <span class="uc-match__no">{{ i.Match_No }}</span>
+                    <span class="uc-match__teams">
+                        {{ i.Team_A }}<span class="uc-match__vs">vs</span>{{ i.Team_B }}
+                    </span>
+                    {% if i.Win_T %}
+                    <span class="uc-match__won">
+                        <span class="material-icons-round" style="font-size:12px">emoji_events</span>{{ i.Win_T }}
+                    </span>
+                    {% endif %}
+                </div>
+                {% else %}
+                <div class="uc-empty">
+                    <span class="material-icons-round">inbox</span>
+                    <span>No matches available right now.</span>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+{% endblock %}

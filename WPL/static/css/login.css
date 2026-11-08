@@ -1,0 +1,466 @@
+/* ==========================================================================
+   WPL 2027 · Admin sign-in (/login)
+   A single centred glass card. Shares the tokens used by css/update.css
+   and css/pointstable.css.
+   ========================================================================== */
+
+:root {
+  --lg-bg-1: #16060f;
+  --lg-bg-2: #340d24;
+  --lg-ink: #fceef6;
+  --lg-ink-2: #deb6ce;
+  --lg-ink-3: #b587a2;
+  --lg-line: rgba(255, 255, 255, 0.09);
+  --lg-line-2: rgba(255, 255, 255, 0.16);
+  --lg-gold: #ffc247;
+  --lg-green: #2ee27a;
+  --lg-red: #ff6a52;
+  --lg-cyan: #29c5e8;
+  --lg-violet: #c77dff;
+  --lg-r-lg: 22px;
+  --lg-r-sm: 11px;
+}
+
+/* --------------------------------------------------------------- page shell */
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--lg-ink);
+  font-family: 'Inter', 'Exo 2', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  background-color: var(--lg-bg-1);
+  background-image:
+    radial-gradient(900px 540px at 12% -12%, rgba(76, 201, 240, 0.22), transparent 60%),
+    radial-gradient(820px 500px at 90% 0%, rgba(205, 88, 255, 0.20), transparent 62%),
+    radial-gradient(1000px 680px at 50% 110%, rgba(46, 226, 122, 0.12), transparent 66%),
+    linear-gradient(180deg, var(--lg-bg-2) 0%, var(--lg-bg-1) 60%, #0d0409 100%);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  overflow-x: hidden;
+}
+
+/* the fixed navbar is out of flow, so this centres against the full viewport;
+   the asymmetric padding nudges the card visually clear of it */
+.lg-page {
+  box-sizing: border-box;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 104px 16px 52px;
+}
+
+/* ---------------------------------------------------------------- the card */
+
+.lg-card {
+  width: 100%;
+  max-width: 412px;
+  position: relative;
+  overflow: hidden;
+  padding: 26px 24px 24px;
+  border: 1px solid var(--lg-line);
+  border-radius: var(--lg-r-lg);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.085), rgba(255, 255, 255, 0.032));
+  backdrop-filter: blur(16px);
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.09);
+  animation: lg-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes lg-rise {
+  from { opacity: 0; transform: translateY(14px); }
+}
+
+/* accent hairline across the top */
+.lg-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--lg-cyan), var(--lg-violet) 55%, var(--lg-gold));
+}
+
+/* soft glow behind the header */
+.lg-card::after {
+  content: '';
+  position: absolute;
+  top: -80px;
+  left: 50%;
+  width: 280px;
+  height: 180px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  background: radial-gradient(closest-side, rgba(76, 201, 240, 0.3), transparent);
+  opacity: 0.55;
+}
+
+.lg-card > * { position: relative; z-index: 1; }
+
+/* -------------------------------------------------------------- card header */
+
+.lg-head {
+  text-align: center;
+  margin-bottom: 22px;
+}
+
+.lg-head__mark {
+  width: 62px;
+  height: 62px;
+  margin: 0 auto 14px;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.05));
+  border: 1px solid var(--lg-line-2);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.lg-head__mark img {
+  width: 42px;
+  height: 30px;
+  object-fit: contain;
+}
+
+.lg-head__title {
+  margin: 0 0 6px;
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-size: 1.65rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  background: linear-gradient(100deg, #ffffff 20%, #ffcfec 60%, var(--lg-gold) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.lg-head__sub {
+  margin: 0 0 12px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--lg-ink-3);
+}
+
+.lg-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 11px;
+  border: 1px solid rgba(255, 194, 71, 0.32);
+  border-radius: 99px;
+  background: rgba(255, 194, 71, 0.12);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--lg-gold);
+}
+
+.lg-badge .material-icons-round { font-size: 13px; }
+
+/* -------------------------------------------------------------------- form */
+
+.lg-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.lg-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lg-field > label {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--lg-ink-3);
+}
+
+.lg-input-wrap { position: relative; }
+
+.lg-field input,
+.lg-field select {
+  width: 100%;
+  height: 46px;
+  padding: 0 14px;
+  border: 1px solid var(--lg-line-2);
+  border-radius: var(--lg-r-sm);
+  background: rgba(0, 0, 0, 0.34);
+  color: var(--lg-ink);
+  /* 16px stops iOS Safari zooming the page on focus */
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.lg-field input::placeholder { color: rgba(255, 255, 255, 0.3); font-weight: 500; }
+
+.lg-field input:hover,
+.lg-field select:hover { background: rgba(0, 0, 0, 0.44); }
+
+.lg-field input:focus,
+.lg-field select:focus {
+  border-color: var(--lg-cyan);
+  background: rgba(0, 0, 0, 0.52);
+  box-shadow: 0 0 0 3px rgba(76, 201, 240, 0.16);
+}
+
+/* the dropdown list itself is OS-rendered — force readable colours */
+.lg-field select option { background: #2e1021; color: var(--lg-ink); }
+
+.lg-field select {
+  padding-right: 40px;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238798b5' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 13px center;
+  background-size: 18px;
+  cursor: pointer;
+}
+
+/* password reveal --------------------------------------------------------- */
+
+.lg-input-wrap input[type='password'],
+.lg-input-wrap input[type='text'] { padding-right: 46px; }
+
+.lg-reveal {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--lg-ink-3);
+  cursor: pointer;
+  transition: color 0.18s ease, background-color 0.18s ease;
+}
+
+.lg-reveal:hover { color: #fff; background: rgba(255, 255, 255, 0.08); }
+.lg-reveal .material-icons-round { font-size: 19px; }
+
+/* remember me ------------------------------------------------------------- */
+
+.lg-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin: -2px 0 2px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.lg-check input {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  border: 1.5px solid var(--lg-line-2);
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.34);
+  cursor: pointer;
+  position: relative;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: background-color 0.18s ease, border-color 0.18s ease;
+}
+
+.lg-check input:checked {
+  background: linear-gradient(145deg, var(--lg-cyan), #ec008c);
+  border-color: transparent;
+}
+
+/* tick drawn with a rotated border so there's no icon dependency */
+.lg-check input:checked::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 5px;
+  width: 4px;
+  height: 8px;
+  border: solid #1d0614;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.lg-check input:focus-visible {
+  outline: 2px solid var(--lg-cyan);
+  outline-offset: 2px;
+}
+
+.lg-check span {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--lg-ink-2);
+}
+
+/* buttons ----------------------------------------------------------------- */
+
+.lg-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 13px 18px;
+  border: 0;
+  border-radius: var(--lg-r-sm);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease,
+              background-color 0.18s ease, opacity 0.18s ease;
+}
+
+.lg-btn .material-icons-round { font-size: 18px; }
+
+.lg-btn--primary {
+  background: linear-gradient(135deg, var(--lg-cyan), #ec008c 70%, var(--lg-violet));
+  color: #1d0614;
+  box-shadow: 0 8px 20px rgba(238, 67, 156, 0.32);
+}
+
+.lg-btn--primary:hover {
+  transform: translateY(-2px);
+  filter: saturate(1.12);
+  box-shadow: 0 12px 26px rgba(238, 67, 156, 0.42);
+}
+
+.lg-btn--ghost {
+  border: 1px solid var(--lg-line-2);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--lg-ink);
+}
+
+.lg-btn--ghost:hover {
+  background: rgba(255, 255, 255, 0.13);
+  transform: translateY(-2px);
+}
+
+.lg-btn:active { transform: translateY(0); }
+
+.lg-btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+/* biometric stays disabled until an account is picked — biometricLogin()
+   posts the #email value and fails silently when it's empty */
+.lg-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* divider ----------------------------------------------------------------- */
+
+.lg-or {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 2px 0;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--lg-ink-3);
+}
+
+.lg-or::before,
+.lg-or::after {
+  content: '';
+  flex: 1 1 auto;
+  height: 1px;
+  background: var(--lg-line);
+}
+
+/* ------------------------------------------------------------------ alerts */
+
+/* .alert is kept so Bootstrap's data-dismiss handler still closes these */
+.lg-alert.alert {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 0;
+  padding: 11px 34px 11px 12px;
+  border: 1px solid var(--lg-line);
+  border-left: 3px solid var(--tone, var(--lg-cyan));
+  border-radius: var(--lg-r-sm);
+  background: rgba(0, 0, 0, 0.32);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--lg-ink);
+}
+
+.lg-alert--error   { --tone: var(--lg-red); }
+.lg-alert--success { --tone: var(--lg-green); }
+.lg-alert--warning { --tone: var(--lg-gold); }
+
+.lg-alert__icon { flex: none; font-size: 17px; color: var(--tone); }
+
+.lg-alert .close {
+  position: absolute;
+  top: 5px;
+  right: 7px;
+  margin: 0;
+  padding: 2px 5px;
+  border: 0;
+  background: none;
+  color: var(--lg-ink-3);
+  font-size: 18px;
+  line-height: 1;
+  opacity: 1;
+  text-shadow: none;
+  cursor: pointer;
+}
+
+.lg-alert .close:hover { color: #fff; }
+
+/* ------------------------------------------------------------------- footer */
+
+.lg-foot {
+  margin: 18px 0 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--lg-ink-3);
+}
+
+.lg-foot a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--lg-ink-2);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.lg-foot a:hover { color: var(--lg-cyan); text-decoration: none; }
+.lg-foot .material-icons-round { font-size: 15px; }
+
+/* --------------------------------------------------------------- responsive */
+
+@media (max-width: 480px) {
+  .lg-page { padding: 90px 13px 40px; }
+  .lg-card { padding: 22px 18px 20px; border-radius: 18px; }
+  .lg-head__title { font-size: 1.45rem; }
+  .lg-head__mark { width: 56px; height: 56px; border-radius: 16px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

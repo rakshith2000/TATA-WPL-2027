@@ -1,0 +1,1048 @@
+/* ==========================================================================
+   WPL 2027 · Home
+   Shares the design language of css/pointstable.css and css/fixtures-modern.css
+   — glass surfaces, team-tinted cards, gradient display type.
+
+   Loaded AFTER css/pointstable.css: the standings strip reuses the .ptc team
+   card straight from that file, so the two pages can never drift apart. This
+   sheet only re-lays it out (grid instead of a single column) and adds the
+   hero, the section chrome and the Season Toppers carousel.
+   ========================================================================== */
+
+:root {
+  --hm-bg-1: #16060f;
+  --hm-bg-2: #340d24;
+  --hm-ink: #fceef6;
+  --hm-ink-2: #deb6ce;
+  --hm-ink-3: #b587a2;
+  --hm-line: rgba(255, 255, 255, 0.09);
+  --hm-line-2: rgba(255, 255, 255, 0.16);
+  --hm-gold: #ffc247;
+  --hm-green: #2ee27a;
+  --hm-red: #ff6a52;
+  --hm-cyan: #29c5e8;
+  --hm-violet: #c77dff;
+  --hm-r-lg: 20px;
+  --hm-r-md: 14px;
+  --hm-r-sm: 9px;
+  --hm-nav-h: 72px;
+  /* overshoots slightly, which is what gives the carousel its bounce */
+  --hm-bounce: cubic-bezier(0.34, 1.42, 0.44, 1);
+}
+
+/* --------------------------------------------------------------- page shell */
+
+body {
+  margin: 0;
+  padding: var(--hm-nav-h) 0 44px;
+  min-height: 100vh;
+  color: var(--hm-ink);
+  font-family: 'Inter', 'Exo 2', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-feature-settings: 'tnum' 1;
+  background-color: var(--hm-bg-1);
+  background-image:
+    radial-gradient(1100px 620px at 10% -10%, rgba(76, 201, 240, 0.22), transparent 60%),
+    radial-gradient(920px 540px at 92% 2%, rgba(205, 88, 255, 0.20), transparent 62%),
+    radial-gradient(1200px 760px at 50% 108%, rgba(46, 226, 122, 0.13), transparent 66%),
+    linear-gradient(180deg, var(--hm-bg-2) 0%, var(--hm-bg-1) 58%, #0d0409 100%);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  overflow-x: hidden;
+}
+
+body::-webkit-scrollbar { width: 6px; }
+body::-webkit-scrollbar-track { background: transparent; }
+body::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--hm-cyan), var(--hm-violet));
+  border-radius: 99px;
+}
+
+.hm-wrap {
+  width: min(1180px, calc(100% - 32px));
+  margin: 0 auto;
+}
+
+.hm-wrap *,
+.hm-wrap *::before,
+.hm-wrap *::after { box-sizing: border-box; }
+
+.hm-wrap a { text-decoration: none; }
+
+/* Material Icons renders a ligature, so until the icon font arrives the span
+   is as wide as the literal word ("arrow_forward"). Every one of those then
+   snaps to a glyph at once, shoving the page around as it loads. Pinning the
+   box to the glyph's own 1em square makes the swap invisible. */
+.hm-wrap [class*='material-icons'] {
+  display: inline-grid;
+  place-items: center;
+  width: 1em;
+  height: 1em;
+  overflow: hidden;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+/* --------------------------------------------------------------------- hero */
+
+.hm-hero {
+  position: relative;
+  text-align: center;
+  padding: 22px 0 8px;
+}
+
+/* Soft spotlight behind the crest, so the logo does not float on flat colour.
+   Capped at 100%: anything wider widens the document on phones, and `body`
+   hiding its own overflow does not stop `html` from scrolling sideways. */
+.hm-hero::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -40px;
+  width: min(760px, 100%);
+  height: 420px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  background: radial-gradient(closest-side, rgba(76, 201, 240, 0.18), transparent 72%);
+}
+
+.hm-hero > * { position: relative; }
+
+.hm-hero__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 14px;
+  border: 1px solid var(--hm-line-2);
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.06);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--hm-ink-2);
+}
+
+.hm-hero__eyebrow::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--hm-green);
+  box-shadow: 0 0 0 0 rgba(46, 226, 122, 0.7);
+  animation: hm-pulse 2s infinite;
+}
+
+@keyframes hm-pulse {
+  70% { box-shadow: 0 0 0 8px rgba(46, 226, 122, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(46, 226, 122, 0); }
+}
+
+/* ---------------------------------------------------------- hero crest
+   The WPL burst with the wordmark in the middle of it. Three layers, and
+   each one is doing a job:
+
+     __burst  the artwork — a ring of magenta and cyan shards around a
+              hollow centre. Square box, `contain`, because the shards are
+              laid out radially and any crop would lop one off.
+     __disc   an opaque brand disc filling that hollow centre. The artwork
+              is transparent there, so without this the wordmark sits on
+              the page ground and the burst reads as decoration beside the
+              logo rather than a frame around it.
+     img      the wordmark, inset far enough to clear the disc's edge.
+
+   The disc is sized as a share of the burst rather than in pixels so the
+   three stay registered at every width the hero is used at. */
+.hm-hero__crest {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: clamp(190px, 34vw, 290px);
+  aspect-ratio: 1 / 1;
+  margin: 10px auto 2px;
+  animation: hm-rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.hm-hero__burst {
+  position: absolute;
+  inset: 0;
+  background: url('/static/images/headers/orange-full-circle.png') center / contain no-repeat;
+  filter: drop-shadow(0 16px 36px rgba(0, 0, 0, 0.5));
+  animation: hm-spin 48s linear infinite;
+}
+
+/* a slow drift, not a spin — enough to catch the eye, not enough to read
+   as motion while someone is looking at the numbers underneath */
+@keyframes hm-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.hm-hero__disc {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 54%;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 30%, #d2007b 0%, #b8006a 42%, #8a0053 78%, #62003a 100%);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.22),
+              inset 0 -12px 26px rgba(0, 0, 0, 0.35),
+              0 14px 30px rgba(0, 0, 0, 0.45);
+}
+
+.hm-hero__disc img {
+  width: 68%;
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 3px 7px rgba(0, 0, 0, 0.45));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hm-hero__burst { animation: none; }
+}
+
+@keyframes hm-rise {
+  from { opacity: 0; transform: translateY(18px) scale(0.94); }
+  to { opacity: 1; transform: none; }
+}
+
+.hm-hero__title {
+  margin: 4px 0 6px;
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-size: clamp(2.1rem, 6vw, 3.6rem);
+  font-weight: 800;
+  line-height: 1.02;
+  letter-spacing: -0.025em;
+  background: linear-gradient(100deg, #ffffff 12%, #ffcfec 42%, var(--hm-gold) 88%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.hm-hero__sub {
+  margin: 0 auto;
+  max-width: 56ch;
+  font-size: 0.9rem;
+  color: var(--hm-ink-3);
+}
+
+/* season summary chips */
+
+.hm-facts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.hm-fact {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 13px;
+  border: 1px solid var(--hm-line);
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.05);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--hm-ink-3);
+  white-space: nowrap;
+}
+
+.hm-fact b {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--hm-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.hm-fact img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+
+.hm-fact--gold b { color: var(--hm-gold); }
+.hm-fact--orange b { color: #ff8a24; }
+.hm-fact--violet b { color: var(--hm-violet); }
+
+/* quick links */
+
+.hm-jump {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin: 20px 0 4px;
+}
+
+.hm-jump__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border: 1px solid var(--hm-line-2);
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.06);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--hm-ink-2);
+  transition: transform 0.2s var(--hm-bounce), background-color 0.2s ease, color 0.2s ease;
+}
+
+.hm-jump__btn [class*='material-icons'] { font-size: 18px; }
+
+.hm-jump__btn:hover,
+.hm-jump__btn:focus-visible {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.hm-jump__btn--live {
+  border-color: rgba(255, 90, 114, 0.5);
+  background: linear-gradient(120deg, rgba(255, 90, 114, 0.24), rgba(255, 90, 114, 0.08));
+  color: #ffd7dd;
+}
+
+.hm-jump__btn--live [class*='material-icons'] { animation: hm-beat 1.8s ease-in-out infinite; }
+
+@keyframes hm-beat {
+  50% { transform: scale(1.18); }
+}
+
+/* ------------------------------------------------------------- section head */
+
+.hm-sec { margin-top: 34px; }
+
+.hm-sec__head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.hm-sec__id { min-width: 0; }
+
+.hm-sec__eyebrow {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--hm-ink-3);
+}
+
+.hm-sec__title {
+  margin: 5px 0 0;
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-size: clamp(1.5rem, 4vw, 2.1rem);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: #fff;
+}
+
+.hm-sec__title::after {
+  content: '';
+  display: block;
+  width: 54px;
+  height: 3px;
+  margin-top: 8px;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--hm-cyan), var(--hm-violet));
+}
+
+.hm-sec__more {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 14px;
+  border: 1px solid var(--hm-line-2);
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--hm-ink-2);
+  white-space: nowrap;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.hm-sec__more [class*='material-icons'] {
+  font-size: 16px;
+  transition: transform 0.25s var(--hm-bounce);
+}
+
+.hm-sec__more:hover,
+.hm-sec__more:focus-visible { background: rgba(255, 255, 255, 0.13); color: #fff; }
+.hm-sec__more:hover [class*='material-icons'] { transform: translateX(3px); }
+
+/* ====================================================================
+   Standings — the displayPT mobile card (.ptc), laid out as a grid
+   ==================================================================== */
+
+.hm-standings {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+/* the shared card assumes a stacked list; on a grid the gap does the spacing */
+.hm-standings .ptc { margin-bottom: 0; }
+
+/* playoff cut-off divider spans the full grid row */
+.hm-standings .pt-cut {
+  grid-column: 1 / -1;
+  margin: 2px 2px 1px;
+}
+
+.hm-standings__empty {
+  padding: 34px 18px;
+  border: 1px dashed var(--hm-line-2);
+  border-radius: var(--hm-r-lg);
+  text-align: center;
+  color: var(--hm-ink-3);
+}
+
+.hm-note {
+  margin: 16px auto 0;
+  max-width: 720px;
+  text-align: center;
+  font-size: 11.5px;
+  line-height: 1.7;
+  color: var(--hm-ink-3);
+}
+
+.hm-note b { color: var(--hm-ink-2); }
+
+/* ====================================================================
+   Season Toppers — carousel
+   ==================================================================== */
+
+.hm-tp {
+  --acc: var(--hm-gold);
+  position: relative;
+}
+
+/* the region takes focus so arrow keys work; keep the ring on-brand */
+.hm-tp:focus { outline: none; }
+
+.hm-tp:focus-visible {
+  outline: 2px solid var(--acc);
+  outline-offset: 6px;
+  border-radius: 18px;
+}
+
+/* category tabs ---------------------------------------------------------- */
+
+.hm-tp__tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 2px 2px 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
+}
+
+.hm-tp__tabs::-webkit-scrollbar { display: none; }
+
+.hm-tab {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 14px;
+  border: 1px solid var(--hm-line);
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.05);
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--hm-ink-3);
+  white-space: nowrap;
+  cursor: pointer;
+  scroll-snap-align: center;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease,
+              transform 0.25s var(--hm-bounce);
+}
+
+.hm-tab::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+  background: var(--acc);
+  opacity: 0.75;
+  transition: opacity 0.2s ease, transform 0.25s var(--hm-bounce);
+}
+
+.hm-tab:hover { color: var(--hm-ink); background: rgba(255, 255, 255, 0.1); }
+
+.hm-tab[aria-selected='true'] {
+  color: #fff;
+  border-color: color-mix(in srgb, var(--acc) 55%, transparent);
+  background: color-mix(in srgb, var(--acc) 18%, rgba(255, 255, 255, 0.05));
+  box-shadow: 0 6px 18px -8px var(--acc);
+}
+
+.hm-tab[aria-selected='true']::before { opacity: 1; transform: scale(1.2); }
+
+/* stage ------------------------------------------------------------------ */
+
+.hm-tp__stage {
+  position: relative;
+  /* No-JS fallback: a snapping scroller. The script swaps this for a
+     transform-driven track (below) as soon as it takes over. */
+  overflow-x: auto;
+  scrollbar-width: none;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+
+.hm-tp__stage::-webkit-scrollbar { display: none; }
+
+.hm-tp.is-js .hm-tp__stage {
+  overflow: hidden;
+  scroll-snap-type: none;
+  touch-action: pan-y;
+}
+
+.hm-tp__track {
+  display: flex;
+  align-items: stretch;
+  gap: 16px;
+  padding: 6px 0 8px;
+  will-change: transform;
+}
+
+.hm-tp.is-js .hm-tp__track {
+  transition: transform 0.62s var(--hm-bounce);
+}
+
+.hm-tp.is-js.is-dragging .hm-tp__track { transition: none; }
+
+.hm-tp__slide {
+  flex: 0 0 min(480px, 84vw);
+  min-width: 0;
+  scroll-snap-align: center;
+  /* Neighbours sit back so the active card reads as the one in focus */
+  opacity: 0.34;
+  transform: scale(0.9);
+  filter: saturate(0.55);
+  transition: opacity 0.5s ease, transform 0.62s var(--hm-bounce), filter 0.5s ease;
+}
+
+.hm-tp__slide.is-active {
+  opacity: 1;
+  transform: none;
+  filter: none;
+}
+
+/* a dimmed neighbour is a target: tapping it brings that award forward */
+.hm-tp.is-js .hm-tp__slide:not(.is-active) { cursor: pointer; }
+
+/* arrows ----------------------------------------------------------------- */
+
+/* Phones swipe, and the tabs give direct access to every award — so the arrows
+   are a pointer-only affordance. Keeping them off small screens also keeps the
+   bottom-right corner clear for the floating back-to-top button. */
+.hm-tp__arrow {
+  display: none;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border: 1px solid var(--hm-line-2);
+  border-radius: 50%;
+  background: rgba(32, 9, 22, 0.78);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  color: var(--hm-ink);
+  cursor: pointer;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.45);
+  transition: background-color 0.2s ease, transform 0.25s var(--hm-bounce), opacity 0.2s ease;
+}
+
+.hm-tp__arrow:hover { background: rgba(62, 20, 44, 0.94); transform: scale(1.08); }
+
+.hm-tp__arrow:disabled { opacity: 0.26; pointer-events: none; }
+
+.hm-tp__arrow [class*='material-icons'] { font-size: 22px; }
+
+@media (min-width: 641px) {
+  .hm-tp__arrow {
+    display: grid;
+    position: absolute;
+    top: 50%;
+    z-index: 4;
+    width: 44px;
+    height: 44px;
+    transform: translateY(-50%);
+  }
+  .hm-tp__arrow--prev { left: 4px; }
+  .hm-tp__arrow--next { right: 4px; }
+  .hm-tp__arrow:hover { transform: translateY(-50%) scale(1.08); }
+  /* nothing further that way — fade it out rather than leave a dead control */
+  .hm-tp__arrow:disabled { opacity: 0; }
+  .hm-tp__arrow [class*='material-icons'] { font-size: 24px; }
+}
+
+/* progress + counter ------------------------------------------------------ */
+
+.hm-tp__foot {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 6px;
+}
+
+.hm-tp__dots {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+}
+
+.hm-dot {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.22);
+  cursor: pointer;
+  transition: width 0.35s var(--hm-bounce), background-color 0.25s ease;
+}
+
+.hm-dot[aria-selected='true'] {
+  width: 26px;
+  background: var(--acc);
+}
+
+.hm-tp__count {
+  flex: none;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--hm-ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.hm-tp__count b { color: #fff; }
+
+/* Sits first in the row: the floating back-to-top button owns the bottom-right
+   corner, and a control hiding under it is worse than one that is just early. */
+.hm-tp__play {
+  order: -1;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--hm-line);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--hm-ink-3);
+  cursor: pointer;
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.hm-tp__play:hover { color: #fff; background: rgba(255, 255, 255, 0.12); }
+.hm-tp__play [class*='material-icons'] { font-size: 17px; }
+
+/* ------------------------------------------------------------ topper card */
+
+.hm-tcard {
+  position: relative;
+  overflow: hidden;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--hm-line);
+  border-radius: var(--hm-r-lg);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.085), rgba(255, 255, 255, 0.035));
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.42);
+}
+
+/* accent wash keyed to the award */
+.hm-tcard::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(420px 220px at 100% 0%, color-mix(in srgb, var(--acc) 26%, transparent), transparent 68%),
+    linear-gradient(180deg, color-mix(in srgb, var(--acc) 12%, transparent), transparent 42%);
+}
+
+.hm-tcard::after {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--acc), transparent 78%);
+}
+
+.hm-tcard > * { position: relative; z-index: 1; }
+
+.hm-tcard__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 13px 15px 0;
+}
+
+.hm-tcard__award {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--acc);
+  text-shadow: 0 0 22px color-mix(in srgb, var(--acc) 45%, transparent);
+}
+
+.hm-tcard__award [class*='material-icons'] { font-size: 18px; }
+
+.hm-tcard__rank {
+  flex: none;
+  padding: 3px 9px;
+  border-radius: 7px;
+  border: 1px solid color-mix(in srgb, var(--acc) 40%, transparent);
+  background: color-mix(in srgb, var(--acc) 16%, transparent);
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #fff;
+}
+
+.hm-tcard__body {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 13px;
+  padding: 12px 15px 14px;
+}
+
+/* player cut-out on a team-tinted tile */
+.hm-tcard__figure {
+  position: relative;
+  width: 96px;
+  height: 108px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: linear-gradient(155deg, var(--team-a, #502a3f), var(--team-b, #301323));
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.hm-tcard__figure img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+}
+
+/* the Fair Play award shows a crest, which must not be cropped */
+.hm-tcard__figure--crest img {
+  padding: 16px;
+  object-fit: contain;
+  object-position: center;
+}
+
+/* silhouette placeholder — sit it back so it reads as "no photo", not a glitch */
+.hm-tcard__figure img.is-fallback {
+  object-fit: contain;
+  object-position: bottom center;
+  opacity: 0.5;
+}
+
+.hm-tcard__flag {
+  position: absolute;
+  right: 5px;
+  bottom: 5px;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: rgba(22, 6, 15, 0.72);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+.hm-tcard__flag img { width: 19px; height: 19px; object-fit: contain; }
+
+.hm-tcard__id { min-width: 0; }
+
+.hm-tcard__first,
+.hm-tcard__last {
+  display: block;
+  line-height: 1.12;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hm-tcard__first {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--hm-ink-2);
+}
+
+.hm-tcard__last {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #fff;
+}
+
+.hm-tcard__team {
+  display: block;
+  margin-top: 5px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--hm-ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hm-tcard__hero {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 74px;
+  padding: 8px 10px;
+  border-radius: 13px;
+  border: 1px solid color-mix(in srgb, var(--acc) 32%, var(--hm-line));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--acc) 20%, transparent), rgba(255, 255, 255, 0.04));
+}
+
+.hm-tcard__hero b {
+  font-family: 'Outfit', sans-serif;
+  font-size: clamp(1.4rem, 5.6vw, 1.75rem);
+  font-weight: 800;
+  line-height: 1;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+
+.hm-tcard__hero span {
+  margin-top: 3px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--hm-ink-2);
+}
+
+/* stat strip — same rhythm as the standings card */
+.hm-tcard__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0;
+  padding: 0 15px 14px;
+}
+
+.hm-tstat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 7px 2px;
+  border-radius: var(--hm-r-sm);
+  background: rgba(0, 0, 0, 0.26);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  min-width: 0;
+}
+
+.hm-tstat dt {
+  margin: 0;
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--hm-ink-3);
+  white-space: nowrap;
+}
+
+.hm-tstat dd {
+  margin: 0;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--hm-ink);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.hm-tcard__cta {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--hm-line);
+  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--acc) 22%, transparent));
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #fff;
+  transition: background-color 0.2s ease;
+}
+
+.hm-tcard__cta [class*='material-icons'] {
+  font-size: 17px;
+  transition: transform 0.25s var(--hm-bounce);
+}
+
+.hm-tcard__cta:hover,
+.hm-tcard__cta:focus-visible { color: #fff; background-color: color-mix(in srgb, var(--acc) 20%, transparent); }
+.hm-tcard__cta:hover [class*='material-icons'] { transform: translateX(4px); }
+
+.hm-tp__empty {
+  padding: 34px 18px;
+  border: 1px dashed var(--hm-line-2);
+  border-radius: var(--hm-r-lg);
+  text-align: center;
+  color: var(--hm-ink-3);
+}
+
+/* --------------------------------------------------- back-to-top button */
+
+.floating-move-top-btn {
+  position: fixed;
+  right: 26px;
+  bottom: 26px;
+  z-index: 900;
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--hm-line-2);
+  border-radius: 50%;
+  background: linear-gradient(160deg, rgba(76, 201, 240, 0.9), rgba(205, 88, 255, 0.9));
+  color: #1f0515;
+  cursor: pointer;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  transform: translateY(14px);
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.floating-move-top-btn.is-on {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+.floating-move-top-btn:hover { filter: brightness(1.1); }
+.floating-move-top-btn:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+
+/* ======================================================================
+   Breakpoints
+   ====================================================================== */
+
+@media (max-width: 900px) {
+  .hm-standings { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 880px) {
+  .hm-wrap { width: calc(100% - 22px); }
+  body { padding-top: 66px; }
+  .hm-hero { padding: 14px 0 4px; }
+  .hm-sec { margin-top: 26px; }
+}
+
+@media (max-width: 640px) {
+  .hm-sec__head { align-items: center; }
+  .hm-sec__title::after { width: 42px; }
+  .hm-tp__slide { flex-basis: min(480px, 88vw); }
+  .hm-tcard__body { grid-template-columns: 84px minmax(0, 1fr) auto; gap: 10px; padding: 11px 12px 12px; }
+  .hm-tcard__figure { width: 84px; height: 98px; }
+  .hm-tcard__last { font-size: 1.3rem; }
+  .hm-tcard__stats { padding: 0 12px 12px; gap: 4px; }
+  .hm-tcard__hero { min-width: 66px; padding: 7px 8px; }
+}
+
+@media (max-width: 430px) {
+  /* stays five-across, same rhythm as the standings card — just tighter */
+  .hm-tstat { padding: 6px 1px; }
+  .hm-tstat dt { font-size: 8px; letter-spacing: 0.04em; }
+  .hm-tstat dd { font-size: 0.78rem; }
+  .hm-sec__more { padding: 7px 11px; font-size: 10px; }
+  .hm-jump__btn { padding: 9px 14px; font-size: 11px; }
+  .hm-tp__count { display: none; }
+}
+
+/* room for the fixed bottom nav (it only shows under 451px) */
+@media (max-width: 450px) {
+  body { padding-bottom: 92px; }
+  .floating-move-top-btn { right: 16px; bottom: 84px; width: 42px; height: 42px; }
+}
+
+/* Browsers without color-mix() still need a readable accent surface */
+@supports not (color: color-mix(in srgb, red 50%, blue)) {
+  .hm-tab[aria-selected='true'] { background: rgba(255, 255, 255, 0.16); border-color: var(--hm-line-2); }
+  .hm-tcard__rank,
+  .hm-tcard__hero { border-color: var(--hm-line-2); background: rgba(255, 255, 255, 0.1); }
+  .hm-tcard__cta { background: rgba(255, 255, 255, 0.08); }
+  .hm-tcard::before { background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 42%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .hm-tp__slide { opacity: 1; transform: none; filter: none; }
+}
+
+@media print {
+  body { background: #fff; color: #000; padding-top: 0; }
+  .hm-tp__arrow, .hm-tp__tabs, .hm-tp__foot, .bottom-nav,
+  nav.navbar, .floating-move-top-btn { display: none !important; }
+  .hm-tp__stage { overflow: visible; }
+  .hm-tp__track { display: block; }
+  .hm-tp__slide { opacity: 1; transform: none; filter: none; }
+}

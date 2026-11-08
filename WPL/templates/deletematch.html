@@ -1,0 +1,359 @@
+{% extends "base.html" %}
+{% block head %}
+{{ super() }}
+<title>Match {{ FR.Match_No }}: {{ FR.Team_A }} vs {{ FR.Team_B }} | Delete Result</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='extended_beauty.css') }}" />
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/updatematch.css') }}">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+
+{# Rajasthan Royals' crest lives at RR1.png #}
+{% macro crest(t) -%}
+/static/images/squad_logos/{{ t }}.png
+{%- endmacro %}
+
+{% macro getclr(team) -%}
+    {% set c = clr[team] %}
+
+    {% if team in ['RCBW', 'MIW'] %} --team-a: {{ c['c3'] }}; --team-b: {{ c['c1'] }}
+    {% elif team == 'UPW' %} --team-a: {{ c['c2'] }}; --team-b: {{ c['c3'] }}
+    {% else %} --team-a: {{ c['c1'] }}; --team-b: {{ c['c2'] }}
+    {% endif %}
+{%- endmacro %}
+
+{# Generic helper: compact snapshot chip for a team.
+   - Shows crest with rank badge, team code, and innings score.
+   - For Super Over, the base score and every super over are stacked on separate
+     lines: a tied super over is replayed, so there can be more than one.
+   - For abandoned matches, if there is no base score, shows "didn't play".
+   Guards against non-mapping info, missing keys, None and "no data" 0/0 in 0.0 overs. #}
+{% macro team_score_chip(team_code, info, rank=None, include_so=False, abandoned=False) -%}
+    {% if info is mapping %}
+        {% set runs = info.get('runs') %}
+        {% set wkts = info.get('wkts') %}
+        {% set overs = info.get('overs') %}
+        {% set has_base = runs is not none and wkts is not none and overs is not none
+                            and (runs > 0 or wkts > 0 or overs > 0) %}
+        {# super_overs() normalises both the stored shapes and drops blank blocks #}
+        {% set sos = super_overs(info) if include_so else [] %}
+        {% set show_card = has_base or sos or abandoned %}
+        {% if show_card %}
+            <span class="um-chip">
+                <span class="ud-team__crest" style="position:relative; {{ getclr(team_code) }}">
+                    <img src="{{ crest(team_code) }}" alt="{{ fn[team_code] }}">
+                    {% if rank is not none %}
+                    <span class="um-rank-badge" style="position:absolute; top:-4px; right:-4px; min-width:18px; height:18px; padding:0 4px; border-radius:999px; background:#27111e; border:1px solid rgba(255,255,255,0.4); font-size:10px; font-weight:800; display:flex; align-items:center; justify-content:center; color:#fbf9fa;">
+                        {{ rank }}
+                    </span>
+                    {% endif %}
+                </span>
+                <span>
+                    <b>{{ team_code }}</b>
+                    {% if has_base %}
+                    <span style="display:block; font-size:12.5px; color: var(--um-ink-2); margin-top:2px;">
+                        {{ runs }}/{{ wkts }} ({{ '%.1f' % overs }})
+                    </span>
+                    {% elif abandoned %}
+                    <span style="display:block; font-size:12.5px; color: var(--um-ink-2); margin-top:2px;">
+                        didn't play
+                    </span>
+                    {% endif %}
+                    {% for s in sos %}
+                    <span style="display:block; font-size:11.5px; color: var(--um-ink-3); margin-top:2px;">
+                        SO{{ ' ' ~ loop.index if sos | length > 1 else '' }} {{ s['runs'] }}/{{ s['wkts'] }} ({{ '%.1f' % s['overs'] }})
+                    </span>
+                    {% endfor %}
+                </span>
+            </span>
+        {% endif %}
+    {% endif %}
+{%- endmacro %}
+
+{# Classify the stored Result string using the same keywords main.deletematch()
+   relies on. This is read-only UI logic; the backend branch still uses its own
+   "Super over" / "Match abandoned" / "DLS" checks. #}
+{% set res = FR.Result or '' %}
+{# Same order main.deletematch() tests in: a tie the super over could not settle
+   names the super over in its reason, so it has to be claimed first. #}
+{% set res_tied = res.startswith('Match tied') %}
+{% set res_superover = 'Super over' in res and not res_tied %}
+{% set res_abandoned = 'Match abandoned' in res and not res_tied %}
+{% set res_dls = 'DLS' in res and not (res_tied or res_superover) %}
+{% set res_normal = not (res_tied or res_superover or res_abandoned or res_dls) %}
+
+{# POTM is a JSON column: {'name': ..., 'team': ...}. Guard against legacy rows. #}
+{% set potm = FR.POTM if FR.POTM is mapping else None %}
+
+{# Rank snapshot for this fixture (JSON mapping team -> rank), written by
+   update_rank_for_fixture() and cleared by delete_rank_for_fixture(). #}
+{% set ranks = FR.Rank if FR.Rank is mapping else None %}
+
+<div class="um-wrap">
+
+    <header class="um-top">
+        <span class="um-top__eyebrow">
+            <span class="material-icons-round">delete_forever</span>Match {{ FR.Match_No }}
+        </span>
+        <h1 class="um-top__title">Delete Result</h1>
+        <p class="um-top__sub">Roll back the result so the match can be updated again.</p>
+    </header>
+
+    <div class="um-card">
+        <div class="um-meta">
+            <span class="um-chip">
+                <span class="material-icons-round">confirmation_number</span>Match&nbsp;<b>{{ FR.Match_No }}</b>
+            </span>
+            <span class="um-chip">
+                <span class="material-icons-round">event</span><b>{{ FR.Date.strftime('%d %b %Y') }}</b>
+            </span>
+            {% if FR.Time %}
+            <span class="um-chip">
+                <span class="material-icons-round">schedule</span><b>{{ FR.Time.strftime('%H:%M') }}</b>
+            </span>
+            {% endif %}
+            {% if FR.Venue %}
+            <span class="um-chip">
+                <span class="material-icons-round">place</span>{{ FR.Venue }}
+            </span>
+            {% endif %}
+
+            {# Result type chip derived from the same substrings the backend uses. #}
+            {% if res_tied %}
+            <span class="um-chip">
+                <span class="material-icons-round">balance</span>Tied &mdash; a point each
+            </span>
+            {% elif res_superover %}
+            <span class="um-chip">
+                <span class="material-icons-round">flash_on</span>Super Over result
+            </span>
+            {% elif res_abandoned %}
+            <span class="um-chip">
+                <span class="material-icons-round">cloud_off</span>Abandoned &mdash; No result
+            </span>
+            {% elif res_dls %}
+            <span class="um-chip">
+                <span class="material-icons-round">grain</span>DLS (revised target)
+            </span>
+            {% elif res_normal and FR.Result %}
+            <span class="um-chip">
+                <span class="material-icons-round">check_circle</span>Completed in normal play
+            </span>
+            {% endif %}
+
+            {# POTM summary, mirroring updatepotm.html's JSON guard. #}
+            {% if potm %}
+            <span class="um-chip">
+                <span class="material-icons-round">military_tech</span>
+                POTM:&nbsp;<b>{{ potm['name'] }}</b>&nbsp;({{ potm['team'] }})
+            </span>
+            {% endif %}
+        </div>
+
+        <div class="um-teams">
+            {% for t in [FR.Team_A, FR.Team_B] %}
+            {% if loop.index == 2 %}<span class="um-vs">vs</span>{% endif %}
+            <div class="um-team">
+                <span class="um-team__crest" style="{{ getclr(t) }}"><img src="{{ crest(t) }}" alt="{{ fn[t] }}"></span>
+                <span class="um-team__abv">{{ t }}</span>
+                <span class="um-team__full">{{ fn[t] }}</span>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="um-panel" style="margin-top:16px;">
+            <div class="um-note">
+                <span class="material-icons-round">info</span>
+                <span>
+                    Deleting this result will reset the scorecard and winner, roll back points,
+                    NRR and <b>Rank</b> for both teams, and refresh qualification percentages.
+                    You can re-enter the match via <b>Update match result</b> afterwards.
+                </span>
+            </div>
+
+            <span class="um-label">Current result</span>
+            {% if FR.Win_T and FR.Win_T != 'NA' %}
+            <div class="um-meta" style="margin:4px 0 6px;">
+                <span class="um-chip">
+                    <span class="ud-team__crest" style="{{ getclr(FR.Win_T) }}"><img src="{{ crest(FR.Win_T) }}" alt="{{ fn[FR.Win_T] }}"></span>
+                    <span>
+                        <b>{{ FR.Win_T }}</b>
+                        <span style="display:block; font-size:12.5px; color: var(--um-ink-2); margin-top:2px;">
+                            {% if "won" in FR.Result %}
+                                {{ "won " + FR.Result.split("won")[1].strip() }}
+                            {% else %}
+                                {{ FR.Result }}
+                            {% endif %}
+                        </span>
+                    </span>
+                </span>
+            </div>
+            {% else %}
+            <p style="font-size:12.5px; color: var(--um-ink-2); margin:0 0 4px;">
+                {{ FR.Result }}
+            </p>
+            {% endif %}
+
+            {# Team snapshot: rank + scores for both sides.
+               - Normal/DLS: base runs/wkts/overs + rank.
+               - Super Over: base + SO stacked.
+               - Abandoned with or without play: both cards shown; "didn't play" when no score. #}
+            {% set A = FR.A_info if FR.A_info is mapping else {} %}
+            {% set B = FR.B_info if FR.B_info is mapping else {} %}
+            {% set has_a_score = A.get('runs') is not none and A.get('wkts') is not none and A.get('overs') is not none %}
+            {% set has_b_score = B.get('runs') is not none and B.get('wkts') is not none and B.get('overs') is not none %}
+            {% set show_scores = has_a_score or has_b_score or res_abandoned %}
+
+            {% if show_scores %}
+            <div class="um-panel__rule"></div>
+            <span class="um-label">
+                {% if res_tied %}
+                    Team snapshot (rank & scores · tied)
+                {% elif res_superover %}
+                    Team snapshot (rank & scores · Super Over)
+                {% elif res_dls %}
+                    Team snapshot (rank & scores · DLS)
+                {% elif res_abandoned %}
+                    Team snapshot (rank & scores at abandonment)
+                {% else %}
+                    Team snapshot (rank & scores)
+                {% endif %}
+            </span>
+            <div class="um-meta" style="margin-top:4px;">
+                {{ team_score_chip(
+                    FR.Team_A,
+                    A if A is mapping else {},
+                    rank=ranks.get(FR.Team_A) if ranks else None,
+                    include_so=res_superover or res_tied,
+                    abandoned=res_abandoned
+                ) }}
+                {{ team_score_chip(
+                    FR.Team_B,
+                    B if B is mapping else {},
+                    rank=ranks.get(FR.Team_B) if ranks else None,
+                    include_so=res_superover or res_tied,
+                    abandoned=res_abandoned
+                ) }}
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="um-actions">
+            <button type="button" class="um-btn um-btn--primary um-btn--block"
+                    data-toggle="modal" data-target="#mymodal">
+                <span class="material-icons-round">delete_forever</span>Delete result
+            </button>
+        </div>
+
+        <a class="um-back" href="{{ url_for('main.update') }}">
+            <span class="material-icons-round">arrow_back</span>Back to control room
+        </a>
+    </div>
+
+</div>
+
+<!-- ============================================================== Modal -->
+<div id="mymodal" class="modal fade um-modal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h6 class="modal-title">
+                    {{ FR.Team_A }} vs {{ FR.Team_B }}
+                    <small>Match {{ FR.Match_No }} &middot; delete result</small>
+                </h6>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+
+            <form class="um-form" method="POST" action="/deletematch" id="delForm">
+                <div class="modal-body">
+
+                    <div class="um-panel">
+                        <span class="um-label">You are about to delete</span>
+                        <p style="font-size:12.5px; color: var(--um-ink-2); margin:0 0 8px;">
+                            {% if "won" in FR.Result %}
+                                <b>{{ FR.Win_T }}</b>
+                                {{ "won " + FR.Result.split("won")[1].strip() }}
+                            {% else %}
+                                {{ FR.Result }}
+                            {% endif %}
+                        </p>
+
+                        <div class="um-panel__rule"></div>
+                        <span class="um-label">Match status</span>
+                        <p style="font-size:11.5px; color: var(--um-ink-3); margin:0 0 8px;">
+                            {% if res_superover %}
+                                Super Over decision (scorecard and Super Over winner will be rolled back).
+                            {% elif res_abandoned %}
+                                Abandoned / no result (NR points for both teams will be rolled back; any scores shown below are for reference only).
+                            {% elif res_dls %}
+                                DLS-adjusted result (revised target and overs will be rolled back).
+                            {% elif res_normal and FR.Result %}
+                                Completed in normal play (full innings, winner and margin will be rolled back).
+                            {% else %}
+                                Result type could not be classified; deletion will still reset this fixture.
+                            {% endif %}
+                        </p>
+
+                        {# Modal-level team snapshot: mirror the card, so admins
+                           can confirm they're deleting the right scoreboard. #}
+                        {% set A = FR.A_info if FR.A_info is mapping else {} %}
+                        {% set B = FR.B_info if FR.B_info is mapping else {} %}
+                        {% set has_a_score = A.get('runs') is not none and A.get('wkts') is not none and A.get('overs') is not none %}
+                        {% set has_b_score = B.get('runs') is not none and B.get('wkts') is not none and B.get('overs') is not none %}
+                        {% set show_scores = has_a_score or has_b_score or res_abandoned %}
+
+                        {% if show_scores %}
+                        <div class="um-panel__rule"></div>
+                        <span class="um-label">
+                            {% if res_tied %}
+                                Team snapshot (rank & scores · tied)
+                            {% elif res_superover %}
+                                Team snapshot (rank & scores · Super Over)
+                            {% elif res_dls %}
+                                Team snapshot (rank & scores · DLS)
+                            {% elif res_abandoned %}
+                                Team snapshot (rank & scores at abandonment)
+                            {% else %}
+                                Team snapshot (rank & scores)
+                            {% endif %}
+                        </span>
+                        <div class="um-meta" style="margin-top:4px;">
+                            {{ team_score_chip(
+                                FR.Team_A,
+                                A if A is mapping else {},
+                                rank=ranks.get(FR.Team_A) if ranks else None,
+                                include_so=res_superover or res_tied,
+                                abandoned=res_abandoned
+                            ) }}
+                            {{ team_score_chip(
+                                FR.Team_B,
+                                B if B is mapping else {},
+                                rank=ranks.get(FR.Team_B) if ranks else None,
+                                include_so=res_superover or res_tied,
+                                abandoned=res_abandoned
+                            ) }}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <input type="hidden" name="hint" value="after" />
+                    <input type="hidden" name="dmatch" value="{{ dmatch }}" />
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="um-btn um-btn--ghost" data-dismiss="modal">Close</button>
+                    <button type="submit" class="um-btn um-btn--primary">
+                        <span class="material-icons-round">delete_forever</span>Delete result
+                    </button>
+                </div>
+            </form>
+
+        </div>
+    </div>
+</div>
+
+{% endblock %}

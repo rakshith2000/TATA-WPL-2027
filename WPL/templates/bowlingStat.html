@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% from "macros/stats.html" import stats_shell, stats_head %}
+
+{% block head %}
+{{ super() }}
+<title>WPL 2027 Bowling Stats | Purple Cap, Most Wickets &amp; Economy</title>
+<meta name="description" content="WPL 2027 bowling leaderboards — most wickets, dot balls, maidens, best figures, averages, economy rates and strike rates. Sort any column.">
+{{ stats_head() }}
+{% endblock %}
+
+{% block content %}
+{{ stats_shell('bowling', 'Most Wickets', 'The leading wicket takers', clr) }}
+{% endblock %}

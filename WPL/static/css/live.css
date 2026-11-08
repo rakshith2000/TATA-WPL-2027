@@ -1,0 +1,216 @@
+/*
+Template Name: Cricket News
+File: Layout CSS
+Author: TemplatesOnWeb
+Author URI: https://www.templateonweb.com/
+Licence: <a href="https://www.templateonweb.com/license">Website Template Licence</a>
+*/
+
+/*********************live****************/
+.live_2_inner_right .drop_1{
+left:auto!important;
+right:0!important;
+margin-top:5px !important; 
+ }
+.score_tab li .active{
+font-weight:bold;
+border-bottom: 3px solid #b8006a;
+ }
+.score_tab li a:hover{
+color:#b8006a !important;
+}
+.bg-tab {
+    background: #f6d5ea !important;
+}
+.score_tab li a{
+padding:5px 7px; 
+ }
+tbody, td, tfoot, th, thead, tr{
+border:none!important; 
+ }
+.table>:not(caption)>*>* {
+    padding: 0.4rem 1rem;
+}
+.ball {
+width:32px;
+height:32px;
+line-height:32px; 
+ }
+
+.table-hover>tbody>tr:hover>* {
+    --bs-table-accent-bg: var(--bg_light);
+}
+.extra-pr-60 {
+        padding-right: 60px;
+      }
+
+      .pl-40 {
+        padding-left: 40px;
+      }
+
+.live_right_1{
+margin-top:33px; 
+ }
+/*********************live_end****************/
+
+
+/*********************news****************/
+.paginate_news li a {
+    width: 35px;
+    height: 35px;
+    line-height: 33px;
+}
+
+/*********************news_end****************/
+
+
+@media screen and (max-width : 767px){
+.score_tab li a {
+margin-top:5px;
+margin-bottom:5px;
+}
+.watch .schedule2_left1_left3 {
+    bottom:0!important;
+}
+.paginate_news li a {
+margin-top:5px;
+margin-bottom:5px; 
+ }
+.live_right{
+margin-top:20px; 
+ }
+.news_2  img{
+max-width:100px; 
+ }
+.news_2  .fs-5{
+font-size:14px!important;
+ }
+ }
+
+
+@media (min-width:576px) and (max-width:767px) {
+.news_2  img{
+max-width:150px; 
+ }
+.news_2  .fs-5{
+font-size:16px!important;
+ }
+ }
+ 
+@media (min-width:768px) and (max-width:991px) {
+.live_right_1  .form-select{
+width:75px;
+font-size:12px;
+ }
+.news_2  img{
+max-width:200px; 
+ }
+.news_2  .fs-5{
+font-size:16px!important;
+ }
+
+ }
+
+@media (min-width:992px) and (max-width:1200px) {
+
+ }
+
+@media (min-width:1201px) and (max-width:1300px) {
+
+ }
+@media (min-width:1400px) and (max-width:2000px) {
+.pick_inner_left img{
+ width:100%;
+ }
+ }
+
+
+
+
+.tp-innings-info {
+    display: flex;
+    flex-direction: row;
+    gap: 1.8rem;
+    padding-inline: 10px;
+    padding-top: 10px;
+}
+
+.tp-player-details {
+    flex: 1;
+}
+
+.tp-head {
+    font-size: 14px;
+    font-weight: 700;
+    padding-bottom: 20px;
+    text-transform: capitalize;
+}
+
+.tp-player-info-content {
+    text-align: right;
+    width: calc(100% - 40%);
+}
+
+.tp-player-data {
+    display: flex;
+    flex-direction: row;
+    gap: 1.5rem;
+    padding-bottom: 10px;
+}
+
+.tp-player-info {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    padding-right: 1rem;
+    position: relative;
+    flex: 1;
+    border: 0px solid hsl(0, 0%, 40%);
+    border-radius: 4px;
+    height: 60px;
+    background-color: #f2f2f2;
+}
+
+.in-out {
+    border-radius: 50%;
+    background: #fff;
+}
+
+.tp-player-thumbnail {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 70px;
+    height: 75px;
+}
+
+.tp-player-thumbnail .image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.tp-player-name {
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.1;
+}
+
+.tp-player-name a {
+    color: #e0218a;
+}
+
+.tp-player-score {
+    font-size: 13px;
+}
+
+.tp-player-score .runs {
+    font-weight: 700;
+}
+
+@media (max-width: 800px) {
+    .tp-innings-info {
+        flex-direction: column;
+        gap: 0.6rem;
+    }
+}

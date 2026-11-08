@@ -1,0 +1,455 @@
+{% extends "base.html" %}
+{% block head %}
+{{ super() }}
+<title>WPL 2027 | Standings, Season Toppers &amp; Live Scores</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='extended_beauty.css') }}" />
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/bottom-nav.css') }}">
+{#- the standings strip reuses the .ptc team card from the points table -#}
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/pointstable.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/home.css') }}">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+
+{% from "macros/points.html" import delta_pill, form_pills, next_chip, meter, win_pct, crest_grad %}
+
+{#  ------------------------------------------------------------------ data #}
+
+{#  Season Toppers, as data. Each entry says where to read the headline number
+    and the five supporting stats out of the feed's row, so one loop renders
+    every award instead of nine near-identical blocks.
+      stats : [visible label, [field, ...]]  — several fields print as "a / b"
+      acc   : the card's accent colour, which also tints its tab and dot
+
+    The IPL's cards, on the IPL's field names, because it is the same feed.
+    Most POTM is the one addition - it is counted from our own results in
+    services/toppers.update_potm() rather than fetched, which is why its
+    fields are plain lowercase ones rather than the feed's. #}
+{% set TOPPERS = [
+    {'cat': 'Most Runs', 'title': 'Orange Cap', 'icon': 'sports_cricket', 'acc': '#ff8a24',
+     'name': 'StrikerName', 'code': 'TeamCode', 'val': 'TotalRuns', 'unit': 'Runs',
+     'href': '/battingstats?option=Most%20Runs',
+     'stats': [['M', ['Matches']], ['HS', ['HighestScore']], ['Avg', ['BattingAverage']],
+               ['SR', ['StrikeRate']], ['50s/100s', ['FiftyPlusRuns', 'Centuries']]]},
+
+    {'cat': 'Most Wickets', 'title': 'Purple Cap', 'icon': 'sports_baseball', 'acc': '#c77dff',
+     'name': 'BowlerName', 'code': 'TeamCode', 'val': 'Wickets', 'unit': 'Wkts',
+     'href': '/bowlingstats?option=Most%20Wickets',
+     'stats': [['M', ['Matches']], ['Avg', ['BowlingAverage']], ['Econ', ['EconomyRate']],
+               ['4W/5W', ['FourWickets', 'FiveWickets']], ['BBI', ['BBIW']]]},
+
+    {'cat': 'Best Strike Rate', 'title': 'Super Striker', 'icon': 'bolt', 'acc': '#29c5e8',
+     'name': 'StrikerName', 'code': 'TeamCode', 'val': 'StrikeRate', 'unit': 'SR',
+     'href': '/battingstats?option=Best%20Strike%20Rate',
+     'stats': [['M', ['Matches']], ['Avg', ['BattingAverage']], ['HS', ['HighestScore']],
+               ['Runs', ['TotalRuns']], ['50s/100s', ['FiftyPlusRuns', 'Centuries']]]},
+
+    {'cat': 'Most Sixes', 'title': 'Super Sixes', 'icon': 'rocket_launch', 'acc': '#ec008c',
+     'name': 'StrikerName', 'code': 'TeamCode', 'val': 'Sixes', 'unit': 'Sixes',
+     'href': '/battingstats?option=Most%20Sixes',
+     'stats': [['M', ['Matches']], ['Avg', ['BattingAverage']], ['HS', ['HighestScore']],
+               ['SR', ['StrikeRate']], ['50s/100s', ['FiftyPlusRuns', 'Centuries']]]},
+
+    {'cat': 'Highest Scores', 'title': 'Highest Score', 'icon': 'trending_up', 'acc': '#ffc247',
+     'name': 'StrikerName', 'code': 'TeamCode', 'val': 'TotalRuns', 'unit': 'HS',
+     'href': '/battingstats?option=Highest%20Scores',
+     'stats': [['BF', ['Balls']], ['SR', ['StrikeRate']], ['4s', ['Fours']],
+               ['6s', ['Sixes']], ['VS', ['AgaintsTeamCode']]]},
+
+    {'cat': 'Most Dot Balls', 'title': 'Green Dot Balls', 'icon': 'radio_button_unchecked', 'acc': '#2ee27a',
+     'name': 'BowlerName', 'code': 'TeamCode', 'val': 'DotBallsBowled', 'unit': 'Dots',
+     'href': '/bowlingstats?option=Most%20Dot%20Balls',
+     'stats': [['M', ['Matches']], ['Ov', ['OversBowled']], ['Wkts', ['Wickets']],
+               ['Econ', ['EconomyRate']], ['4W/5W', ['FourWickets', 'FiveWickets']]]},
+
+    {'cat': 'Best Bowling Figures', 'title': 'Best Bowling', 'icon': 'local_fire_department', 'acc': '#f43f5e',
+     'name': 'BowlerName', 'code': 'TeamCode', 'val': 'BBIW', 'unit': 'BBI',
+     'href': '/bowlingstats?option=Best%20Bowling%20Figures',
+     'stats': [['Wkts', ['InningsWickets']], ['Ov', ['OversBowled']], ['Runs', ['InningsRuns']],
+               ['SR', ['StrikeRate']], ['VS', ['AgaintsTeamCode']]]},
+
+    {'cat': 'Most Valuable Players', 'title': 'MVP', 'icon': 'workspace_premium', 'acc': '#ff5cf0',
+     'name': 'PlayerName', 'code': 'TeamCode', 'val': 'IndexValue', 'unit': 'Pts',
+     'href': '/awards?option=Most%20Valuable%20Players',
+     'stats': [['M', ['Matches']], ['Wkts', ['Wickets']], ['Dots', ['DotBalls']],
+               ['4s/6s', ['Fours', 'Sixes']], ['Ct/St', ['caught', 'Stumping']]]},
+
+    {'cat': 'Fair Play Award', 'title': 'Fair Play', 'icon': 'handshake', 'acc': '#e0b341',
+     'name': 'TeamFullName', 'code': 'TeamName', 'val': 'Points', 'unit': 'Pts', 'team': true,
+     'href': '/awards?option=Fair%20Play%20Award',
+     'stats': [['Matches', ['No']], ['Average', ['AvePoints']], ['Points', ['Points']]]},
+
+    {'cat': 'Most POTM', 'title': 'Player of the Match', 'icon': 'military_tech', 'acc': '#ff9d3c',
+     'name': 'name', 'code': 'team', 'val': 'potm', 'unit': 'Awards',
+     'href': '/awards?option=Most%20POTM',
+     'stats': [['M', ['matches']], ['Inns', ['innings']], ['Runs', ['runs']],
+               ['Wkts', ['wickets']]]}
+] %}
+
+{#  Only the awards that actually have a leader yet — the carousel's tabs, dots
+    and slide indices all have to line up, so the filtering happens once here. #}
+{% set CARDS = [] %}
+{% for e in TOPPERS %}
+    {% if tp.get(e.cat) and tp[e.cat][0] %}{% set _ = CARDS.append(e) %}{% endif %}
+{% endfor %}
+
+{% set played = ((pt | sum(attribute='P')) // 2) if pt else 0 %}
+
+<div class="hm-wrap">
+
+    {# ============================================================== hero #}
+    <header class="hm-hero">
+        <span class="hm-hero__eyebrow">TATA WPL {{ SEASON }} &middot; Season Hub</span>
+
+        {#  The brand burst, with the wordmark sitting in the clear middle of
+            it. The artwork is a ring of shards around a transparent centre, so
+            the disc behind the logo has to be opaque — without it the wordmark
+            reads straight onto the page ground and the burst stops looking
+            like a frame around anything. #}
+        <div class="hm-hero__crest" role="img" aria-label="TATA WPL {{ SEASON }}">
+            <span class="hm-hero__burst" aria-hidden="true"></span>
+            <span class="hm-hero__disc" aria-hidden="true">
+                <img src="{{ url_for('static', filename='images/WPL_Logo.webp') }}" alt="">
+            </span>
+        </div>
+
+        <h1 class="hm-hero__title">Women&rsquo;s Premier League</h1>
+        <p class="hm-hero__sub">Standings, season toppers, live scores and every fixture &mdash; in one place</p>
+
+        <div class="hm-facts">
+            <span class="hm-fact"><b>{{ played }}</b> Matches played</span>
+            {% if pt %}
+            <span class="hm-fact hm-fact--gold">
+                <img src="/static/images/squad_logos/{{ pt[0].team_name }}.png" alt="">
+                <b>{{ pt[0].team_name }}</b> {{ 'Champions' if champion == pt[0].team_name else 'Top of the table' }}
+            </span>
+            {% endif %}
+            {% if tp.get('Most Runs') and tp['Most Runs'][0] %}
+            <span class="hm-fact hm-fact--orange"><b>{{ tp['Most Runs'][0]['TotalRuns'] }}</b> Orange cap runs</span>
+            {% endif %}
+            {% if tp.get('Most Wickets') and tp['Most Wickets'][0] %}
+            <span class="hm-fact hm-fact--violet"><b>{{ tp['Most Wickets'][0]['Wickets'] }}</b> Purple cap wickets</span>
+            {% endif %}
+        </div>
+
+        <nav class="hm-jump" aria-label="Quick links">
+            <a class="hm-jump__btn hm-jump__btn--live" href="{{ url_for('main.displayFR', filter='live') }}">
+                <span class="material-icons-round">play_arrow</span>Live
+            </a>
+            <a class="hm-jump__btn" href="{{ url_for('main.displayFR') }}">
+                <span class="material-icons-round">event</span>Matches
+            </a>
+            <a class="hm-jump__btn" href="{{ url_for('main.displayPT') }}">
+                <span class="material-icons-round">table_chart</span>Standings
+            </a>
+            <a class="hm-jump__btn" href="{{ url_for('main.teams') }}">
+                <span class="material-icons-round">groups</span>Teams
+            </a>
+            <a class="hm-jump__btn" href="{{ url_for('main.battingstats') }}">
+                <span class="material-icons-round">bar_chart</span>Stats
+            </a>
+        </nav>
+    </header>
+
+    {# ======================================================== standings #}
+    <section class="hm-sec" aria-labelledby="hmStandings">
+        <div class="hm-sec__head">
+            <div class="hm-sec__id">
+                <span class="hm-sec__eyebrow">Where the season stands</span>
+                <h2 class="hm-sec__title" id="hmStandings">Points Table</h2>
+            </div>
+            <a class="hm-sec__more" href="{{ url_for('main.displayPT') }}">
+                Full table<span class="material-icons-round">arrow_forward</span>
+            </a>
+        </div>
+
+        {#- the whole table: five rows is short enough to show in full, and
+            cutting it would hide the side on the wrong side of the line -#}
+        {% if pt %}
+        <div class="hm-standings">
+            {% for team in pt %}
+            {% set abv = team.team_name %}
+
+            {#- same status ladder as the points table: champions, first, qualified, out -#}
+            {% if champion and champion == abv %}{% set status, badge = 'champ', 'Champions' %}
+            {% elif team.qed == 'Q' and loop.first %}{% set status, badge = 'top2', 'Top 1' %}
+            {% elif team.qed == 'Q' %}{% set status, badge = 'q', 'Qualified' %}
+            {% elif team.qed == 'E' %}{% set status, badge = 'e', 'Eliminated' %}
+            {% else %}{% set status, badge = '', '' %}
+            {% endif %}
+
+            {#- Win_List is a dict keyed by match number; insertion order is the
+                order they were played, so the last five are the recent form -#}
+            {% set wl = (team.Win_List or '{}') | eval_str %}
+            {% set wl = wl.values() | list %}
+            {% set wl = (wl if wl | length < 5 else wl[-5:]) | join('') %}
+
+            {% set nrr = team.NRR | float %}
+
+            <article class="ptc" data-status="{{ status }}" style="{{ crest_grad(abv, clr) }}">
+                <header class="ptc__top">
+                    <div class="ptc__rank">
+                        {% if status == 'champ' %}
+                        <img class="pt-trophy" src="/static/images/trophy.png" alt="Champions">
+                        {% else %}
+                        <span class="ptc__rankno">{{ loop.index }}</span>
+                        {{ delta_pill(ranks.get(abv, 0) if team.P else 0) }}
+                        {% endif %}
+                    </div>
+
+                    <div class="ptc__crest">
+                        <img src="/static/images/squad_logos/{{ abv }}.png" alt="{{ teams[abv] }} logo">
+                    </div>
+
+                    <div class="ptc__id">
+                        <a class="ptc__name" href="{{ url_for('main.displayFR') }}?fteam={{ abv }}"
+                           aria-label="{{ teams[abv] }} fixtures">{{ abv }}</a>
+                        <div class="ptc__meta">
+                            {% if badge %}<span class="ptc__badge ptc__badge--{{ status }}">{{ badge }}</span>{% endif %}
+                            <span class="ptc__full">{{ teams[abv] }}</span>
+                        </div>
+                    </div>
+
+                    <div class="ptc__pts">
+                        <b>{{ team.Points }}</b>
+                        <span>PTS</span>
+                    </div>
+                </header>
+
+                <dl class="ptc__stats">
+                    <div class="ptc__stat"><dt>P</dt><dd>{{ team.P }}</dd></div>
+                    <div class="ptc__stat"><dt>W</dt><dd>{{ team.W }}</dd></div>
+                    <div class="ptc__stat"><dt>L</dt><dd>{{ team.L }}</dd></div>
+                    <div class="ptc__stat"><dt>NR</dt><dd>{{ team.NR }}</dd></div>
+                    <div class="ptc__stat">
+                        <dt>NRR</dt>
+                        <dd class="{{ 'pt-nrr--pos' if nrr > 0 else ('pt-nrr--neg' if nrr < 0 else '') }}">{{ "%+.3f"|format(nrr) }}</dd>
+                    </div>
+                </dl>
+
+                <div class="ptc__row">
+                    <div class="ptc__group">
+                        <span class="ptc__label">Last 5</span>
+                        {{ form_pills(wl) }}
+                    </div>
+                    <div class="ptc__group">
+                        <span class="ptc__label">Win</span>
+                        {{ win_pct(team.P, team.W, team.NR) }}
+                    </div>
+                </div>
+
+                <!--
+                <div class="ptc__probs">
+                    <div class="ptc__prob">
+                        <span class="ptc__label">Qualify</span>
+                        {{ meter(team.Qual or 0, 'Qualification chance') }}
+                    </div>
+                    <div class="ptc__prob">
+                        <span class="ptc__label">Top 1</span>
+                        {{ meter(team.Top1 or 0, 'Chance of finishing first') }}
+                    </div>
+                    <div class="ptc__prob">
+                        <span class="ptc__label">Next</span>
+                        {{ next_chip(nxt.get(abv, '--')) }}
+                    </div>
+                </div>
+                -->
+            </article>
+
+            <!--
+            {% if loop.index == SPOTS and not loop.last %}
+            <div class="pt-cut"><span>Playoff cut-off</span></div>
+            {% endif %}-->
+
+            {% endfor %}
+        </div>
+
+        {% else %}
+        <div class="hm-standings__empty">The table opens up once the first ball is bowled.</div>
+        {% endif %}
+    </section>
+
+    {# ==================================================== season toppers #}
+    <section class="hm-sec" aria-labelledby="hmToppers">
+        <div class="hm-sec__head">
+            <div class="hm-sec__id">
+                <span class="hm-sec__eyebrow">Who is leading the charts</span>
+                <h2 class="hm-sec__title" id="hmToppers">Season Toppers</h2>
+            </div>
+            <a class="hm-sec__more" href="{{ url_for('main.battingstats') }}">
+                All stats<span class="material-icons-round">arrow_forward</span>
+            </a>
+        </div>
+
+        {% if CARDS %}
+        <div class="hm-tp" id="tpCarousel" style="--acc: {{ CARDS[0].acc }};"
+             role="region" aria-roledescription="carousel" aria-label="Season toppers" tabindex="0">
+
+            <div class="hm-tp__tabs" role="tablist" aria-label="Award categories">
+                {% for e in CARDS %}
+                <button type="button" class="hm-tab" role="tab" data-go="{{ loop.index0 }}"
+                        id="tpTab{{ loop.index0 }}" aria-controls="tpSlide{{ loop.index0 }}"
+                        aria-selected="{{ 'true' if loop.first else 'false' }}"
+                        style="--acc: {{ e.acc }};">{{ e.title }}</button>
+                {% endfor %}
+            </div>
+
+            <div class="hm-tp__stage">
+                <div class="hm-tp__track">
+                    {% for e in CARDS %}
+                    {% set r = tp[e.cat][0] %}
+                    {% set code = r[e.code] %}
+                    {% set full = r[e.name] %}
+                    {% set parts = full.split(' ') %}
+                    {% set first = parts[0] if parts | length > 1 else '' %}
+                    {% set last = (parts[1:] | join(' ')) if parts | length > 1 else full %}
+
+                    <div class="hm-tp__slide {{ 'is-active' if loop.first }}" id="tpSlide{{ loop.index0 }}"
+                         role="tabpanel" aria-labelledby="tpTab{{ loop.index0 }}"
+                         aria-roledescription="slide" data-acc="{{ e.acc }}"
+                         style="--acc: {{ e.acc }};">
+
+                        <article class="hm-tcard" style="{{ crest_grad(code, clr) if code in clr }}">
+                            <header class="hm-tcard__head">
+                                <span class="hm-tcard__award">
+                                    <span class="material-icons-round">{{ e.icon }}</span>{{ e.title }}
+                                </span>
+                                <span class="hm-tcard__rank">#1</span>
+                            </header>
+
+                            <div class="hm-tcard__body">
+                                <div class="hm-tcard__figure {{ 'hm-tcard__figure--crest' if e.team }}">
+                                    {% if e.team %}
+                                    <img src="/static/images/squad_logos/{{ code }}.png" alt="{{ full }} logo" loading="lazy">
+                                    {% else %}
+                                    {#- the feed's spelling and the squad file name can disagree;
+                                        same silhouette fallback the live pages use -#}
+                                    <img src="/static/images/squads/{{ code }}/{{ full | replace(' ', '-') }}.png"
+                                         alt="{{ full }}" loading="lazy"
+                                         onerror="this.onerror=null;this.src='/static/images/Default.png';this.classList.add('is-fallback');">
+                                    <span class="hm-tcard__flag">
+                                        <img src="/static/images/squad_logos/{{ code }}.png" alt="{{ code }}" loading="lazy">
+                                    </span>
+                                    {% endif %}
+                                </div>
+
+                                <div class="hm-tcard__id">
+                                    {% if first %}<span class="hm-tcard__first">{{ first }}</span>{% endif %}
+                                    <span class="hm-tcard__last">{{ last }}</span>
+                                    {% if not e.team %}
+                                    <span class="hm-tcard__team">{{ teams[code] if code in teams else code }}</span>
+                                    {% endif %}
+                                </div>
+
+                                <div class="hm-tcard__hero">
+                                    <b>{{ r[e.val] }}</b>
+                                    <span>{{ e.unit }}</span>
+                                </div>
+                            </div>
+
+                            <dl class="hm-tcard__stats">
+                                {#- Cricbuzz does not carry the same columns on every
+                                    leaderboard, so a tile is only drawn when the row
+                                    has something to put in it. A tile of blanks reads
+                                    as missing data rather than as a figure that does
+                                    not apply to this board. -#}
+                                {% for s in e.stats %}
+                                {% set ns = namespace(vals=[]) %}
+                                {% for f in s[1] %}
+                                    {% set v = r[f] | string | trim %}
+                                    {% if v %}{% set ns.vals = ns.vals + [v] %}{% endif %}
+                                {% endfor %}
+                                {% if ns.vals %}
+                                <div class="hm-tstat">
+                                    <dt>{{ s[0] }}</dt>
+                                    <dd>{{ ns.vals | join(' / ') }}</dd>
+                                </div>
+                                {% endif %}
+                                {% endfor %}
+                            </dl>
+
+                            <a class="hm-tcard__cta" href="{{ e.href }}">
+                                View full leaderboard<span class="material-icons-round">arrow_forward</span>
+                            </a>
+                        </article>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            {#- the arrows live in the footer so phones get them in the flow;
+                wider screens lift them out and float them over the stage -#}
+            {% if CARDS | length > 1 %}
+            <div class="hm-tp__foot">
+                <button type="button" class="hm-tp__arrow hm-tp__arrow--prev" aria-label="Previous award">
+                    <span class="material-icons-round">chevron_left</span>
+                </button>
+
+                <div class="hm-tp__dots">
+                    {% for e in CARDS %}
+                    <button type="button" class="hm-dot" data-go="{{ loop.index0 }}"
+                            aria-selected="{{ 'true' if loop.first else 'false' }}"
+                            aria-label="Show {{ e.title }}"></button>
+                    {% endfor %}
+                </div>
+
+                <span class="hm-tp__count"><b data-tp-now>1</b> / {{ CARDS | length }}</span>
+
+                <button type="button" class="hm-tp__play" aria-label="Pause auto-rotation" aria-pressed="true">
+                    <span class="material-icons-round">pause</span>
+                </button>
+
+                <button type="button" class="hm-tp__arrow hm-tp__arrow--next" aria-label="Next award">
+                    <span class="material-icons-round">chevron_right</span>
+                </button>
+            </div>
+            {% endif %}
+        </div>
+        {% else %}
+        <div class="hm-tp__empty">Leaderboards fill up as soon as the season gets under way.</div>
+        {% endif %}
+    </section>
+</div>
+
+<nav class="bottom-nav">
+    <div class="bottom-nav-item">
+        <a href="{{ url_for('main.displayFR') }}">
+      <span class="material-icons-round">event</span>
+      <span class="bottom-nav-label">MATCHES</span>
+      </a>
+    </div>
+    <div class="bottom-nav-item">
+        <a href="{{ url_for('main.displayPT') }}">
+      <span class="material-icons-round">table_chart</span>
+      <span class="bottom-nav-label">STANDINGS</span>
+      </a>
+    </div>
+    <div class="bottom-nav-item spacer"></div>
+    <div class="bottom-nav-item live">
+        <a href="{{ url_for('main.displayFR', filter='live') }}">
+      <div class="live-circle"></div>
+      <div class="live-content">
+        <span class="material-icons-round zoomInOut">play_arrow</span>
+        <span class="bottom-nav-label">LIVE</span>
+      </div>
+      </a>
+    </div>
+    <div class="bottom-nav-item spacer"></div>
+    <div class="bottom-nav-item">
+      <a href="{{ url_for('main.teams') }}">
+      <span class="material-icons-round">groups</span>
+      <span class="bottom-nav-label">TEAMS</span>
+      </a>
+    </div>
+    <div class="bottom-nav-item">
+      <a href="{{ url_for('main.battingstats') }}">
+      <span class="material-icons-round">bar_chart</span>
+      <span class="bottom-nav-label">STATS</span>
+      </a>
+    </div>
+  </nav>
+
+<script src="{{ url_for('static', filename='js/home.js') }}" defer></script>
+
+{% endblock %}

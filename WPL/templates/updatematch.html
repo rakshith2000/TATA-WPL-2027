@@ -1,0 +1,647 @@
+{% extends "base.html" %}
+{% block head %}
+{{ super() }}
+<title>Match {{ FR.Match_No }}: {{ FR.Team_A }} vs {{ FR.Team_B }} | Update Result</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='extended_beauty.css') }}" />
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/updatematch.css') }}">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+
+{# Rajasthan Royals' crest lives at RR1.png #}
+{% macro crest(t) -%}
+/static/images/squad_logos/{{ t }}.png
+{%- endmacro %}
+
+{% macro getclr(team) -%}
+    {% set c = clr[team] %}
+
+    {% if team in ['RCBW', 'MIW'] %} --team-a: {{ c['c3'] }}; --team-b: {{ c['c1'] }}
+    {% elif team == 'UPW' %} --team-a: {{ c['c2'] }}; --team-b: {{ c['c3'] }}
+    {% else %} --team-a: {{ c['c1'] }}; --team-b: {{ c['c2'] }}
+    {% endif %}
+{%- endmacro %}
+
+{# Runs / Wickets / Overs for one innings. `p` prefixes the field names so the
+   same trio can serve the normal, tied, super-over and abandoned sections. #}
+{% macro innings(p, suffix) %}
+<div class="um-grid3">
+    <div class="um-field">
+        <label for="{{ p }}runs{{ suffix }}">Runs</label>
+        <input type="number" id="{{ p }}runs{{ suffix }}" name="{{ p }}runs{{ suffix }}"
+               min="0" placeholder="0" autocomplete="off">
+    </div>
+    <div class="um-field">
+        <label for="{{ p }}wkts{{ suffix }}">Wickets</label>
+        <input type="number" id="{{ p }}wkts{{ suffix }}" name="{{ p }}wkts{{ suffix }}"
+               min="0" max="10" placeholder="0" autocomplete="off">
+    </div>
+    <div class="um-field">
+        <label for="{{ p }}overs{{ suffix }}">Overs</label>
+        <input type="number" step="0.1" id="{{ p }}overs{{ suffix }}" name="{{ p }}overs{{ suffix }}"
+               min="0" placeholder="0.0" autocomplete="off">
+    </div>
+</div>
+{% endmacro %}
+
+{# Panel header with a team crest #}
+{% macro team_head(team, kicker) %}
+<div class="um-panel__head" style="{{ getclr(team) }}">
+    <img src="{{ crest(team) }}" alt="">
+    <h6 class="um-panel__title">{{ fn[team] }}<small>{{ kicker }}</small></h6>
+</div>
+{% endmacro %}
+
+{# Winner picker: two adjacent team buttons instead of a dropdown #}
+{% macro winner_seg(name) %}
+<div class="um-seg um-seg--winner" role="radiogroup" aria-label="Winning team">
+    {% for t in [FR.Team_A, FR.Team_B] %}
+    <label class="um-seg__opt">
+        <input type="radio" name="{{ name }}" value="{{ t }}">
+        <span class="um-seg__body" style="{{ getclr(t) }}">
+            <img src="{{ crest(t) }}" alt="">
+            <span>{{ t }}</span>
+        </span>
+    </label>
+    {% endfor %}
+</div>
+{% endmacro %}
+
+{# Win type picker: two adjacent buttons instead of a dropdown.
+   Values must stay 'runs' / 'wickets' — main.py stores them verbatim. #}
+{% macro wintype_seg(name) %}
+<div class="um-seg" role="radiogroup" aria-label="Win type">
+    <label class="um-seg__opt">
+        <input type="radio" name="{{ name }}" value="runs">
+        <span class="um-seg__body"><span class="material-icons-round">sports_cricket</span>By runs</span>
+    </label>
+    <label class="um-seg__opt">
+        <input type="radio" name="{{ name }}" value="wickets">
+        <span class="um-seg__body"><span class="material-icons-round">sports_baseball</span>By wickets</span>
+    </label>
+</div>
+{% endmacro %}
+
+{# Result block shared by the normal and super-over sections #}
+{% macro result_block(winner_name, type_name, by_name, by_id, unit_id) %}
+<span class="um-label">Winning team</span>
+{{ winner_seg(winner_name) }}
+
+<div class="um-panel__rule"></div>
+
+<span class="um-label">Win type</span>
+{{ wintype_seg(type_name) }}
+
+<div class="um-panel__rule"></div>
+
+<div class="um-field">
+    <label for="{{ by_id }}">Won by</label>
+    <div class="um-suffix">
+        <input type="number" id="{{ by_id }}" name="{{ by_name }}" min="0"
+               placeholder="Margin" autocomplete="off">
+        <span class="um-suffix__unit" id="{{ unit_id }}"></span>
+    </div>
+</div>
+{% endmacro %}
+
+{# One super over, both sides. `n` numbers the field names so main.py can walk
+   so1_*, so2_* ... until they run out; the script below renumbers these after
+   every add or remove, so the sequence always starts at 1 and has no gaps. #}
+{% macro superover_panel(n) %}
+<div class="um-panel um-so" data-so>
+    <div class="um-panel__head">
+        <h6 class="um-panel__title">Super over&nbsp;<span data-so-no>{{ n }}</span>
+            <small data-so-note>Decides the match unless it is tied too</small></h6>
+        <button type="button" class="um-btn um-btn--ghost um-so__del" data-so-del
+                aria-label="Remove this super over" title="Remove this super over" hidden>
+            <span class="material-icons-round">close</span>
+        </button>
+    </div>
+    {{ team_head(FR.Team_A, 'Super over') }}
+    {{ innings('so' ~ n ~ '_', 'A') }}
+    <div class="um-panel__rule"></div>
+    {{ team_head(FR.Team_B, 'Super over') }}
+    {{ innings('so' ~ n ~ '_', 'B') }}
+</div>
+{% endmacro %}
+
+<div class="um-wrap">
+
+    <header class="um-top">
+        <span class="um-top__eyebrow">
+            <span class="material-icons-round">sports_cricket</span>Match {{ FR.Match_No }}
+        </span>
+        <h1 class="um-top__title">Update Result</h1>
+        <p class="um-top__sub">Enter the scorecard, then confirm the result</p>
+    </header>
+
+    <div class="um-card">
+        <div class="um-meta">
+            <span class="um-chip">
+                <span class="material-icons-round">confirmation_number</span>Match&nbsp;<b>{{ FR.Match_No }}</b>
+            </span>
+            <span class="um-chip">
+                <span class="material-icons-round">event</span><b>{{ FR.Date.strftime('%d %b %Y') }}</b>
+            </span>
+            {% if FR.Time %}
+            <span class="um-chip">
+                <span class="material-icons-round">schedule</span><b>{{ FR.Time.strftime('%H:%M') }}</b>
+            </span>
+            {% endif %}
+            {% if FR.Venue %}
+            <span class="um-chip">
+                <span class="material-icons-round">place</span>{{ FR.Venue }}
+            </span>
+            {% endif %}
+        </div>
+
+        <div class="um-teams">
+            {% for t in [FR.Team_A, FR.Team_B] %}
+            {% if loop.index == 2 %}<span class="um-vs">vs</span>{% endif %}
+            <div class="um-team">
+                <span class="um-team__crest" style="{{ getclr(t) }}"><img src="{{ crest(t) }}" alt="{{ fn[t] }}"></span>
+                <span class="um-team__abv">{{ t }}</span>
+                <span class="um-team__full">{{ fn[t] }}</span>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="um-actions">
+            <button type="button" class="um-btn um-btn--primary um-btn--block"
+                    data-toggle="modal" data-target="#mymodal">
+                <span class="material-icons-round">edit_note</span>Update result
+            </button>
+        </div>
+
+        <a class="um-back" href="{{ url_for('main.update') }}">
+            <span class="material-icons-round">arrow_back</span>Back to control room
+        </a>
+    </div>
+
+</div>
+
+<!-- ============================================================== Modal -->
+<div id="mymodal" class="modal fade um-modal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h6 class="modal-title">
+                    {{ FR.Team_A }} vs {{ FR.Team_B }}
+                    <small>Match {{ FR.Match_No }} &middot; enter the result</small>
+                </h6>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+
+            <form class="um-form" action="/updatematch" method="POST" id="umForm">
+                <div class="modal-body">
+
+                    <div class="um-panel">
+                        <span class="um-label">Match status</span>
+                        <div class="um-seg um-seg--wrap um-seg--status" role="radiogroup" aria-label="Match status">
+                            {% for value, icon, label in [
+                                ('completed', 'check_circle', 'Completed'),
+                                ('tied', 'flash_on', 'Super Over'),
+                                ('abandoned', 'cloud_off', 'Abandoned'),
+                                ('interrupted_dls', 'grain', 'DLS')
+                            ] %}
+                            <label class="um-seg__opt">
+                                <input type="radio" name="match_status" value="{{ value }}" required>
+                                <span class="um-seg__body">
+                                    <span class="material-icons-round">{{ icon }}</span>
+                                    <span>{{ label }}</span>
+                                </span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="um-placeholder" id="pick_status">
+                        <span class="material-icons-round">touch_app</span>
+                        <span>Pick a match status above to enter the scorecard.</span>
+                    </div>
+
+                    <!-- How long the match was. Only the completed and tied
+                         sections ask: a DLS result carries the revised
+                         allocation in its own fields. It matters because a side
+                         bowled out has its full allocation booked towards net
+                         run rate, not the overs it lasted. -->
+                    <div id="length_fields" class="um-stack" style="display:none;">
+                        <div class="um-panel">
+                            <div class="um-panel__head">
+                                <h6 class="um-panel__title">Match length<small>Before the first ball</small></h6>
+                            </div>
+                            <div class="um-field">
+                                <label for="overs_per_side">Overs per side</label>
+                                <input type="number" step="0.1" id="overs_per_side" name="overs_per_side"
+                                       min="5" max="20" value="20" autocomplete="off">
+                            </div>
+                            <div class="um-note">
+                                <span class="material-icons-round">info</span>
+                                <span>20 unless rain shortened it before the start. Five is the
+                                      least a T20 can be cut to and still count.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Normal innings. Also used by DLS: main.py reads runsA/oversA/wktsA
+                         and wt/win_type/win_by for 'interrupted_dls' too. -->
+                    <div id="normal_fields" class="um-stack" style="display:none;">
+                        <div class="um-panel">
+                            {{ team_head(FR.Team_A, 'Innings') }}
+                            {{ innings('', 'A') }}
+                        </div>
+                        <div class="um-panel">
+                            {{ team_head(FR.Team_B, 'Innings') }}
+                            {{ innings('', 'B') }}
+                        </div>
+                        <div class="um-panel">
+                            <div class="um-panel__head">
+                                <h6 class="um-panel__title">Match result<small>Who won and by how much</small></h6>
+                            </div>
+                            {{ result_block('wt', 'win_type', 'win_by', 'win_by', 'win_by_unit') }}
+                        </div>
+                    </div>
+
+                    <!-- Super Over. A tied super over is replayed, so the panel
+                         repeats; the result below belongs to the last one. -->
+                    <div id="superover_fields" class="um-stack" style="display:none;">
+                        <div class="um-panel">
+                            {{ team_head(FR.Team_A, 'Tied innings') }}
+                            {{ innings('tied_', 'A') }}
+                            <div class="um-panel__rule"></div>
+                            {{ team_head(FR.Team_B, 'Tied innings') }}
+                            {{ innings('tied_', 'B') }}
+                        </div>
+
+                        <div id="so_list" class="um-stack">
+                            {{ superover_panel(1) }}
+                        </div>
+
+                        <button type="button" class="um-btn um-btn--ghost um-btn--block" id="so_add">
+                            <span class="material-icons-round">add</span>Add another super over
+                        </button>
+
+                        <div class="um-panel">
+                            <div class="um-panel__head">
+                                <h6 class="um-panel__title">Outcome<small>Did a super over settle it?</small></h6>
+                            </div>
+                            <div class="um-seg" role="radiogroup" aria-label="Super over outcome">
+                                <label class="um-seg__opt">
+                                    <input type="radio" name="superover_outcome" value="decided" checked>
+                                    <span class="um-seg__body"><span class="material-icons-round">emoji_events</span>A side won it</span>
+                                </label>
+                                <label class="um-seg__opt">
+                                    <input type="radio" name="superover_outcome" value="not_completed">
+                                    <span class="um-seg__body"><span class="material-icons-round">cloud_off</span>Not completed</span>
+                                </label>
+                            </div>
+
+                            <div class="um-note">
+                                <span class="material-icons-round">info</span>
+                                <span>A tied super over is replayed. If none of them could be
+                                      bowled or finished, the match stands as a tie and the
+                                      sides take a point each.</span>
+                            </div>
+
+                            {#- the match was shortened before the tie, so the chase was
+                                level with a DLS par score rather than the full total -#}
+                            <div class="um-panel__rule"></div>
+                            <label class="um-check">
+                                <input type="checkbox" id="tied_dls" name="tied_dls" value="yes">
+                                <span>The target had been revised (DLS)</span>
+                            </label>
+                        </div>
+
+                        <div class="um-panel" id="so_result">
+                            <div class="um-panel__head">
+                                <h6 class="um-panel__title">Super over result<small
+                                    id="so_result_note">Decides the match</small></h6>
+                            </div>
+                            {{ result_block('superover_winner', 'superover_win_type',
+                                             'superover_win_by', 'superover_win_by', 'so_win_by_unit') }}
+                        </div>
+
+                        <div class="um-panel" id="tied_notdone" style="display:none;">
+                            <div class="um-panel__head">
+                                <h6 class="um-panel__title">Tie stands<small>A point each</small></h6>
+                            </div>
+                            <div class="um-field">
+                                <label for="tied_reason">Why the super over was not completed</label>
+                                <input type="text" id="tied_reason" name="tied_reason"
+                                       placeholder="e.g. Super over washed out" autocomplete="off">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Abandoned -->
+                    <div id="abandoned_fields" class="um-stack" style="display:none;">
+                        <div class="um-panel">
+                            <div class="um-panel__head">
+                                <h6 class="um-panel__title">Abandonment<small>Was there a toss or any play?</small></h6>
+                            </div>
+                            <span class="um-label">Toss status</span>
+                            <div class="um-seg" role="radiogroup" aria-label="Toss status">
+                                <label class="um-seg__opt">
+                                    <input type="radio" name="abandon_toss_status" value="without_toss">
+                                    <span class="um-seg__body"><span class="material-icons-round">block</span>No toss</span>
+                                </label>
+                                <label class="um-seg__opt">
+                                    <input type="radio" name="abandon_toss_status" value="with_toss">
+                                    <span class="um-seg__body"><span class="material-icons-round">done_all</span>Toss / play</span>
+                                </label>
+                            </div>
+
+                            <div class="um-panel__rule"></div>
+
+                            <div class="um-field">
+                                <label for="abandon_reason">Reason</label>
+                                <input type="text" id="abandon_reason" name="abandon_reason"
+                                       placeholder="e.g. Rain, bad light" autocomplete="off">
+                            </div>
+                        </div>
+
+                        <div class="um-panel" id="abandon_scores" style="display:none;">
+                            <div class="um-note">
+                                <span class="material-icons-round">info</span>
+                                <span>Scores at the point of abandonment. Leave blank for 0.</span>
+                            </div>
+                            {{ team_head(FR.Team_A, 'At abandonment') }}
+                            {{ innings('abandon_', 'A') }}
+                            <div class="um-panel__rule"></div>
+                            {{ team_head(FR.Team_B, 'At abandonment') }}
+                            {{ innings('abandon_', 'B') }}
+                        </div>
+                    </div>
+
+                    <!-- DLS / interrupted -->
+                    <div id="dls_fields" class="um-stack" style="display:none;">
+                        <div class="um-panel">
+                            <div class="um-note">
+                                <span class="material-icons-round">info</span>
+                                <span>Full innings and the final result are taken from the
+                                      fields above &mdash; fill those in too.</span>
+                            </div>
+                            {{ team_head(FR.Team_A, 'Revised innings') }}
+                            <div class="um-grid2">
+                                <div class="um-field">
+                                    <label for="dls_runsA">Revised runs</label>
+                                    <input type="number" id="dls_runsA" name="dls_runsA" min="0"
+                                           placeholder="0" autocomplete="off">
+                                </div>
+                                <div class="um-field">
+                                    <label for="dls_oversA">Revised overs</label>
+                                    <input type="number" step="0.1" id="dls_oversA" name="dls_oversA" min="0"
+                                           placeholder="0.0" autocomplete="off">
+                                </div>
+                            </div>
+                            <div class="um-panel__rule"></div>
+                            {{ team_head(FR.Team_B, 'Revised innings') }}
+                            <div class="um-grid2">
+                                <div class="um-field">
+                                    <label for="dls_runsB">Revised runs</label>
+                                    <input type="number" id="dls_runsB" name="dls_runsB" min="0"
+                                           placeholder="0" autocomplete="off">
+                                </div>
+                                <div class="um-field">
+                                    <label for="dls_oversB">Revised overs</label>
+                                    <input type="number" step="0.1" id="dls_oversB" name="dls_oversB" min="0"
+                                           placeholder="0.0" autocomplete="off">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="um-panel">
+                            <div class="um-panel__head">
+                                <h6 class="um-panel__title">Revised target<small>After the interruption</small></h6>
+                            </div>
+                            <div class="um-grid2">
+                                <div class="um-field">
+                                    <label for="dls_target">Target</label>
+                                    <input type="number" id="dls_target" name="dls_target" min="0"
+                                           placeholder="0" autocomplete="off">
+                                </div>
+                                <div class="um-field">
+                                    <label for="dls_overs">Overs</label>
+                                    <input type="number" step="0.1" id="dls_overs" name="dls_overs" min="0"
+                                           placeholder="0.0" autocomplete="off">
+                                </div>
+                            </div>
+                            <div class="um-panel__rule"></div>
+                            <div class="um-field">
+                                <label for="dls_reason">Reason</label>
+                                <input type="text" id="dls_reason" name="dls_reason"
+                                       placeholder="e.g. Rain, bad light" autocomplete="off">
+                            </div>
+                        </div>
+                    </div>
+
+                    <input type="hidden" name="hint" value="after" />
+                    <input type="hidden" name="match" value="{{ match }}" />
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="um-btn um-btn--ghost" data-dismiss="modal">Close</button>
+                    <button type="submit" class="um-btn um-btn--primary">
+                        <span class="material-icons-round">save</span>Update
+                    </button>
+                </div>
+            </form>
+
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    var form = document.getElementById('umForm');
+    if (!form) return;
+
+    var sections = {
+        length: document.getElementById('length_fields'),
+        normal: document.getElementById('normal_fields'),
+        superover: document.getElementById('superover_fields'),
+        abandoned: document.getElementById('abandoned_fields'),
+        dls: document.getElementById('dls_fields')
+    };
+    var placeholder = document.getElementById('pick_status');
+    var abandonScores = document.getElementById('abandon_scores');
+    var soList = document.getElementById('so_list');
+    var soAdd = document.getElementById('so_add');
+    var soNote = document.getElementById('so_result_note');
+    var soResult = document.getElementById('so_result');
+    var tiedNotDone = document.getElementById('tied_notdone');
+    var tiedDls = document.getElementById('tied_dls');
+
+    function checkedValue(name) {
+        var el = form.querySelector('input[name="' + name + '"]:checked');
+        return el ? el.value : '';
+    }
+
+    function setRequired(container, required) {
+        if (!container) return;
+        container.querySelectorAll('input, select, textarea').forEach(function (el) {
+            if (required) { el.setAttribute('required', 'required'); }
+            else { el.removeAttribute('required'); }
+        });
+    }
+
+    function setDisabled(name, disabled) {
+        form.querySelectorAll('input[name="' + name + '"]').forEach(function (el) {
+            if (disabled) { el.setAttribute('disabled', 'disabled'); }
+            else { el.removeAttribute('disabled'); }
+        });
+    }
+
+    // ------------------------------------------------- repeatable super overs
+    // main.py walks so1_*, so2_* ... until a number is missing, so the blocks
+    // have to stay numbered from 1 with no gaps however they were added or
+    // removed. Everything else about a block — its labels, its note, whether it
+    // can be removed — follows from its position, so one pass does the lot.
+    function renumberSO() {
+        if (!soList) return;
+        var blocks = soList.querySelectorAll('[data-so]');
+        var last = blocks.length;
+
+        blocks.forEach(function (block, idx) {
+            var n = idx + 1;
+            var renum = function (value) { return value.replace(/^so\d+_/, 'so' + n + '_'); };
+
+            block.querySelectorAll('input').forEach(function (el) {
+                el.name = renum(el.name);
+                if (el.id) { el.id = renum(el.id); }
+            });
+            block.querySelectorAll('label[for]').forEach(function (el) {
+                el.htmlFor = renum(el.htmlFor);
+            });
+
+            var no = block.querySelector('[data-so-no]');
+            if (no) { no.textContent = n; }
+
+            var note = block.querySelector('[data-so-note]');
+            if (note) {
+                note.textContent = n < last ? 'Tied — replayed'
+                                 : (n === 1 ? 'Decides the match unless it is tied too'
+                                            : 'Super over ' + (n - 1) + ' was tied');
+            }
+
+            // there is always at least one super over in a tied match
+            var del = block.querySelector('[data-so-del]');
+            if (del) { del.hidden = idx === 0; }
+        });
+
+        if (soNote) {
+            soNote.textContent = last > 1 ? 'Super over ' + last + ' decides the match'
+                                          : 'Decides the match';
+        }
+    }
+
+    if (soAdd) {
+        soAdd.addEventListener('click', function () {
+            var blocks = soList.querySelectorAll('[data-so]');
+            var copy = blocks[blocks.length - 1].cloneNode(true);
+            copy.querySelectorAll('input').forEach(function (el) { el.value = ''; });
+            soList.appendChild(copy);
+            renumberSO();
+            updateFields();                       // the new boxes need requiring
+            var first = copy.querySelector('input');
+            if (first) { first.focus(); }
+        });
+    }
+
+    if (soList) {
+        soList.addEventListener('click', function (e) {
+            var btn = e.target.closest ? e.target.closest('[data-so-del]') : null;
+            if (!btn) return;
+            var block = btn.closest('[data-so]');
+            if (block && soList.querySelectorAll('[data-so]').length > 1) {
+                block.remove();
+                renumberSO();
+            }
+        });
+    }
+
+    // "Won by" unit follows the chosen win type
+    function syncUnits() {
+        [['win_type', 'win_by_unit'], ['superover_win_type', 'so_win_by_unit']]
+            .forEach(function (pair) {
+                var out = document.getElementById(pair[1]);
+                if (!out) return;
+                var v = checkedValue(pair[0]);
+                out.textContent = v === 'runs' ? 'runs' : (v === 'wickets' ? 'wkts' : '');
+            });
+    }
+
+    function updateFields() {
+        var status = checkedValue('match_status');
+        // DLS reuses the normal innings + result fields
+        var showNormal = (status === 'completed' || status === 'interrupted_dls');
+        var tied = (status === 'tied');
+        // a tie after a rain-revised chase needs the same revised figures a DLS
+        // win does, so the two statuses share one panel
+        var showDls = (status === 'interrupted_dls') || (tied && tiedDls && tiedDls.checked);
+        // the super over settled it, unless the admin says it never finished
+        var decided = checkedValue('superover_outcome') !== 'not_completed';
+
+        sections.length.style.display = (status === 'completed' || tied) ? '' : 'none';
+        sections.normal.style.display = showNormal ? '' : 'none';
+        sections.superover.style.display = tied ? '' : 'none';
+        sections.abandoned.style.display = (status === 'abandoned') ? '' : 'none';
+        sections.dls.style.display = showDls ? '' : 'none';
+        soResult.style.display = decided ? '' : 'none';
+        tiedNotDone.style.display = decided ? 'none' : '';
+        if (placeholder) { placeholder.style.display = status ? 'none' : ''; }
+
+        // only require what's on screen — a required control inside a hidden
+        // section blocks submission and can't be focused to report the error
+        setRequired(sections.length, status === 'completed' || tied);
+        setRequired(sections.normal, showNormal);
+        setRequired(sections.superover, tied);
+        setRequired(sections.abandoned, status === 'abandoned');
+        setRequired(sections.dls, showDls);
+        // a super over nobody could bowl has no scores and no winner to give
+        setRequired(soList, tied && decided);
+        setRequired(soResult, tied && decided);
+        setRequired(tiedNotDone, tied && !decided);
+        if (tiedDls) { tiedDls.required = false; }   // the toggle itself is optional
+
+        if (status === 'abandoned') {
+            setDisabled('abandon_toss_status', false);
+            var withToss = checkedValue('abandon_toss_status') === 'with_toss';
+            abandonScores.style.display = withToss ? '' : 'none';
+            setRequired(abandonScores, withToss);
+        } else {
+            setDisabled('abandon_toss_status', true);
+            setRequired(abandonScores, false);
+        }
+
+        syncUnits();
+    }
+
+    renumberSO();
+    form.addEventListener('change', function (e) {
+        var name = e.target && e.target.name;
+        if (name === 'match_status' || name === 'abandon_toss_status' ||
+            name === 'superover_outcome' || name === 'tied_dls') { updateFields(); }
+        else if (name === 'win_type' || name === 'superover_win_type') { syncUnits(); }
+    });
+
+    // Abandoned with a toss: blank scores mean 0
+    form.addEventListener('submit', function () {
+        if (checkedValue('match_status') !== 'abandoned') return;
+        if (checkedValue('abandon_toss_status') !== 'with_toss') return;
+        ['abandon_runsA', 'abandon_wktsA', 'abandon_oversA',
+         'abandon_runsB', 'abandon_wktsB', 'abandon_oversB'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el && el.value === '') { el.value = 0; }
+        });
+    });
+
+    updateFields();
+})();
+</script>
+
+{% endblock %}

@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block head %}
+{{ super() }}
+<title>WPL 2027 Predictor | Play the season out</title>
+<meta name="robots" content="noindex,nofollow" />
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/bottom-nav.css') }}">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+<link href="{{ url_for('static', filename='css/predictor.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block body_class %}pr-page{% endblock %}
+
+{% block content %}
+<div class="pr-wrap">
+
+    <header class="pr-hero">
+        <span class="pr-hero__eyebrow">TATA WPL 2027 &middot; Simulator</span>
+        <h1 class="pr-hero__title">Season Predictor</h1>
+        <p class="pr-hero__sub">
+            Replay any match, played or not, and watch the table and the playoff
+            odds move. Nothing here is saved to the season.
+        </p>
+
+        <div class="pr-hero__acts">
+            <button type="button" class="pr-btn pr-btn--go" id="prSimulate"
+                    title="Fill every undecided match from the model">
+                <span class="material-icons-round">bolt</span>
+                <span class="pr-btn__label">Simulate Remaining</span>
+            </button>
+            <button type="button" class="pr-btn" id="prReplay" aria-pressed="false"
+                    title="Throw the real results away and play the whole season from scratch">
+                <span class="material-icons-round">replay</span>
+                <span class="pr-btn__label">Replay whole season</span>
+            </button>
+            <button type="button" class="pr-btn" id="prReset"
+                    title="Drop every change and go back to the real results">
+                <span class="material-icons-round">restart_alt</span>
+                <span class="pr-btn__label">Reset to actual</span>
+            </button>
+        </div>
+
+        {#  Only shown while the real results are being ignored — that is a big
+            enough change to the meaning of every number below to say plainly. #}
+        <div class="pr-banner" id="prBanner" hidden>
+            <span class="material-icons-round">replay</span>
+            <span>
+                <b>Replaying the season.</b> Every match is open, including the
+                ones already played &mdash; the table starts from zero and the
+                real results count for nothing until you turn this off.
+            </span>
+        </div>
+    </header>
+
+    {#  Pinned under the navbar while the panel scrolls, the way the fixtures
+        toolbar is — --pr-stick is measured from the real navbar height. #}
+    <div class="pr-tabs" id="prTabs" role="tablist" aria-label="Predictor sections">
+        <button type="button" class="pr-tab" role="tab" data-tab="league" aria-selected="true">League Stage</button>
+        <button type="button" class="pr-tab" role="tab" data-tab="playoffs" aria-selected="false">Playoffs</button>
+        <button type="button" class="pr-tab" role="tab" data-tab="table" aria-selected="false">Points Table</button>
+    </div>
+
+    <div class="pr-filters" id="prFilters">
+        <button type="button" class="pr-chip" data-filter="all" aria-pressed="true">All</button>
+        <button type="button" class="pr-chip" data-filter="done" aria-pressed="false">Completed</button>
+        <button type="button" class="pr-chip" data-filter="todo" aria-pressed="false">Upcoming</button>
+        <button type="button" class="pr-chip" data-filter="mine" aria-pressed="false">My picks</button>
+    </div>
+
+    {#  Outside the filter row so it survives the two tabs that hide it. #}
+    <p class="pr-status" id="prCount"></p>
+
+    <main id="prPanel" class="pr-panel" role="tabpanel" aria-live="polite">
+        <div class="pr-skel"></div>
+        <div class="pr-skel"></div>
+        <div class="pr-skel"></div>
+    </main>
+
+</div>
+
+{#  The odds dock, pinned to the bottom. It minimises downward to its own
+    header; the full per-team breakdown lives on the Playoffs tab instead of
+    being duplicated in here. #}
+<aside class="pr-dock" id="prDock" aria-label="Live playoff odds">
+    <button type="button" class="pr-dock__head" id="prDockToggle" aria-expanded="true"
+            aria-controls="prDockStrip" title="Minimise">
+        <span class="pr-dock__title">Live Playoff Odds</span>
+        <span class="pr-dock__meta" id="prDockMeta"></span>
+        <span class="material-icons-round pr-dock__caret">expand_more</span>
+    </button>
+    <div class="pr-dock__strip" id="prDockStrip"></div>
+</aside>
+
+<script src="{{ url_for('static', filename='js/predictor.js') }}"></script>
+{% endblock %}

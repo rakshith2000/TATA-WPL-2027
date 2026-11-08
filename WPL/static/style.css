@@ -1,0 +1,537 @@
+/*
+Responsive HTML Table With Pure CSS - Web Design/UI Design
+
+Code written by:
+👨🏻‍⚕️ Coding Design (Jeet Saru)
+
+> You can do whatever you want with the code. However if you love my content, you can **SUBSCRIBED** my YouTube Channel.
+
+🌎link: www.youtube.com/codingdesign 
+*/
+
+
+@media print {
+ .table, .table__body {
+  overflow: visible;
+  height: auto !important;
+  width: auto !important;
+ }
+}
+
+/*@page {
+    size: landscape;
+    margin: 0; 
+}*/
+
+
+main.table {
+    width: 99%;
+    /*height: 65vh;*/
+    background-color: rgba(255, 255, 255, 0.1);
+    
+    backdrop-filter: blur(7px);
+    box-shadow: 0 .4rem .8rem #0005;
+    border-radius: .8rem;
+    display:flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.table__header {
+    width: 100%;
+    height: 10%;
+    background-color: #fff4;
+    padding: .8rem 1rem;
+
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.table__header .input-group {
+    width: 35%;
+    height: 100%;
+    background-color: #fff5;
+    padding: 0 .8rem;
+    border-radius: 2rem;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    transition: .2s;
+}
+
+.table__header .input-group:hover {
+    width: 45%;
+    background-color: #fff8;
+    box-shadow: 0 .1rem .4rem #0002;
+}
+
+.table__header .input-group img {
+    width: 1.2rem;
+    height: 1.2rem;
+}
+
+.table__header .input-group input {
+    width: 100%;
+    padding: 0 .5rem 0 .3rem;
+    background-color: transparent;
+    border: none;
+    outline: none;
+}
+
+.table__body {
+    width: 98%;
+    max-height: none;
+    background-color: transperant;
+    margin: .8rem auto;
+    border-radius: .6rem;
+
+    overflow: auto;
+    overflow: overlay;
+}
+
+
+.table__body::-webkit-scrollbar{
+    width: 0.5rem;
+    height: 0.5rem;
+}
+
+.table__body::-webkit-scrollbar-thumb{
+    border-radius: .5rem;
+    background-color: #0004;
+    visibility: hidden;
+}
+
+.table__body:hover::-webkit-scrollbar-thumb{ 
+    visibility: visible;
+}
+
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+td img {
+    width: 32px;
+    height: 32px;
+    margin-right: 0rem;
+    border-radius: 0px;
+    object-fit: cover;
+    vertical-align: middle;
+    display: inline-block;
+}
+
+.form-img {
+    width: 15px;
+    height: 15px;
+    margin-right: .1rem;
+    border-radius: 50%;
+    object-fit: cover;
+    vertical-align: middle;
+}
+
+table, th {
+    border-collapse: collapse;
+    padding: 1rem;
+    text-align: left;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+td {
+    border-collapse: collapse;
+    padding: 1rem;
+    text-align: left;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+.text-center {
+    text-align: center;
+}
+
+td, th {
+    vertical-align: middle;
+}
+
+td:not(:nth-child(2)) {
+    vertical-align: middle;
+    line-height: normal;
+}
+
+th:nth-child(3), td:nth-child(3) {
+    padding-left: .85rem!important;
+}
+
+
+thead th {
+    position: sticky;
+    top: 0;
+    left: 0;
+    background-color: #44acc4;
+    cursor: pointer;
+    text-transform: capitalize;
+}
+
+/* Freeze the first column */
+th:first-child, td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+}
+
+/* Freeze the second column */
+th:nth-child(2), td:nth-child(2) {
+  position: sticky;
+  left: 47.5px; /* Adjust based on column width */
+  /*background-color: #444444;*/
+  z-index: 3;
+}
+
+tbody tr:nth-child(even) {
+    background-color: #0000000b;
+}
+
+/* Add this to your CSS */
+tbody tr:nth-child(4) {
+    border-bottom: 2.5px dashed white; /* You can adjust color and style */
+    position: relative;
+}
+
+/* Optional: Add some spacing after the separator */
+tbody tr:nth-child(4)::after {
+    content: '';
+    display: block;
+    height: 10px; /* Adjust spacing as needed */
+    background: transparent;
+}
+
+tbody tr {
+    position: relative;
+    --delay: .1s;
+    transition: .5s ease-in-out var(--delay), background-color 0s;
+    
+}
+
+tbody tr::after {
+    content: '';
+    display: block;
+    height: 10px; /* Adjust the space here */
+    width: 100%;
+    background-color: transparent;
+}
+
+tbody tr.hide {
+    opacity: 0;
+    transform: translateX(100%);
+}
+
+tbody tr:hover {
+    background-color: #fff6 !important;
+}
+
+tbody tr td,
+tbody tr td p,
+tbody tr td img {
+    transition: .2s ease-in-out;
+}
+
+tr td:not(:nth-child(2)):not(:nth-child(13)):not(:nth-child(14)) {
+    background: linear-gradient(180deg, var(--c1), var(--c2));
+}
+
+.logocol {
+    background-color: var(--c3);
+}
+
+tbody tr.hide td,
+tbody tr.hide td p {
+    padding: 0;
+    font: 0 / 0 sans-serif;
+    transition: .2s ease-in-out .5s;
+}
+
+tbody tr.hide td img {
+    width: 0;
+    height: 0;
+    transition: .2s ease-in-out .5s;
+}
+
+.status {
+    padding: 0rem 0;
+    border-radius: 2rem;
+    text-align: center;
+}
+
+.status.delivered {
+    background-color: #86e49d;
+    color: #006b21;
+}
+
+.status.cancelled {
+    background-color: #d893a3;
+    color: #b30021;
+}
+
+.status.pending {
+    background-color: #ebc474;
+}
+
+.status.shipped {
+    background-color: #6fcaea;
+}
+
+
+@media (max-width: 1000px) {
+    td:not(:first-of-type) {
+        min-width: 3rem;
+    }
+}
+
+
+thead th span.icon-arrow {
+    display: inline-block;
+    width: 1.3rem;
+    height: 1.3rem;
+    border-radius: 50%;
+    border: 1.4px solid transparent;
+    
+    text-align: center;
+    font-size: 1rem;
+    
+    margin-left: .5rem;
+    transition: .2s ease-in-out;
+}
+
+thead th:hover span.icon-arrow{
+    border: 1.4px solid #8a0053;
+}
+
+.team-name {
+    text-transform: uppercase;
+    font-weight: bold;
+}
+
+.table th, .table td {
+    padding: 0.50rem;
+}
+
+thead th:hover {
+    color: #8a0053;
+}
+
+thead th.active span.icon-arrow{
+    background-color: #8a0053;
+    color: #fff;
+}
+
+thead th.asc span.icon-arrow{
+    transform: rotate(180deg);
+}
+
+thead th.active,tbody td.active {
+    color: #8a0053;
+}
+
+.position-indicatorQ {
+            position: absolute;
+            display: none; /* Change this to make it visible */
+            top: 0;
+            left: 0;
+            width: 2.4rem; /* Adjust the size */
+            height: 2.4rem;
+            padding: 0px;
+            transform: translate(-1.2rem, -1.2rem);
+            z-index: 1;
+            background-color: #006400; /* You can modify color */
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.6rem;
+			clip-path: polygon(50% 50%, 100% 50%, 100% 100%, 50% 100%);
+        }
+.position-indicatorQ span {
+    position: relative;
+    bottom: -0.4rem; /* Adjust this to move Q vertically */
+    right: -0.4rem; /* Adjust this to move Q horizontally */
+}
+
+.position-indicatorE {
+            position: absolute;
+            display: none; /* Change this to make it visible */
+            top: 0;
+            left: 0;
+            width: 2.4rem; /* Adjust the size */
+            height: 2.4rem;
+            padding: 0px;
+            transform: translate(-1.2rem, -1.2rem);
+            z-index: 1;
+            background-color: #7d0000; /* You can modify color */
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.6rem;
+			clip-path: polygon(50% 50%, 100% 50%, 100% 100%, 50% 100%);
+        }
+.position-indicatorE span {
+    position: relative;
+    bottom: -0.4rem; /* Adjust this to move Q vertically */
+    right: -0.4rem; /* Adjust this to move Q horizontally */
+}
+
+.export__file {
+    position: relative;
+}
+
+.export__file .export__file-btn {
+    display: inline-block;
+    width: 2rem;
+    height: 2rem;
+    background: #fff6 url(images/export.png) center / 80% no-repeat;
+    border-radius: 50%;
+    transition: .2s ease-in-out;
+}
+
+.export__file .export__file-btn:hover { 
+    background-color: #fff;
+    transform: scale(1.15);
+    cursor: pointer;
+}
+
+.export__file input {
+    display: none;
+}
+
+.export__file .export__file-options {
+    position: absolute;
+    right: 0;
+    
+    width: 12rem;
+    border-radius: .5rem;
+    overflow: hidden;
+    text-align: center;
+
+    opacity: 0;
+    transform: scale(.8);
+    transform-origin: top right;
+    
+    box-shadow: 0 .2rem .5rem #0004;
+    
+    transition: .2s;
+}
+
+.export__file input:checked + .export__file-options {
+    opacity: 1;
+    transform: scale(1);
+    z-index: 100;
+}
+
+.export__file .export__file-options label{
+    display: block;
+    width: 100%;
+    padding: .6rem 0;
+    background-color: #f2f2f2;
+    
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+
+    transition: .2s ease-in-out;
+}
+
+.export__file .export__file-options label:first-of-type{
+    padding: 1rem 0;
+    background-color: #86e49d !important;
+}
+
+.export__file .export__file-options label:hover{
+    transform: scale(1.05);
+    background-color: #fff;
+    cursor: pointer;
+}
+
+.export__file .export__file-options img{
+    width: 2rem;
+    height: auto;
+}
+
+.position-flex {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 0.01rem;
+}
+.pos-rank {
+    font-weight: bold;
+    font-size: 1em;
+    margin-bottom: 0.1em;
+}
+.rank-indicator-row {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15em;
+    font-size: 0.95em;
+}
+.rank-arrow.up {
+    color: #2ecc40;
+    font-size: 0.9em;
+}
+.rank-arrow.down {
+    color: #ff4136;
+    font-size: 0.9em;
+}
+.rank-arrow.same {
+    color: #888;
+    font-size: 0.9em;
+}
+.rank-diff.up {
+    color: #2ecc40;
+    font-size: 0.9em;
+}
+.rank-diff.down {
+    color: #ff4136;
+    font-size: 0.9em;
+}
+.rank-diff.same {
+    color: #888;
+    font-size: 0.9em;
+}
+.rank-diff.invisible {
+    visibility: hidden;
+}
+
+/* Fading effect to the right of the 2nd column when scrolled */
+.fade-right {
+    position: relative;
+}
+.table__body.scrolled .fade-right::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 6em;
+    width: 24px;
+    height: 100%;
+    pointer-events: none;
+    z-index: 10;
+    background: linear-gradient(to left, rgba(68,68,68,0.0), rgba(68,68,68,0.40), rgba(68, 68, 68, 0.75), rgba(68,68,68,0));
+}
+
+.box-green        { background-color: #1fa940 !important; color: #fff !important; }
+.box-lightgreen   { background-color: #90ee90 !important; color: #fff !important; }
+.box-yellowgreen  { background-color: #c6e46b !important; color: #fff !important; }
+.box-yellow       { background-color: #ffe066 !important; color: #fff !important; }
+.box-orange       { background-color: #ffb347 !important; color: #fff !important; }
+.box-lightred     { background-color: #ff7f7f !important; color: #fff !important; }
+.box-red          { background-color: #ff4d4d !important; color: #fff !important; }

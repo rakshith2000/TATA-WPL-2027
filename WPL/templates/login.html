@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block head %}
+{{ super() }}
+<title>Admin Login | WPL 2027</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='extended_beauty.css') }}" />
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/login.css') }}">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+
+{% macro flashes() %}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for cat, msg in messages %}
+                {% if cat in ['error', 'success', 'warning'] %}
+                {% set icon = 'error_outline' if cat == 'error' else ('check_circle_outline' if cat == 'success' else 'warning') %}
+                <div class="alert lg-alert lg-alert--{{ cat }} fade show" role="alert">
+                    <span class="material-icons-round lg-alert__icon">{{ icon }}</span>
+                    <div>{{ msg }}</div>
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                {% endif %}
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+{% endmacro %}
+
+<div class="lg-page">
+    <div class="lg-card">
+
+        <header class="lg-head">
+            <div class="lg-head__mark">
+                <img src="{{ url_for('static', filename='images/WPL-Logo.png') }}" alt="TATA WPL 2027">
+            </div>
+            <h1 class="lg-head__title">Admin Sign In</h1>
+            <p class="lg-head__sub">Sign in to update results, awards and standings</p>
+            <span class="lg-badge">
+                <span class="material-icons-round">lock</span>Authorised users only
+            </span>
+        </header>
+
+        <form class="lg-form" method="POST" action="/login">
+
+            {{ flashes() }}
+
+            <div class="lg-field">
+                <label for="email">Account</label>
+                <select id="email" name="email" required>
+                    <option value="" disabled selected>Select your account&hellip;</option>
+                    {% for user in users %}
+                    <option value="{{ user.email }}">{{ user.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="lg-field">
+                <label for="password">Password</label>
+                <div class="lg-input-wrap">
+                    <input type="password" id="password" name="password"
+                           placeholder="Enter your password" autocomplete="current-password" required>
+                    <button type="button" class="lg-reveal" id="revealBtn"
+                            aria-label="Show password" aria-pressed="false">
+                        <span class="material-icons-round" id="revealIcon">visibility</span>
+                    </button>
+                </div>
+            </div>
+
+            <label class="lg-check" for="remember">
+                <input type="checkbox" id="remember" name="remember">
+                <span>Keep me signed in</span>
+            </label>
+
+            <button type="submit" class="lg-btn lg-btn--primary">
+                <span class="material-icons-round">login</span>Log in
+            </button>
+
+            <div class="lg-or">or</div>
+
+            <button type="button" class="lg-btn lg-btn--ghost" id="bioBtn"
+                    onclick="biometricLogin()" disabled
+                    title="Pick your account first">
+                <span class="material-icons-round">fingerprint</span>Use biometric
+            </button>
+
+        </form>
+
+        <p class="lg-foot">
+            <a href="{{ url_for('main.index') }}">
+                <span class="material-icons-round">arrow_back</span>Back to WPL 2027
+            </a>
+        </p>
+
+    </div>
+</div>
+
+<script>
+    (function () {
+        // Password reveal
+        var input = document.getElementById('password');
+        var btn = document.getElementById('revealBtn');
+        var icon = document.getElementById('revealIcon');
+        if (input && btn) {
+            btn.addEventListener('click', function () {
+                var shown = input.type === 'text';
+                input.type = shown ? 'password' : 'text';
+                icon.textContent = shown ? 'visibility' : 'visibility_off';
+                btn.setAttribute('aria-label', shown ? 'Show password' : 'Hide password');
+                btn.setAttribute('aria-pressed', String(!shown));
+                input.focus();
+            });
+        }
+
+        // biometricLogin() posts the #email value; with nothing picked the
+        // server replies 400 and the helper fails silently. Gate the button.
+        var email = document.getElementById('email');
+        var bio = document.getElementById('bioBtn');
+        if (email && bio) {
+            var sync = function () {
+                bio.disabled = !email.value;
+                bio.title = email.value ? '' : 'Pick your account first';
+            };
+            email.addEventListener('change', sync);
+            sync();
+        }
+    })();
+</script>
+
+{% endblock %}

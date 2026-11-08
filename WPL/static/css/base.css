@@ -1,0 +1,627 @@
+/* ============================================================
+   Design tokens
+   ============================================================ */
+:root {
+  --nav-pink-1: #b8006a;
+  --nav-pink-2: #8a0053;
+  --nav-pink-3: #62003a;
+  --nav-gold: #ffca08;
+  --nav-cyan: #29c5e8;
+  --nav-danger: #ff8ab0;
+  --nav-ink: #ffffff;
+  --nav-ink-dim: rgba(255, 255, 255, 0.76);
+  --nav-line: rgba(255, 255, 255, 0.14);
+  --nav-pad-l: 40px;
+  --nav-pad-r: 20px;
+  --nav-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* Global Styles */
+      body {
+        font-family: 'Exo 2', sans-serif;
+        background: linear-gradient(145deg, #ffeef7, #fff5fa);
+        margin: 0;
+        padding: 0;
+      }
+       body::-webkit-scrollbar {
+        width: 3px;
+        height: 10px;
+    }
+
+    body::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, .1);
+        border-radius: 10px;
+    }
+
+    body::-webkit-scrollbar-thumb {
+        background-color: #ff8ab0;
+        border-radius: 10px;
+    }
+
+    body::-webkit-scrollbar-thumb:hover {
+        background-color: #f7b733;
+    }
+
+      /* ============================================================
+         Navbar shell
+         ============================================================ */
+      nav.navbar {
+        /* One layer now: the brand burst moved to ::before, where it can carry
+           a mask of its own. It used to ride here as a second background layer
+           alongside the gradient, which meant the two had to stay in step
+           whenever a page re-positioned either of them — and a mask applies to
+           a whole element, so there was no way to fade one layer and not the
+           other. Nothing overrides the navbar background any more, so the
+           coupling is gone with it. */
+        background-image:
+          linear-gradient(135deg, #d2007b 0%, var(--nav-pink-1) 28%, var(--nav-pink-2) 62%, var(--nav-pink-3) 100%);
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        -webkit-backdrop-filter: blur(14px) saturate(140%);
+        backdrop-filter: blur(14px) saturate(140%);
+        color: white;
+        padding: 10px var(--nav-pad-r) 10px var(--nav-pad-l);
+        position: fixed;
+        width: 100%;
+        top: 0;
+        left: 0;
+        overflow: visible; /* allow dropdowns to overflow instead of being clipped */
+        z-index: 1000;
+        border-bottom: 1px solid var(--nav-line);
+        /* inset top sheen + outer elevation */
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12),
+                    0 6px 24px rgba(40, 2, 23, 0.28);
+        transform: translateZ(0); /* own layer: avoids repaint artifacts under the fixed bar */
+        transition: box-shadow 260ms var(--nav-ease), border-color 260ms var(--nav-ease);
+      }
+
+      /* ---------------------------------------------------------------
+         The brand burst behind the wordmark.
+
+         Same artwork as the home-page hero, and it has to do the opposite
+         job here: on the hero the logo sits on an opaque disc in the middle
+         of the burst, where there is room for both. A 66px bar has no such
+         room, so instead the burst is cleared out from the centre and only
+         its shards are kept, fanning out around the logo.
+
+         That is what the mask does, in one radial gradient measured from the
+         middle of the wordmark, which sits at 75px across and halfway down:
+
+           0 -> 52px    transparent — the hole the logo reads through. The
+                        wordmark is 70x38 from x=40, so 52 clears its corners.
+           52 -> 82px   ramping up
+           82 -> 104px  solid — the shards
+           104 -> 130px ramping back out. 130 puts the last of it at x=205,
+                        short of the first nav link at 226, so the burst
+                        dissolves into the gradient instead of stopping at a
+                        visible edge or crowding the links.
+
+         The element is the full height of the bar and the artwork is sized
+         past it, so the box itself crops the burst top and bottom — no shard
+         escapes under the page. z-index -1 keeps it over the gradient and
+         under the links; the navbar is already its own stacking context
+         (translateZ above), so it cannot slip behind the bar entirely.
+         --------------------------------------------------------------- */
+      nav.navbar::before {
+        content: "";
+        position: absolute;
+        z-index: -1;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 260px;
+        pointer-events: none;
+        /* 210px wide puts the artwork's own hollow middle over the wordmark,
+           and -30px from the left centres it on x=75 to match the mask. */
+        background: url("/static/images/headers/orange-full-circle.png")
+                    left -30px center / 210px auto no-repeat;
+        opacity: 0.85;
+        -webkit-mask-image: radial-gradient(circle at 75px 50%,
+                      transparent 0, transparent 52px,
+                      #000 82px, #000 104px, transparent 130px);
+        mask-image: radial-gradient(circle at 75px 50%,
+                      transparent 0, transparent 35px,
+                      #000 65px, #000 104px, transparent 130px);
+      }
+
+      /* The mask is what keeps the artwork off the wordmark, so without it the
+         burst would cover the logo rather than frame it. Drop the decoration
+         instead; the gradient alone is the design it falls back to. */
+      @supports not ((-webkit-mask-image: radial-gradient(#000, #000)) or
+                     (mask-image: radial-gradient(#000, #000))) {
+        nav.navbar::before { display: none; }
+      }
+
+      /* Thin accent line along the bottom edge */
+      nav.navbar::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: -1px;
+        height: 2px;
+        background: linear-gradient(90deg,
+          transparent 0%,
+          rgba(247, 79, 195, 0.85) 18%,
+          rgba(255, 202, 8, 0.85) 55%,
+          transparent 95%);
+        opacity: 0.55;
+        pointer-events: none;
+        transition: opacity 260ms var(--nav-ease);
+      }
+
+      /* Denser, more grounded bar once the page is scrolled */
+      nav.navbar.is-scrolled {
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16),
+                    0 10px 34px rgba(40, 2, 23, 0.45);
+        border-bottom-color: rgba(255, 255, 255, 0.20);
+      }
+      nav.navbar.is-scrolled::after {
+        opacity: 1;
+      }
+
+      @media (max-width: 991px) {
+  /* The bar keeps its full-bleed gradient; only the burst needs resizing,
+     and it is a layer of its own now rather than a second background. */
+  /*nav.navbar::before {
+    width: 260px;
+    background-position: left -26px center;
+    background-size: 168px auto;
+    -webkit-mask-image: radial-gradient(circle at 64px 50%,
+                  transparent 0, transparent 38px,
+                  #000 64px, #000 86px, transparent 136px);
+    mask-image: radial-gradient(circle at 64px 50%,
+                  transparent 0, transparent 30px,
+                  #000 64px, #000 86px, transparent 136px);
+  }*/
+  .navbar-collapse {
+    width: 100vw !important;
+    margin-left: calc(-1 * var(--nav-pad-l)); /* negate navbar left padding */
+    margin-right: calc(-1 * var(--nav-pad-r)); /* negate navbar right padding */
+    left: 0;
+    right: 0;
+    border-radius: 0 0 22px 22px;
+    padding: 6px 14px 14px;
+    margin-top: 10px;
+    border-top: 1px solid var(--nav-line);
+    background: linear-gradient(180deg, rgba(130, 9, 78, 0.98), rgba(92, 4, 55, 0.99));
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+    backdrop-filter: blur(18px) saturate(140%);
+    box-shadow: 0 18px 40px rgba(40, 2, 23, 0.45);
+  }
+}
+
+      /* ============================================================
+         Brand
+         ============================================================ */
+      nav a.navbar-brand {
+        font-family: 'Exo 2', sans-serif;
+        font-weight: 700;
+        color: white;
+        text-transform: uppercase;
+        display: flex;
+        align-items: center;
+        transition: transform 240ms var(--nav-ease), filter 240ms var(--nav-ease);
+      }
+      nav a.navbar-brand img {
+        filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.35));
+        transition: transform 240ms var(--nav-ease);
+      }
+      nav a.navbar-brand:hover img,
+      nav a.navbar-brand:focus img {
+        transform: scale(1.06);
+      }
+      nav a.navbar-brand:active {
+        transform: translateY(1px);
+      }
+
+      .extra-pr-100 {
+        padding-right: 100px;
+      }
+
+      .extra-pr-60 {
+        padding-right: 60px;
+      }
+
+      .pl-40 {
+        padding-left: 40px;
+      }
+
+      /* ============================================================
+         Navbar links
+         ============================================================ */
+      /* `nav.navbar ...` keeps this above Bootstrap's
+         `.navbar-expand-lg .navbar-nav .nav-link` padding. */
+      nav.navbar .navbar-nav .nav-link {
+        color: var(--nav-ink-dim) !important;
+        font-family: 'Exo 2', sans-serif;
+        font-size: 0.95rem !important;
+        font-weight: 600;
+        letter-spacing: 0.045em;
+        padding: 9px 15px;
+        border-radius: 12px;
+        position: relative;
+        text-decoration: none;
+        background: transparent;
+        transition: color 200ms var(--nav-ease), background-color 200ms var(--nav-ease),
+                    transform 160ms var(--nav-ease);
+      }
+
+      /* Sliding underline indicator (width is padding-independent) */
+      nav.navbar .navbar-nav .nav-link::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        bottom: 5px;
+        width: 62%;
+        height: 2px;
+        border-radius: 2px;
+        background: linear-gradient(90deg, var(--nav-cyan), var(--nav-gold));
+        transform: translateX(-50%) scaleX(0);
+        transition: transform 280ms var(--nav-ease);
+        pointer-events: none;
+      }
+
+      nav.navbar .navbar-nav .nav-link:hover,
+      nav.navbar .navbar-nav .nav-link:focus {
+        color: var(--nav-ink) !important;
+        background-color: rgba(255, 255, 255, 0.10);
+      }
+      nav.navbar .navbar-nav .nav-link:active {
+        transform: translateY(1px);
+      }
+      nav.navbar .navbar-nav .nav-link:hover::after,
+      nav.navbar .navbar-nav .nav-link:focus::after,
+      nav.navbar .navbar-nav .nav-link.active::after {
+        transform: translateX(-50%) scaleX(1);
+      }
+
+      /* Current page */
+      nav.navbar .navbar-nav .nav-link.active,
+      nav.navbar .navbar-nav .nav-item .nav-link.active {
+        color: var(--nav-ink) !important;
+        background-color: rgba(255, 255, 255, 0.13);
+      }
+      nav.navbar .navbar-nav .nav-link.active::after {
+        background: linear-gradient(90deg, var(--nav-gold), #ffa726);
+      }
+
+      nav.navbar .navbar-nav .nav-link:focus-visible {
+        outline: 2px solid rgba(255, 255, 255, 0.65);
+        outline-offset: 2px;
+      }
+
+      /* LIVE link: pulsing status dot.
+         Laid out in flow (not absolutely placed) so page-level
+         padding overrides can never push it over the label. */
+      nav.navbar .navbar-nav .nav-link--live {
+        display: inline-flex;
+        align-items: center;
+      }
+      nav.navbar .navbar-nav .nav-link--live::before {
+        content: "";
+        flex: 0 0 auto;
+        width: 7px;
+        height: 7px;
+        margin-right: 8px;
+        border-radius: 50%;
+        background: #ff5252;
+        box-shadow: 0 0 0 0 rgba(255, 82, 82, 0.65);
+        animation: navLivePulse 1.8s ease-out infinite;
+      }
+      @keyframes navLivePulse {
+        0%   { box-shadow: 0 0 0 0 rgba(255, 82, 82, 0.6); }
+        70%  { box-shadow: 0 0 0 8px rgba(255, 82, 82, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(255, 82, 82, 0); }
+      }
+
+      /* Remove old button styles from nav links */
+      nav a.btn {
+        background: none !important;
+        color: inherit !important;
+        box-shadow: none !important;
+        border: none !important;
+        font-size: inherit !important;
+        font-weight: inherit !important;
+        border-radius: 0 !important;
+        padding: 0 !important;
+        margin-right: 0 !important;
+      }
+
+      .nav-item{
+        margin-right: 4px;
+      }
+
+      /* ============================================================
+         Hamburger toggler (animates into an X)
+         ============================================================ */
+      nav.navbar .navbar-toggler {
+        border: 1px solid var(--nav-line);
+        border-radius: 12px;
+        padding: 9px 11px;
+        background: rgba(255, 255, 255, 0.07);
+        box-shadow: none !important;
+        outline: none !important;
+        transition: background-color 200ms var(--nav-ease), border-color 200ms var(--nav-ease),
+                    transform 140ms var(--nav-ease);
+      }
+      nav.navbar .navbar-toggler:hover {
+        background: rgba(255, 255, 255, 0.14);
+      }
+      nav.navbar .navbar-toggler:active {
+        transform: scale(0.94);
+      }
+      nav.navbar .navbar-toggler:focus-visible {
+        outline: 2px solid rgba(255, 255, 255, 0.65) !important;
+        outline-offset: 2px;
+      }
+
+      nav.navbar .navbar-toggler .navbar-toggler-icon {
+        display: block;
+        position: relative;
+        width: 22px;
+        height: 16px;
+        /* middle bar */
+        background: linear-gradient(#fff, #fff) center center / 22px 2px no-repeat;
+        transition: background-size 200ms var(--nav-ease);
+      }
+      nav.navbar .navbar-toggler .navbar-toggler-icon::before,
+      nav.navbar .navbar-toggler .navbar-toggler-icon::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        width: 22px;
+        height: 2px;
+        border-radius: 2px;
+        background: #fff;
+        transition: transform 280ms var(--nav-ease), top 220ms var(--nav-ease),
+                    bottom 220ms var(--nav-ease);
+      }
+      nav.navbar .navbar-toggler .navbar-toggler-icon::before { top: 0; }
+      nav.navbar .navbar-toggler .navbar-toggler-icon::after  { bottom: 0; }
+
+      nav.navbar .navbar-toggler[aria-expanded="true"] .navbar-toggler-icon {
+        background-size: 0 2px;
+      }
+      nav.navbar .navbar-toggler[aria-expanded="true"] .navbar-toggler-icon::before {
+        top: 7px;
+        transform: rotate(45deg);
+      }
+      nav.navbar .navbar-toggler[aria-expanded="true"] .navbar-toggler-icon::after {
+        bottom: 7px;
+        transform: rotate(-45deg);
+      }
+
+      /* ============================================================
+         Mobile menu panel
+         ============================================================ */
+      @media (max-width: 991px) {
+        /* Inset the accent so it clears the panel's rounded corners */
+        nav.navbar::after {
+          left: 18px;
+          right: 18px;
+          border-radius: 2px;
+        }
+        nav .navbar-nav {
+          padding: 4px 0 2px;
+        }
+        .nav-item {
+          margin-right: 0;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+        }
+        .nav-item:last-child {
+          border-bottom: none;
+        }
+        nav.navbar .navbar-nav .nav-link {
+          padding: 14px 14px;
+          border-radius: 12px;
+          font-size: 1rem !important;
+          display: flex;
+          align-items: center;
+        }
+        /* Underline reads as a left accent bar on mobile */
+        nav.navbar .navbar-nav .nav-link::after {
+          left: 0;
+          right: auto;
+          top: 10px;
+          bottom: 10px;
+          width: 3px;
+          height: auto;
+          border-radius: 3px;
+          transform: scaleY(0);
+          transform-origin: center top;
+          transition: transform 260ms var(--nav-ease);
+        }
+        nav.navbar .navbar-nav .nav-link:hover::after,
+        nav.navbar .navbar-nav .nav-link:focus::after,
+        nav.navbar .navbar-nav .nav-link.active::after {
+          transform: scaleY(1);
+        }
+        nav.navbar .navbar-nav .nav-link--live {
+          display: flex;
+        }
+
+        /* Staggered reveal of the menu rows */
+        .navbar-collapse.show .nav-item,
+        .navbar-collapse.collapsing .nav-item,
+        .navbar-collapse.show .form-inline,
+        .navbar-collapse.collapsing .form-inline {
+          animation: navRowIn 320ms var(--nav-ease) both;
+        }
+        .navbar-collapse.show .nav-item:nth-child(1) { animation-delay: 30ms; }
+        .navbar-collapse.show .nav-item:nth-child(2) { animation-delay: 60ms; }
+        .navbar-collapse.show .nav-item:nth-child(3) { animation-delay: 90ms; }
+        .navbar-collapse.show .nav-item:nth-child(4) { animation-delay: 120ms; }
+        .navbar-collapse.show .nav-item:nth-child(5) { animation-delay: 150ms; }
+        .navbar-collapse.show .form-inline { animation-delay: 180ms; }
+
+        /* Auth buttons sit on their own row, evenly spread */
+        .navbar-collapse .form-inline {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          padding: 12px 2px 4px;
+          margin-top: 6px !important;
+          border-top: 1px solid rgba(255, 255, 255, 0.09);
+        }
+        .navbar-collapse .form-inline .outline-btn {
+          margin-left: 0;
+          flex: 1 1 auto;
+          text-align: center;
+          padding: 11px 14px;
+        }
+      }
+
+      @keyframes navRowIn {
+        from { opacity: 0; transform: translateY(-8px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+
+
+      /* ----- Custom dropdown styles (unique names to avoid Bootstrap overrides) ----- */
+      .custom-dropdown { position: relative; }
+      .custom-dropdown-toggle { cursor: pointer; display: inline-flex; align-items: center; }
+      .custom-dropdown-toggle .fa { color: #fff; margin-left: 8px; font-size: 12px; transition: transform 0.18s ease; }
+      .custom-dropdown.is-open > .custom-dropdown-toggle .fa { transform: rotate(180deg); }
+
+      /* Desktop: absolute overlay menu */
+      @media (min-width: 992px) {
+        .custom-dropdown .custom-dropdown-menu {
+          position: absolute;
+          left: 0;
+          top: calc(100% + 6px);
+          white-space: nowrap;
+          z-index: 2000;
+          background: linear-gradient(180deg, rgba(138, 12, 84, 0.98), rgba(88, 6, 53, 0.98));
+          -webkit-backdrop-filter: blur(16px) saturate(140%);
+          backdrop-filter: blur(16px) saturate(140%);
+          border: 1px solid var(--nav-line);
+          border-radius: 14px;
+          box-shadow: 0 18px 42px rgba(40, 2, 23, 0.45);
+          padding: 6px;
+          opacity: 0;
+          transform: translateY(-8px) scale(0.98);
+          transform-origin: top center;
+          transition: transform 220ms cubic-bezier(.2,.8,.2,1), opacity 180ms ease;
+          visibility: hidden;
+          pointer-events: none;
+        }
+      }
+      /* Mobile: collapsible static menu */
+      @media (max-width: 991px) {
+        .custom-dropdown .custom-dropdown-menu {
+          position: static;
+          max-height: 0;
+          overflow: hidden;
+          opacity: 0;
+          visibility: hidden;
+          background: rgba(255, 255, 255, 0.06);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          padding: 6px;
+          border-radius: 12px;
+          box-shadow: none;
+          transition: max-height 280ms ease, opacity 180ms ease;
+          pointer-events: none;
+        }
+      }
+      .custom-dropdown .custom-dropdown-item {
+        display: block;
+        padding: 10px 14px;
+        color: #ffffff;
+        text-decoration: none;
+        border-radius: 10px;
+        font-style: italic;
+        transition: background-color 160ms var(--nav-ease), transform 140ms var(--nav-ease);
+      }
+      .custom-dropdown .custom-dropdown-item:hover { background: rgba(255, 255, 255, 0.12); transform: translateX(2px); }
+      .custom-dropdown.is-open > .custom-dropdown-menu,
+      .custom-dropdown .custom-dropdown-menu.show {
+        opacity: 1; transform: translateY(0) scale(1); visibility: visible; pointer-events: auto; }
+      @media (max-width: 991px) {
+        .custom-dropdown.is-open > .custom-dropdown-menu { max-height: 800px; opacity: 1; visibility: visible; pointer-events: auto; }
+      }
+
+      /* ============================================================
+         Outline buttons
+         ============================================================ */
+      .outline-btn {
+        display: inline-block;
+        padding: 8px 16px;
+        border-radius: 999px;
+        border: 1px solid rgba(255,255,255,0.20);
+        background: rgba(255, 255, 255, 0.04);
+        color: #fff;
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 0.9rem;
+        letter-spacing: 0.02em;
+        margin-left: 8px;
+        line-height: 1;
+        cursor: pointer;
+        transition: background-color 180ms var(--nav-ease), color 180ms var(--nav-ease),
+                    border-color 180ms var(--nav-ease), box-shadow 180ms var(--nav-ease),
+                    transform 120ms var(--nav-ease);
+      }
+      .outline-btn:hover, .outline-btn:focus {
+        background: rgba(255,255,255,0.14);
+        color: #fff;
+        box-shadow: 0 6px 18px rgba(40, 2, 23, 0.35);
+        transform: translateY(-1px);
+      }
+      .outline-btn:active { transform: translateY(1px); box-shadow: none; }
+      .outline-btn:focus-visible { outline: 2px solid rgba(255,255,255,0.65); outline-offset: 2px; }
+      .outline-btn--accent { border-color: rgba(247, 79, 195,0.55); color: var(--nav-cyan); }
+      .outline-btn--accent:hover { background: rgba(247, 79, 195,0.16); color: var(--nav-cyan); box-shadow: 0 6px 18px rgba(247, 79, 195,0.25); }
+      .outline-btn--danger { border-color: rgba(255,107,129,0.55); color: var(--nav-danger); }
+      .outline-btn--danger:hover { background: rgba(255,107,129,0.16); color: var(--nav-danger); box-shadow: 0 6px 18px rgba(255,107,129,0.25); }
+      .outline-btn--gray { border-color: rgba(197, 176, 190,0.45); color: #c5b0be; }
+      .outline-btn--gray:hover { background: rgba(197, 176, 190,0.16); color: #dccfd8; }
+      .outline-btn--white { border-color: rgba(255,255,255,0.85); color: #fff; }
+      .outline-btn,
+      .outline-btn:hover,
+      .outline-btn:focus {
+        text-decoration: none !important;
+        outline: none;
+      }
+
+      .extra-padding {
+        padding-bottom: 0px!important;
+      }
+
+      @media (max-width: 451px) {
+        .extra-padding {
+          padding-bottom: 70px!important;
+        }
+      }
+
+      /* ============================================================
+         Motion / print
+         ============================================================ */
+      @media (prefers-reduced-motion: reduce) {
+        nav.navbar,
+        nav.navbar::after,
+        nav a.navbar-brand,
+        nav a.navbar-brand img,
+        nav .navbar-nav .nav-link,
+        nav .navbar-nav .nav-link::after,
+        nav.navbar .navbar-toggler,
+        nav.navbar .navbar-toggler .navbar-toggler-icon,
+        nav.navbar .navbar-toggler .navbar-toggler-icon::before,
+        nav.navbar .navbar-toggler .navbar-toggler-icon::after,
+        .custom-dropdown .custom-dropdown-menu,
+        .custom-dropdown .custom-dropdown-item,
+        .outline-btn {
+          transition-duration: 1ms !important;
+        }
+        nav .navbar-nav .nav-link--live::before,
+        .navbar-collapse.show .nav-item,
+        .navbar-collapse.collapsing .nav-item,
+        .navbar-collapse.show .form-inline {
+          animation: none !important;
+        }
+      }
+
+      @media print {
+        nav.navbar { display: none !important; }
+      }

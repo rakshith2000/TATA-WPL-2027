@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+{% block head %}
+{{ super() }}
+<title>WPL 2027 | {{ ('Match ' ~ matchDT.Match_No) if matchDT.Match_No.isdigit() else matchDT.Match_No }}: {{ matchDT.Team_A }} vs {{ matchDT.Team_B }}</title>
+<meta charset="utf-8" />
+<meta name="robots" content="noindex,nofollow" />
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/bottom-nav.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/match-modern.css') }}">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+<script>
+  var match = "{{ match }}";
+  var source = "{{ source }}";
+  var fteam = "{{ fteam }}";
+</script>
+{% endblock %}
+
+{% block content %}
+
+{#  ------------------------------------------------------------------ data #}
+{% set A, B = matchDT.Team_A, matchDT.Team_B %}
+{% set playoff = not matchDT.Match_No.isdigit() %}
+{% set title = matchDT.Match_No if playoff else ('Match ' ~ matchDT.Match_No) %}
+{% set ended = matchDT.Win_T is not none %}
+
+{#  Two brand colours per team, same picks the fixtures list uses for its
+    crests. Anything outside the five franchises (a guest fixture, TBA) falls
+    back to the page accents rather than blowing up the lookup. #}
+{% macro grad(t) -%}
+    {%- set c = clr.get(t) -%}
+    {%- if not c -%}--c1: #ff4fa8; --c2: #c77dff;
+    {%- elif t in ['RCBW', 'MIW'] -%}--c1: {{ c['c3'] }}; --c2: {{ c['c1'] }};
+    {%- elif t == 'UPW' -%}--c1: {{ c['c2'] }}; --c2: {{ c['c3'] }};
+    {%- else -%}--c1: {{ c['c1'] }}; --c2: {{ c['c2'] }};
+    {%- endif -%}
+{%- endmacro %}
+
+{#  The crest prints the abbreviation underneath the logo, so a side without
+    a squad_logos file (a guest fixture, TBA) still reads as a badge. #}
+{% macro crest(t, extra) -%}
+    <span class="mx-crest {{ extra }}" style="{{ grad(t) }}">
+        <img src="/static/images/squad_logos/{{ t }}.png" alt="{{ fn.get(t, t) }} logo"
+             onerror="this.remove();">
+    </span>
+{%- endmacro %}
+
+{#  The masthead tint. UPW and GG lead with a high-key yellow, which is no
+    use as a tint, so they take their second colour here — the same pick the
+    fixtures list makes. #}
+{% macro hue(t) -%}
+    {%- set c = sqclr.get(t) -%}
+    {%- if not c -%}#ff4fa8
+    {%- elif t in ['UPW', 'GG'] -%}{{ c['c2'] }}
+    {%- else -%}{{ c['c1'] }}
+    {%- endif -%}
+{%- endmacro %}
+
+{% set back_href = url_for('main.todayMatch') if source == 'liveMatches'
+                   else (url_for('main.displayFR', fteam=fteam) if fteam and fteam != 'None'
+                         else url_for('main.displayFR')) %}
+{% set back_text = 'Live' if source == 'liveMatches' else 'Matches' %}
+
+<div class="mx-wrap">
+
+    {# ============================================================== hero #}
+    {#- the masthead is the top half of the scoreboard card: identity and
+        meta here, the score itself in #scoreboard-root right underneath -#}
+    <header class="mx-hero"
+            style="--ha: {{ hue(A) | trim }}; --hb: {{ hue(B) | trim }};">
+
+        {#- both crests bleed out of the side edges, turned right down: the
+            header carries the two teams without competing with the score -#}
+        <span class="mx-hero__ghost mx-hero__ghost--l" aria-hidden="true">
+            <img src="/static/images/squad_logos/{{ A }}.png" alt="" onerror="this.remove();">
+        </span>
+        <span class="mx-hero__ghost mx-hero__ghost--r" aria-hidden="true">
+            <img src="/static/images/squad_logos/{{ B }}.png" alt="" onerror="this.remove();">
+        </span>
+
+        <div class="mx-hero__bar">
+            <!--
+            <a class="mx-back" href="{{ back_href }}" title="Back to {{ back_text | lower }}">
+                <span class="material-icons-round">arrow_back</span><span>{{ back_text }}</span>
+            </a>
+            -->
+
+            <span class="mx-tag {{ 'mx-tag--playoff' if playoff }}">{{ title }}</span>
+            <h1 class="mx-hero__title">{{ A }}<i>vs</i>{{ B }}</h1>
+
+            {#- match.js keeps this in step with the feed -#}
+            <span class="mx-state mx-state--{{ 'done' if ended else 'soon' }}" id="mxState">
+                <span class="mx-state__dot"></span>{{ 'Result' if ended else 'Scheduled' }}
+            </span>
+
+            <span class="mx-hero__tools">
+                <button type="button" class="mx-icon-btn" id="mxShare" title="Share this match"
+                        data-title="{{ title }}: {{ fn.get(A, A) }} vs {{ fn.get(B, B) }}">
+                    <span class="material-icons-round">share</span>
+                </button>
+            </span>
+        </div>
+
+        <div class="mx-hero__meta">
+            {#- the when-chip carries the colour in this row; venue and TV stay quiet -#}
+            <span class="mx-hero__when">
+                <span class="material-icons-round">event</span>
+                <b>{{ start.strftime('%a, %d %b %Y') }}</b>
+                <i class="mx-hero__dot">&middot;</i>
+                <em class="mx-hero__time">{{ start.strftime('%I:%M %p').lstrip('0') }}</em>
+                <small>IST</small>
+            </span>
+            <span class="mx-hero__venue">
+                <span class="material-icons-round">place</span><span>{{ matchDT.Venue }}</span>
+            </span>
+            <span class="mx-hero__tv">
+                <span class="material-icons-round">live_tv</span>Star Sports &middot; JioHotstar
+            </span>
+        </div>
+    </header>
+
+    {# ============================================================= board #}
+    {#- server-rendered so the matchup is on screen before the feed answers;
+        match.js swaps in the live scores as soon as the first poll lands -#}
+    <section id="scoreboard-root" class="mx-board" aria-live="polite" aria-label="Scoreboard">
+        <div class="mx-sides">
+            <div class="mx-side">
+                {{ crest(A, '') }}
+                <span class="mx-side__id">
+                    <span class="mx-side__abv">{{ A }}</span>
+                    <span class="mx-side__full">{{ fn.get(A, A) }}</span>
+                </span>
+                <span class="mx-side__score"><span class="mx-wait">&mdash;</span></span>
+            </div>
+            <div class="mx-side">
+                {{ crest(B, '') }}
+                <span class="mx-side__id">
+                    <span class="mx-side__abv">{{ B }}</span>
+                    <span class="mx-side__full">{{ fn.get(B, B) }}</span>
+                </span>
+                <span class="mx-side__score"><span class="mx-wait">&mdash;</span></span>
+            </div>
+        </div>
+
+        <p class="mx-board__info {{ 'mx-board__info--done' if ended and matchDT.Result }}">{{
+            matchDT.Result if ended and matchDT.Result else 'Fetching the latest score…' }}</p>
+    </section>
+
+    {# ========================================================== tab strip #}
+    <div class="mx-tabbar" id="mxTabs">
+        <div class="mx-tabs" role="tablist" aria-label="Match sections">
+            <button type="button" class="mx-tab" role="tab" data-tab="matchInfo"
+                    id="mxTab-matchInfo" aria-controls="tab-content" aria-selected="false">Info</button>
+            <button type="button" class="mx-tab" role="tab" data-tab="liveScore"
+                    id="mxTab-liveScore" aria-controls="tab-content" aria-selected="false">{{ 'Commentary' if ended else 'Live' }}</button>
+            <button type="button" class="mx-tab" role="tab" data-tab="scoreCard"
+                    id="mxTab-scoreCard" aria-controls="tab-content" aria-selected="false">Scorecard</button>
+            <button type="button" class="mx-tab" role="tab" data-tab="Overs"
+                    id="mxTab-Overs" aria-controls="tab-content" aria-selected="false">Overs</button>
+            <button type="button" class="mx-tab" role="tab" data-tab="Graphs"
+                    id="mxTab-Graphs" aria-controls="tab-content" aria-selected="false">Graphs</button>
+            <button type="button" class="mx-tab" role="tab" data-tab="liveSquad"
+                    id="mxTab-liveSquad" aria-controls="tab-content" aria-selected="false">Squad</button>
+        </div>
+
+        {#- only meaningful while the feed is moving; match.js hides it otherwise -#}
+        <div class="mx-live" id="mxRefresh" hidden>
+            <span class="mx-live__age" id="mxAge">just now</span>
+            <button type="button" class="mx-live__btn" id="mxToggle"
+                    aria-pressed="true" title="Pause auto-refresh">
+                <span class="material-icons-round">pause</span>
+            </button>
+        </div>
+    </div>
+
+    {# ============================================================ panels #}
+    <div id="tab-content" class="mx-panel" role="tabpanel" aria-live="polite">
+        <div class="mx-card mx-skel--pad">
+            <div class="mx-skel mx-skel--row"></div>
+            <div class="mx-skel mx-skel--line" style="width: 70%"></div>
+            <div class="mx-skel mx-skel--line" style="width: 45%"></div>
+        </div>
+    </div>
+
+    <p class="mx-note">
+        Scores refresh automatically while the match is on. All times are IST.
+    </p>
+</div>
+
+<nav class="bottom-nav">
+    <div class="bottom-nav-item">
+        <a href="{{ url_for('main.displayFR') }}">
+      <span class="material-icons-round">event</span>
+      <span class="bottom-nav-label">MATCHES</span>
+      </a>
+    </div>
+    <div class="bottom-nav-item">
+        <a href="{{ url_for('main.displayPT') }}">
+      <span class="material-icons-round">table_chart</span>
+      <span class="bottom-nav-label">STANDINGS</span>
+      </a>
+    </div>
+    <div class="bottom-nav-item spacer"></div>
+    <div class="bottom-nav-item live">
+        <a href="{{ url_for('main.displayFR', filter='live') }}">
+      <div class="live-circle"></div>
+      <div class="live-content">
+        <span class="material-icons-round zoomInOut">play_arrow</span>
+        <span class="bottom-nav-label">LIVE</span>
+      </div>
+      </a>
+    </div>
+    <div class="bottom-nav-item spacer"></div>
+    <div class="bottom-nav-item">
+      <a href="{{ url_for('main.teams') }}">
+      <span class="material-icons-round">groups</span>
+      <span class="bottom-nav-label">TEAMS</span>
+      </a>
+    </div>
+    <div class="bottom-nav-item">
+      <a href="{{ url_for('main.battingstats') }}">
+      <span class="material-icons-round">bar_chart</span>
+      <span class="bottom-nav-label">STATS</span>
+      </a>
+    </div>
+  </nav>
+
+<div class="mx-toast" id="mxToast" role="status" aria-live="polite"></div>
+
+<script defer src="{{ url_for('static', filename='js/match.js') }}"></script>
+{% endblock %}

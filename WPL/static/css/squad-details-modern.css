@@ -1,0 +1,1155 @@
+/* ==========================================================================
+   WPL 2027 · Player profile
+   One player — team-tinted hero, career KPI row, and the season-by-season
+   batting and bowling record with a trend column chart per discipline.
+
+   Shares the design language of css/squad-modern.css, css/teams.css,
+   css/pointstable.css and css/fixtures-modern.css: same tokens, same glass
+   surfaces, same team-colour custom properties fed by macros/points.html.
+
+   Desktop (>900px) : seasons as table rows, every stat a column
+   Phone (<=900px)  : the selected season as a key/value card
+   ========================================================================== */
+
+:root {
+  --pd-bg-1: #16060f;
+  --pd-bg-2: #340d24;
+  --pd-ink: #fceef6;
+  --pd-ink-2: #deb6ce;
+  --pd-ink-3: #b587a2;
+  --pd-line: rgba(255, 255, 255, 0.09);
+  --pd-line-2: rgba(255, 255, 255, 0.16);
+  --pd-gold: #ffc247;
+  --pd-green: #2ee27a;
+  --pd-red: #ff6a52;
+  --pd-cyan: #29c5e8;
+  --pd-violet: #c77dff;
+  --pd-face-1: #3d162c;
+  --pd-face-2: #290e1e;
+  --pd-r-lg: 20px;
+  --pd-r-md: 14px;
+  --pd-r-sm: 9px;
+  --pd-nav-h: 72px;
+  --pd-bounce: cubic-bezier(0.34, 1.42, 0.44, 1);
+
+  /* ---- chart tokens -----------------------------------------------------
+     The column fill is the team accent (--brand, from macros/points.html):
+     all ten clear 3:1 against the card surface #301323, checked with the
+     data-viz palette validator. Seasons other than the selected one take the
+     de-emphasis gray — deliberately gray, so the one season being read is the
+     only thing wearing colour. It clears 3:1 on the same surface. */
+  --pd-viz-mute: var(--pd-ink-3);
+  --pd-viz-grid: rgba(255, 255, 255, 0.10);
+  --pd-viz-gap: 2px;        /* surface gap between adjacent columns */
+  --pd-viz-slot: 46px;      /* narrowest a season slot gets before it scrolls;
+                               wide enough for a 4-digit year and a comfortable
+                               hover target */
+}
+
+/* --------------------------------------------------------------- page shell */
+
+body {
+  margin: 0;
+  padding: var(--pd-nav-h) 0 44px;
+  min-height: 100vh;
+  color: var(--pd-ink);
+  font-family: 'Inter', 'Exo 2', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-feature-settings: 'tnum' 1;
+  background-color: var(--pd-bg-1);
+  background-image:
+    radial-gradient(1100px 620px at 10% -10%, rgba(76, 201, 240, 0.22), transparent 60%),
+    radial-gradient(920px 540px at 92% 2%, rgba(205, 88, 255, 0.20), transparent 62%),
+    radial-gradient(1200px 760px at 50% 108%, rgba(46, 226, 122, 0.13), transparent 66%),
+    linear-gradient(180deg, var(--pd-bg-2) 0%, var(--pd-bg-1) 58%, #0d0409 100%);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  overflow-x: hidden;
+}
+
+body::-webkit-scrollbar { width: 6px; }
+body::-webkit-scrollbar-track { background: transparent; }
+body::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--pd-cyan), var(--pd-violet));
+  border-radius: 99px;
+}
+
+.pd-wrap {
+  width: min(1240px, calc(100% - 32px));
+  margin: 0 auto;
+}
+
+.pd-wrap *,
+.pd-wrap *::before,
+.pd-wrap *::after { box-sizing: border-box; }
+
+.pd-wrap a { text-decoration: none; }
+
+.pd-wrap [class*='material-icons'] {
+  display: inline-grid;
+  place-items: center;
+  width: 1em;
+  height: 1em;
+  overflow: hidden;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ------------------------------------------------------- scroller edge fade
+
+   A horizontal scroller gives no hint that anything is off-screen. Each one
+   fades out on whichever side still has content, so the fade means "there is
+   more this way" and its absence means "this is the end" — squad-details.js
+   keeps data-fade in step with scrollLeft.
+
+   Masking rather than a gradient overlay: these are translucent glass panels
+   over the page's own gradient, so there is no single fade colour that would
+   match the background underneath them. */
+
+@property --pd-fade-l { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@property --pd-fade-r { syntax: '<length>'; inherits: false; initial-value: 0px; }
+
+.pd-fade {
+  --pd-fade-l: 0px;
+  --pd-fade-r: 0px;
+  -webkit-mask-image: linear-gradient(90deg,
+    transparent 0, #000 var(--pd-fade-l),
+    #000 calc(100% - var(--pd-fade-r)), transparent 100%);
+  mask-image: linear-gradient(90deg,
+    transparent 0, #000 var(--pd-fade-l),
+    #000 calc(100% - var(--pd-fade-r)), transparent 100%);
+  /* only animates where @property is supported; elsewhere it simply snaps */
+  transition: --pd-fade-l 0.22s ease, --pd-fade-r 0.22s ease;
+}
+
+.pd-fade[data-fade='start'] { --pd-fade-l: 30px; }
+.pd-fade[data-fade='end']   { --pd-fade-r: 30px; }
+.pd-fade[data-fade='both']  { --pd-fade-l: 30px; --pd-fade-r: 30px; }
+
+/* nothing to scroll: drop the mask entirely rather than paint a zero-width one */
+.pd-fade[data-fade='none'] {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+/* ============================================================== breadcrumb */
+
+.pd-crumb {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 16px 2px 0;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--pd-ink-3);
+  overflow: hidden;
+}
+
+.pd-crumb a { color: var(--pd-ink-3); transition: color 0.18s ease; }
+.pd-crumb a:hover { color: #fff; }
+.pd-crumb [class*='material-icons'] { font-size: 15px; opacity: 0.5; }
+
+.pd-crumb span[aria-current] {
+  color: var(--pd-ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ==================================================================== hero */
+
+.pd-hero {
+  position: relative;
+  margin: 12px 0 22px;
+  border: 1px solid var(--pd-line);
+  border-radius: var(--pd-r-lg);
+  overflow: hidden;
+  background: linear-gradient(180deg, var(--pd-face-1), var(--pd-face-2));
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+.pd-hero__art {
+  position: relative;
+  min-height: 250px;
+  padding: 22px 24px 20px;
+  background: radial-gradient(circle at 18% 12%, var(--stage-1) 0%, var(--stage-1) 16%, var(--stage-2) 92%);
+  overflow: hidden;
+}
+
+/* Brand colours run from near-black (RCBW) to high-key yellow (GG), so the band
+   cannot be trusted as a text background. This scrim darkens the side the text
+   sits on and fades out over the cut-out, which keeps the team colour and gives
+   every hero the same contrast. Same trick as the squad page. Left on the
+   default layer: that puts it over the artwork, which is what gives the text
+   its contrast, and still under the cut-out and the name block, which carry a
+   z-index of their own. */
+.pd-hero__art::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(100deg,
+    rgba(16, 4, 11, 0.78) 0%,
+    rgba(16, 4, 11, 0.54) 44%,
+    rgba(16, 4, 11, 0.12) 72%,
+    rgba(16, 4, 11, 0) 100%);
+}
+
+/* the franchise burst as the hero background — see squad-modern.css for why
+   this covers rather than contains */
+.pd-hero__motif {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  background: var(--motif) center center / cover no-repeat;
+  pointer-events: none;
+}
+
+.pd-hero__word {
+  position: absolute;
+  right: 16px;
+  bottom: -22px;
+  z-index: 0;
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-size: clamp(3.4rem, 12vw, 8rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.07);
+  pointer-events: none;
+  user-select: none;
+}
+
+/* the player cut-out, faded into the right edge */
+.pd-hero__photo {
+  position: absolute;
+  right: 18px;
+  bottom: 0;
+  z-index: 1;
+  width: 300px;
+  height: 100%;
+  pointer-events: none;
+}
+
+.pd-hero__photo img {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: bottom right;
+  filter: drop-shadow(0 12px 26px rgba(0, 0, 0, 0.5));
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 34%);
+  mask-image: linear-gradient(90deg, transparent, #000 34%);
+}
+
+/* a missing cut-out falls back to the silhouette, which needs to sit smaller */
+.pd-hero__photo img.is-fallback {
+  width: 52%;
+  height: 72%;
+  right: 22%;
+  opacity: 0.4;
+  filter: grayscale(1);
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+.pd-hero__id {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.pd-crest {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 82px;
+  height: 82px;
+  border-radius: 24px;
+  background: linear-gradient(145deg, var(--team-a, #502a3f), var(--team-b, #301323));
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.26);
+  transition: transform 0.26s var(--pd-bounce);
+}
+
+.pd-crest:hover { transform: translateY(-3px) scale(1.04); }
+.pd-crest img {
+  width: 58px;
+  height: 58px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.45));
+}
+
+.pd-names { min-width: 0; }
+
+.pd-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 99px;
+  background: rgba(22, 6, 15, 0.42);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #fff;
+}
+
+.pd-title {
+  margin: 9px 0 0;
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-size: clamp(1.7rem, 4.6vw, 3rem);
+  font-weight: 800;
+  line-height: 1.02;
+  letter-spacing: -0.025em;
+  color: #fff;
+  text-shadow: 0 3px 16px rgba(0, 0, 0, 0.45);
+}
+
+.pd-title small {
+  display: block;
+  font-size: 0.42em;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  opacity: 0.86;
+}
+
+.pd-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.pd-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 99px;
+  background: rgba(22, 6, 15, 0.42);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.pd-badge b {
+  display: grid;
+  place-items: center;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 5px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.pd-badge img { width: 17px; height: 12px; object-fit: cover; border-radius: 2px; }
+.pd-badge [class*='material-icons'] { font-size: 13px; }
+
+.pd-badge--c  b { background: var(--pd-gold); color: #241a02; }
+.pd-badge--c    { border-color: rgba(255, 194, 71, 0.5); }
+.pd-badge--wk b { background: var(--pd-cyan); color: #04202a; }
+.pd-badge--wk   { border-color: rgba(76, 201, 240, 0.45); }
+.pd-badge--ov   { border-color: rgba(205, 88, 255, 0.45); }
+.pd-badge--ov [class*='material-icons'] { color: var(--pd-violet); }
+
+/* ---- bio strip + paging ---- */
+
+.pd-hero__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--pd-line);
+  background: rgba(22, 6, 15, 0.4);
+}
+
+.pd-bio {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, max-content));
+  gap: 8px 30px;
+  margin: 0;
+  min-width: 0;
+}
+
+.pd-bio__row { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+
+.pd-bio dt {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--pd-ink-3);
+}
+
+.pd-bio dt [class*='material-icons'] { font-size: 14px; }
+.pd-bio dt img { width: 14px; height: 14px; object-fit: contain; opacity: 0.75; }
+
+.pd-bio dd {
+  margin: 0;
+  min-width: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--pd-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pd-bio dd i {
+  margin-left: 7px;
+  font-style: normal;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--pd-ink-3);
+}
+
+.pd-links { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+
+.pd-pager {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--pd-line);
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.pd-pager__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 150px;
+  padding: 5px 10px;
+  border-radius: 99px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--pd-ink-2);
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+.pd-pager__btn:hover { background: rgba(255, 255, 255, 0.12); color: #fff; }
+.pd-pager__btn [class*='material-icons'] { font-size: 17px; flex: none; }
+
+.pd-pager__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.pd-pager__at {
+  padding: 0 7px;
+  font-size: 10.5px;
+  font-weight: 800;
+  color: var(--pd-ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.pd-pager__at i { font-style: normal; opacity: 0.6; }
+
+.pd-jump { display: flex; gap: 8px; }
+
+.pd-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border: 1px solid var(--pd-line-2);
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.07);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--pd-ink);
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.pd-btn:hover,
+.pd-btn:focus-visible {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.pd-btn [class*='material-icons'] { font-size: 16px; }
+
+.pd-btn--primary {
+  border-color: color-mix(in srgb, var(--brand) 58%, transparent);
+  background: color-mix(in srgb, var(--brand) 24%, transparent);
+}
+
+.pd-btn--primary:hover { background: color-mix(in srgb, var(--brand) 42%, transparent); }
+
+/* ============================================================ career KPIs */
+
+/* Flex, not grid: repeat(auto-fit, …) is only legal when every other track is
+   definite, and the leading `auto` for the tag made the whole declaration
+   invalid — which silently dropped the row to one tile per line. */
+.pd-kpis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 26px;
+}
+
+.pd-kpis__tag {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  padding: 10px 14px;
+  border: 1px solid color-mix(in srgb, var(--brand) 40%, transparent);
+  border-radius: var(--pd-r-md);
+  background: color-mix(in srgb, var(--brand) 12%, transparent);
+  font-size: 9.5px;
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--brand);
+}
+
+.pd-kpi {
+  flex: 1 1 84px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 12px 6px;
+  border: 1px solid var(--pd-line);
+  border-radius: var(--pd-r-md);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.025));
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+/* Proportional figures on the big numbers — tabular only where digits have to
+   line up vertically, which is the tables further down, not these. */
+.pd-kpi b {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1;
+  color: #fff;
+}
+
+.pd-kpi span {
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--pd-ink-3);
+  text-align: center;
+}
+
+.pd-kpi--accent { border-color: color-mix(in srgb, var(--brand) 45%, transparent); }
+.pd-kpi--accent b { color: var(--brand); }
+
+/* =============================================================== sections */
+
+.pd-sec { margin-bottom: 30px; }
+
+.pd-sec__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.pd-sec__icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  background: linear-gradient(145deg, var(--team-a, #502a3f), var(--team-b, #301323));
+  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+.pd-sec__icon [class*='material-icons'] { font-size: 19px; }
+
+.pd-sec__title {
+  margin: 0;
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-size: clamp(1.1rem, 3vw, 1.4rem);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #fff;
+}
+
+.pd-sec__line {
+  flex: 1 1 auto;
+  height: 1px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--brand) 60%, transparent), transparent);
+}
+
+/* ====================================================== the season filter */
+
+/* One filter row, above everything it scopes: the chips drive both disciplines,
+   their charts and their tables, so they never sit inside a chart card. */
+.pd-ctl { margin-bottom: 16px; }
+
+.pd-ctl__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--pd-line);
+  border-radius: var(--pd-r-md);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.pd-ctl__label {
+  flex: none;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pd-ink-3);
+}
+
+/* One row that scrolls, not a block that reflows. A long career is already a
+   dozen-plus seasons and grows by one every year; wrapped onto four lines the
+   filter would push the charts off the first screen. */
+.pd-chips {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  min-width: 0;
+  overflow-x: auto;
+  padding-block: 3px;            /* the focus ring would otherwise be clipped */
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+.pd-chips::-webkit-scrollbar { height: 6px; }
+.pd-chips::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); border-radius: 99px; }
+.pd-chips::-webkit-scrollbar-thumb {
+  background: linear-gradient(90deg, var(--pd-cyan), var(--pd-violet));
+  border-radius: 99px;
+}
+
+.pd-chip {
+  flex: none;
+  scroll-snap-align: start;
+  padding: 6px 13px;
+  border: 1px solid var(--pd-line-2);
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.05);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--pd-ink-2);
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+
+.pd-chip:hover { background: rgba(255, 255, 255, 0.12); color: #fff; }
+
+.pd-chip[aria-selected='true'] {
+  border-color: color-mix(in srgb, var(--brand) 62%, transparent);
+  background: color-mix(in srgb, var(--brand) 26%, transparent);
+  color: #fff;
+}
+
+.pd-chip:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+/* ================================================= one pane per discipline */
+
+.pd-panes { display: grid; gap: 18px; }
+
+.pd-pane {
+  border: 1px solid var(--pd-line);
+  border-radius: var(--pd-r-lg);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.035));
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.09);
+  overflow: hidden;
+}
+
+.pd-pane__head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--pd-line);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.pd-pane__title {
+  margin: 0;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #fff;
+}
+
+.pd-pane__sub {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--pd-ink-3);
+}
+
+.pd-pane__sub b { color: var(--pd-ink-2); font-variant-numeric: tabular-nums; }
+
+/* ===================================================== season trend chart */
+
+/* The container grows with its content: value band + plot band + season band,
+   so the x labels always travel with the plot instead of being cropped. */
+.pd-viz {
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid var(--pd-line);
+}
+
+.pd-viz__cap {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--pd-ink-3);
+}
+
+/* Plot and axis scroll inside ONE box. Scrolling them separately would let a
+   season label drift away from the column it belongs to, which is worse than
+   not scrolling at all. */
+.pd-viz__scroll {
+  overflow-x: auto;
+  /* overflow clips to the padding box, and the hover tooltip sits above the
+     tallest column — this is the headroom that keeps it from being cut off */
+  padding-top: 34px;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+.pd-viz__scroll::-webkit-scrollbar { height: 8px; }
+.pd-viz__scroll::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); }
+.pd-viz__scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(90deg, var(--pd-cyan), var(--pd-violet));
+  border-radius: 99px;
+}
+
+/* max-content so the columns keep their minimum slot and the box scrolls;
+   min-width so they spread to fill the pane when a career is still short */
+.pd-plot,
+.pd-axis {
+  width: max-content;
+  min-width: 100%;
+}
+
+/* a single hairline baseline, solid and recessive — no dashes, no gridlines */
+.pd-plot {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--pd-viz-gap);
+  height: 108px;
+  padding-bottom: 1px;
+  border-bottom: 1px solid var(--pd-viz-grid);
+}
+
+/* The top band is reserved on EVERY column, labelled or not, so each one's
+   plot area is identical. Without it the label is a flex sibling that shrinks
+   the fill beside it, and a labelled column draws shorter than an unlabelled
+   one holding a smaller number — the bars stop meaning what they measure. */
+.pd-col {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  flex: 1 0 var(--pd-viz-slot);      /* grows to fill, never shrinks past the slot */
+  min-width: 0;
+  height: 100%;
+  padding: 15px 0 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  cursor: default;
+}
+
+/* The hit target is the whole slot, not the painted column, so a 3-run season
+   is as easy to hover as a 600-run one. */
+.pd-col__fill {
+  flex: none;                        /* never let the label steal its height */
+  width: 100%;
+  max-width: 24px;
+  margin: 0 auto;
+  min-height: 2px;
+  border-radius: 4px 4px 0 0;        /* rounded data-end, square on the baseline */
+  background: var(--pd-viz-mute);
+  transition: background 0.2s ease, height 0.45s var(--pd-bounce);
+}
+
+.pd-col[data-on='1'] .pd-col__fill { background: var(--brand); }
+
+.pd-col:hover .pd-col__fill { background: var(--brand); filter: brightness(1.15); }
+
+/* Value on the cap — only for the selected season and the career best, so the
+   chart never carries a number on every column. Labels wear text tokens, never
+   the series colour: a gold number above a gray column reads as if the two
+   belonged together. The coloured column beside the text carries identity. */
+.pd-col__val {
+  position: absolute;                /* sits in the reserved band, out of flow */
+  left: 0;
+  right: 0;
+  top: 1px;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  text-align: center;
+  color: var(--pd-ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.pd-col[data-on='1'] .pd-col__val { color: var(--pd-ink); }
+
+.pd-axis {
+  display: flex;
+  gap: var(--pd-viz-gap);
+  margin-top: 7px;
+}
+
+/* identical flex sizing to .pd-col, or the labels stop lining up */
+.pd-axis span {
+  flex: 1 0 var(--pd-viz-slot);
+  min-width: 0;
+  font-size: 9.5px;
+  font-weight: 700;
+  text-align: center;
+  color: var(--pd-ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.pd-axis span[data-on='1'] { color: var(--pd-ink); }
+
+/* hover tooltip — enhances, never gates: every value is in the table below */
+.pd-col__tip {
+  --tx: -50%;
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 6px);
+  z-index: 4;
+  transform: translateX(var(--tx)) translateY(3px);
+  padding: 5px 9px;
+  border: 1px solid var(--pd-line-2);
+  border-radius: 8px;
+  background: #240b1a;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5);
+  font-size: 10.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  color: #fff;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+
+/* A centred tooltip on the end columns sticks out past the plot, and inside a
+   scroll container that counts as scrollable width — enough to make a chart
+   that fits report itself as scrollable and show a stray scrollbar. The two
+   end columns anchor theirs inwards instead. */
+.pd-col:first-child .pd-col__tip { --tx: 0; left: 0; }
+.pd-col:last-child  .pd-col__tip { --tx: 0; left: auto; right: 0; }
+
+.pd-col__tip b { color: #fff; }
+
+.pd-col:hover .pd-col__tip,
+.pd-col:focus-visible .pd-col__tip {
+  opacity: 1;
+  transform: translateX(var(--tx)) translateY(0);
+}
+
+.pd-col:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 6px; }
+
+/* ====================================================== the season tables */
+
+.pd-scroll {
+  overflow-x: auto;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+.pd-scroll::-webkit-scrollbar { height: 8px; }
+.pd-scroll::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); }
+.pd-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(90deg, var(--pd-cyan), var(--pd-violet));
+  border-radius: 99px;
+}
+
+.pd-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.pd-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  padding: 11px 9px;
+  background: linear-gradient(180deg, #3d162c 0%, #331225 100%);
+  border-bottom: 1px solid var(--pd-line-2);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--pd-ink-3);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.pd-table thead th abbr {
+  text-decoration: none;
+  border-bottom: 1px dotted rgba(255, 255, 255, 0.22);
+  cursor: help;
+  color: inherit;
+}
+
+.pd-table tbody td {
+  padding: 10px 9px;
+  text-align: center;
+  white-space: nowrap;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.055);
+  background-color: var(--row-bg, transparent);
+  transition: background-color 0.22s ease;
+}
+
+.pd-table tbody tr:last-child td { border-bottom: 0; }
+.pd-table tbody tr:hover td { background-image: linear-gradient(90deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.035)); }
+
+/* the season column is frozen, so its cells have to be opaque */
+.pd-table th:first-child,
+.pd-table td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  width: 92px;
+  min-width: 92px;
+  text-align: left;
+  padding-left: 16px;
+  background-color: var(--row-bg, #311424);
+}
+
+.pd-table thead th:first-child { z-index: 7; background: linear-gradient(180deg, #3d162c 0%, #331225 100%); }
+
+.pd-table tbody tr { --row-bg: #311424; }
+
+/* career row: the totals line, pinned to the top and tinted */
+.pd-table tbody tr.is-career { --row-bg: #441b32; }
+.pd-table tbody tr.is-career td { font-weight: 800; color: #fff; border-bottom: 1px solid var(--pd-line-2); }
+
+/* the season the filter is on */
+.pd-table tbody tr.is-on { --row-bg: color-mix(in srgb, var(--brand) 20%, #311424); }
+.pd-table tbody tr.is-on td:first-child { box-shadow: inset 3px 0 0 var(--brand); }
+
+.pd-year { font-weight: 800; color: #fff; }
+
+.pd-team {
+  display: inline-block;
+  margin-left: 7px;
+  padding: 2px 6px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: var(--pd-ink-2);
+  vertical-align: middle;
+}
+
+/* ---- phone: the selected season as a key/value card ---- */
+
+.pd-kv { display: none; }
+
+.pd-kv__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(74px, 1fr));
+  gap: 1px;
+  background: var(--pd-line);
+}
+
+.pd-kv__cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 6px;
+  background: #2f1223;
+}
+
+.pd-kv__cell b {
+  font-size: 1.05rem;
+  font-weight: 800;
+  line-height: 1;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+
+.pd-kv__cell span {
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--pd-ink-3);
+  text-align: center;
+}
+
+/* ============================================================ empty states */
+
+.pd-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 44px 24px;
+  border: 1px dashed var(--pd-line-2);
+  border-radius: var(--pd-r-lg);
+  background: rgba(255, 255, 255, 0.03);
+  text-align: center;
+}
+
+.pd-empty [class*='material-icons'] { font-size: 34px; color: var(--pd-ink-3); }
+
+.pd-empty__title {
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+.pd-empty__text {
+  max-width: 46ch;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--pd-ink-3);
+}
+
+.pd-note {
+  margin: 14px 2px 0;
+  font-size: 11.5px;
+  line-height: 1.7;
+  color: var(--pd-ink-3);
+}
+
+/* ============================================================== responsive */
+
+@media (max-width: 900px) {
+  .pd-scroll { display: none; }       /* the table view becomes the kv card */
+  .pd-kv { display: block; }
+}
+
+@media (max-width: 860px) {
+  .pd-hero__photo { width: 210px; opacity: 0.5; }
+  .pd-hero__art { min-height: 220px; }
+  .pd-hero__foot { flex-direction: column; align-items: stretch; }
+  .pd-links { justify-content: space-between; }
+  .pd-kpi { flex-basis: 78px; }
+  .pd-kpis__tag { flex: 1 1 100%; padding: 7px 12px; }
+}
+
+@media (max-width: 620px) {
+  .pd-wrap { width: calc(100% - 20px); }
+  .pd-hero__art { padding: 18px 16px 16px; min-height: 0; }
+  /* The cut-out stops being a side element and becomes the top of the card, so
+     it is centred and given more room. object-position has to be re-centred
+     too: the desktop rule pins the artwork to the right edge of its box, and
+     moving the box alone leaves the image itself hard against that edge. */
+  .pd-hero__photo { position: relative; right: auto; width: 100%; height: 200px; margin-bottom: 12px; opacity: 1; }
+  .pd-hero__photo img {
+    right: 0;
+    object-position: bottom center;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+  .pd-hero__photo img.is-fallback { right: 0; width: 100%; height: 68%; }
+  .pd-hero__word { font-size: 3.4rem; bottom: 45%; left: 17%}
+  .pd-crest { width: 64px; height: 64px; border-radius: 19px; }
+  .pd-crest img { width: 44px; height: 44px; }
+  .pd-hero__foot { padding: 14px 16px; }
+  .pd-bio { grid-template-columns: 1fr; gap: 7px; }
+  .pd-pager__name { display: none; }
+  .pd-pager__btn { max-width: none; }
+  .pd-jump { flex: 1 1 auto; }
+  .pd-btn { flex: 1 1 auto; justify-content: center; }
+  /* stretch, not flex-start: a column flex item sizes to its content, so the
+     chip strip would grow past the card and get clipped by the page instead
+     of scrolling inside its own box */
+  .pd-ctl__row { flex-direction: column; align-items: stretch; gap: 8px; }
+  .pd-viz { padding: 14px 14px 10px; }
+  .pd-plot { height: 88px; }
+}
+
+/* room for the fixed bottom nav (it only shows under 451px) */
+@media (max-width: 450px) {
+  body { padding-bottom: 92px; }
+  .floating-move-top-btn { right: 16px; bottom: 84px; width: 42px; height: 42px; }
+}
+
+/* colour-mix carries the team accent; without it fall back to plain glass so
+   nothing renders as an invalid, and therefore transparent, background */
+@supports not (color: color-mix(in srgb, red 50%, blue)) {
+  .pd-btn--primary { border-color: var(--pd-line-2); background: rgba(255, 255, 255, 0.14); }
+  .pd-btn--primary:hover { background: rgba(255, 255, 255, 0.22); }
+  .pd-sec__line { background: linear-gradient(90deg, rgba(255, 255, 255, 0.3), transparent); }
+  .pd-kpi--accent { border-color: var(--pd-line-2); }
+  .pd-kpis__tag { border-color: var(--pd-line-2); background: rgba(255, 255, 255, 0.07); color: var(--pd-ink-2); }
+  .pd-chip[aria-selected='true'] { border-color: var(--pd-line-2); background: rgba(255, 255, 255, 0.2); }
+  .pd-table tbody tr.is-on { --row-bg: #471d35; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pd-wrap *, .pd-wrap *::before, .pd-wrap *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+@media print {
+  body { background: #fff; color: #000; padding-top: 0; }
+  .bottom-nav, nav.navbar, .floating-move-top-btn, .pd-jump, .pd-pager { display: none !important; }
+  .pd-pane, .pd-hero { break-inside: avoid; box-shadow: none; }
+  .pd-scroll { display: block; overflow: visible; }
+  .pd-kv { display: none; }
+}
+
+/* Forced colours strip the fills, so the columns would all read the same. The
+   axis labels and the table below still carry every value. */
+@media (forced-colors: active) {
+  .pd-col__fill { background: ButtonText; }
+  .pd-col[data-on='1'] .pd-col__fill { background: Highlight; }
+}

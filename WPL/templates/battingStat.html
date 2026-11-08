@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% from "macros/stats.html" import stats_shell, stats_head %}
+
+{% block head %}
+{{ super() }}
+<title>WPL 2027 Batting Stats | Orange Cap, Most Runs &amp; Strike Rates</title>
+<meta name="description" content="WPL 2027 batting leaderboards — most runs, sixes, fours, fifties, hundreds, highest scores, best strike rates and averages. Sort any column.">
+{{ stats_head() }}
+{% endblock %}
+
+{% block content %}
+{{ stats_shell('batting', 'Most Runs', 'Who has scored the most this season', clr) }}
+{% endblock %}

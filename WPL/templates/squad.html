@@ -1,0 +1,373 @@
+{% extends "base.html" %}
+{% block head %}
+{{ super() }}
+<title>{{ fn[team] }} Squad 2026 | {{ team }} Players, Captain &amp; Coach</title>
+<meta name="description" content="The full {{ fn[team] }} squad for WPL 2027 — every player with role, batting and bowling style, plus the captain, head coach, home ground and title honours.">
+<link rel="stylesheet" href="{{ url_for('static', filename='extended_beauty.css') }}" />
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/bottom-nav.css') }}">
+{#- the hero's season line reuses the points-table form pills and next-up chip -#}
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/pointstable.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/squad-modern.css') }}">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+
+{% from "macros/points.html" import form_pills, next_chip, crest_grad, stage_grad, brand, team_word %}
+
+{#  ------------------------------------------------------------------ data #}
+
+{% set info = td.get(team, {}) %}
+{% set titles = champions.get(team, []) %}
+{% set latest = (titles | map('int') | max) if titles else 0 %}
+
+{#  Role blocks, in the order a team sheet reads. Anyone whose role is not one
+    of these still gets a block of their own at the end rather than vanishing. #}
+{% set GROUPS = [
+    {'key': 'Batter',        'title': 'Batters',        'icon': 'Batter.svg'},
+    {'key': 'All Rounder',   'title': 'All Rounders',   'icon': 'All-rounder.svg'},
+    {'key': 'Wicket Keeper', 'title': 'Wicket Keepers', 'icon': 'keeper.png'},
+    {'key': 'Bowler',        'title': 'Bowlers',        'icon': 'Bowler.svg'}
+] %}
+{% set KNOWN = GROUPS | map(attribute='key') | list %}
+{% set OTHERS = [] %}
+{% for p in sq %}{% if p.Role not in KNOWN %}{% set _ = OTHERS.append(p) %}{% endif %}{% endfor %}
+
+{% set overseas = sq | selectattr('Overseas', 'equalto', 'Y') | list | length %}
+{% set AGES = ages.values() | list %}
+{% set avg_age = ((AGES | sum) / (AGES | length)) | round | int if AGES else 0 %}
+
+{#  status ladder, same as the standings page #}
+{% if champion and champion == team %}{% set tag = ['champ', 'Champions'] %}
+{% elif st and st.qed == 'Q' %}{% set tag = ['q', 'Qualified'] %}
+{% elif st and st.qed == 'E' %}{% set tag = ['e', 'Eliminated'] %}
+{% else %}{% set tag = none %}
+{% endif %}
+
+{#  ---------------------------------------------------------------- macros #}
+
+{#  Bowling styles come through long ("Right-Arm Fast Medium"); a card has room
+    for the shape of it, not the whole phrase. The feed's casing is not always
+    consistent, hence the two spellings of offbreak. #}
+{% macro bowling_short(bw) -%}
+    {%- set arm = 'LA' if 'Left-Arm' in bw else ('RA' if 'Right-Arm' in bw else '') -%}
+    {%- set kind = bw | replace('Right-Arm ', '') | replace('Left-Arm ', '')
+                      | replace('Legbreak Googly', 'Leg spin') | replace('Legbreak', 'Leg spin')
+                      | replace('Offbreak', 'Off spin') | replace('offbreak', 'Off spin')
+                      | replace('Wrist Spin', 'Wrist spin')
+                      | replace('Fast Medium', 'Fast-med') | replace('Medium Fast', 'Med-fast') -%}
+    {{- (arm ~ ' ' ~ kind) | trim -}}
+{%- endmacro %}
+
+{% macro player_card(p) %}
+{% set parts = p.Name.split(' ') %}
+{% set bw = (p.Bowling or '') | trim %}
+<a class="pl-card {{ 'pl-card--captain' if p.Captain == 'Y' }}"
+   href="{{ url_for('main.squad_details', team=p.Team, name=p.Name) }}"
+   aria-label="{{ p.Name }} — {{ p.Role }}{{ ', captain' if p.Captain == 'Y' }}">
+
+    <div class="pl-photo">
+        {#- two franchise bursts: -B sits behind the player at rest, -F comes
+            forward over the photo on hover. Both are set as custom properties
+            on .sq-wrap, so the files are named in one place. -#}
+        <span class="pl-photo__motif" aria-hidden="true"></span>
+        {#- the squad sheet and the cut-out file names can disagree; same
+            silhouette fallback the live pages use -#}
+        <img src="/static/images/squads/{{ p.Team }}/{{ p.Name | replace(' ', '-') }}.png"
+             alt="{{ p.Name }}" loading="lazy"
+             onerror="this.onerror=null;this.src='/static/images/Default.png';this.classList.add('is-fallback');">
+        <span class="pl-photo__motif pl-photo__motif--fg" aria-hidden="true"></span>
+
+        {% if p.Nationality %}
+        <span class="pl-flag" title="{{ p.Nationality }}">
+            <img src="{{ url_for('static', filename='images/country_flags/' ~ p.Nationality ~ '.png') }}"
+                 alt="{{ p.Nationality }}" loading="lazy"
+                 onerror="this.onerror=null;this.parentNode.remove();">
+        </span>
+        {% endif %}
+
+        <span class="pl-tags">
+            {% if p.Captain == 'Y' %}<span class="pl-tag pl-tag--c" title="Captain">C</span>{% endif %}
+            {% if p.Keeper == 'Y' %}<span class="pl-tag pl-tag--wk" title="Wicket keeper">WK</span>{% endif %}
+            {% if p.Overseas == 'Y' %}
+            <span class="pl-tag pl-tag--ov" title="Overseas player">
+                <span class="material-icons-round">flight</span>
+            </span>
+            {% endif %}
+        </span>
+    </div>
+
+    <div class="pl-id">
+        <span class="pl-name">
+            {% if parts | length > 1 %}<span class="pl-name__first">{{ parts[0] }}</span>{% endif %}
+            <span class="pl-name__last">{{ (parts[1:] | join(' ')) if parts | length > 1 else p.Name }}</span>
+        </span>
+
+        <span class="pl-style">
+            {% if p.Batting %}<i>{{ 'LHB' if 'Left' in p.Batting else 'RHB' }}</i>{% endif %}
+            {% if bw and bw != '-' %}{{ bowling_short(bw) }}{% else %}{{ p.Role }}{% endif %}
+        </span>
+
+        <span class="pl-meta">
+            {% if ages.get(p.id) %}
+            <span title="Age"><span class="material-icons-round">cake</span><b>{{ ages[p.id] }}</b></span>
+            {% endif %}
+            {#- the sheet leaves a dash where an uncapped player's debut would go -#}
+            {% if p.Debut and p.Debut != '-' %}
+            <span title="First WPL season"><span class="material-icons-round">event</span>WPL&nbsp;<b>{{ p.Debut }}</b></span>
+            {% else %}
+            <span title="Yet to play a WPL match"><span class="material-icons-round">fiber_new</span>Uncapped</span>
+            {% endif %}
+        </span>
+    </div>
+</a>
+{% endmacro %}
+
+{% macro role_block(title, icon, players) %}
+{% if players %}
+<section class="sq-sec">
+    <div class="sq-sec__head">
+        <span class="sq-sec__icon"><img src="/static/images/{{ icon }}" alt=""></span>
+        <h2 class="sq-sec__title">{{ title }}</h2>
+        <span class="sq-sec__n">{{ players | length }}</span>
+        <span class="sq-sec__line"></span>
+    </div>
+    <div class="sq-grid">
+        {% for p in players %}{{ player_card(p) }}{% endfor %}
+    </div>
+</section>
+{% endif %}
+{% endmacro %}
+
+{#  Three pieces of franchise artwork, named once for the whole page:
+      --motif    the wide hero band behind the team name
+      --motif-b  a player tile's resting background
+      --motif-f  the shard overlay that comes forward on hover  #}
+<div class="sq-wrap"
+     style="{{ stage_grad(team, clr, sqclr) }} {{ crest_grad(team, clr) }}
+            --brand: {{ brand(team) }};
+            --motif: url('/static/images/headers/{{ team }}.png');
+            --motif-b: url('/static/images/headers/{{ team }}-B.png');
+            --motif-f: url('/static/images/headers/{{ team }}-F.png');">
+
+    {# ============================================================== hero #}
+    <header class="sq-hero">
+        <div class="sq-hero__art">
+            <span class="sq-hero__motif" aria-hidden="true"></span>
+            <span class="sq-hero__word" aria-hidden="true">{{ team_word(team) }}</span>
+            <img class="sq-hero__squad" src="/static/images/team_players/{{ team }}.png" alt="" aria-hidden="true">
+
+            <div class="sq-hero__id">
+                <span class="sq-crest">
+                    <img src="/static/images/squad_logos/{{ team }}.png" alt="{{ fn[team] }} crest">
+                </span>
+
+                <div class="sq-names">
+                    <span class="sq-eyebrow">TATA WPL 2027 &middot; Squad</span>
+                    <h1 class="sq-title">
+                        {%- set pre = fn[team].split(' ')[:-1] | join(' ') -%}
+                        {%- if pre %}<small>{{ pre | upper }}</small>{% endif -%}
+                        {{ fn[team].split(' ')[-1] | upper }}
+                    </h1>
+
+                    <div class="sq-honours">
+                        {% if titles %}
+                        <span class="sq-honours__cup">
+                            <img src="/static/images/trophy.png" alt="">
+                            {{ titles | length }} {{ 'Title' if titles | length == 1 else 'Titles' }}
+                        </span>
+                        {% for y in titles | sort(reverse=true) %}
+                        <span class="sq-year {{ 'sq-year--latest' if y | int == latest }}">{{ y }}</span>
+                        {% endfor %}
+                        {% else %}
+                        <span class="sq-honours__none">
+                            <span class="material-icons-round">emoji_events</span>Still chasing a first title
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!--
+            {# --------------------------------------------- season line #}
+            <div class="sq-season">
+                {% if st and st.played %}
+                {% set nrr = st.NRR | float %}
+                <span class="sq-season__item">Pos <b>#{{ st.pos }}</b></span>
+                <span class="sq-season__item">Pts <b>{{ st.Pts }}</b></span>
+                <span class="sq-season__item">W&ndash;L <b>{{ st.W }}&ndash;{{ st.L }}</b></span>
+                <span class="sq-season__item">
+                    NRR <b class="{{ 'pt-nrr--pos' if nrr > 0 else ('pt-nrr--neg' if nrr < 0 else '') }}">{{ "%+.3f"|format(nrr) }}</b>
+                </span>
+                <span class="sq-season__sep"></span>
+                <span class="sq-season__item">Last 5 {{ form_pills(st.form) }}</span>
+                <span class="sq-season__item">Next {{ next_chip(nxt) }}</span>
+                {% if tag %}<span class="sq-tag sq-tag--{{ tag[0] }}">{{ tag[1] }}</span>{% endif %}
+                <a class="sq-season__more" href="{{ url_for('main.displayPT') }}">
+                    Full table<span class="material-icons-round">arrow_forward</span>
+                </a>
+                {% else %}
+                <span class="sq-season__item">
+                    <span class="material-icons-round">schedule</span>Season yet to start
+                </span>
+                <span class="sq-season__item">First up {{ next_chip(nxt) }}</span>
+                {% if titles %}
+                <span class="sq-season__item">Last title <b>{{ latest }}</b></span>
+                {% endif %}
+                <a class="sq-season__more" href="{{ url_for('main.displayFR') }}?fteam={{ team }}">
+                    Full schedule<span class="material-icons-round">arrow_forward</span>
+                </a>
+                {% endif %}
+            </div>
+          -->
+        </div>
+
+        {# ------------------------------------- franchise facts + channels #}
+        <div class="sq-hero__foot">
+            <dl class="sq-info">
+                {% if info.get('Captain') %}
+                <div class="sq-info__row"><dt>Captain</dt><dd>{{ info['Captain'] }}</dd></div>
+                {% endif %}
+                {% if info.get('Coach') %}
+                <div class="sq-info__row"><dt>Coach</dt><dd>{{ info['Coach'] }}</dd></div>
+                {% endif %}
+                {% if info.get('Venue') %}
+                <div class="sq-info__row"><dt>Home</dt><dd>{{ info['Venue'] }}</dd></div>
+                {% endif %}
+                {% if info.get('Owner') %}
+                <div class="sq-info__row"><dt>Owner</dt><dd>{{ info['Owner'] }}</dd></div>
+                {% endif %}
+            </dl>
+
+            <div class="sq-links">
+                {% if social %}
+                <div class="sq-social">
+                    {% if social.get('web') %}
+                    <a class="sq-social__btn sq-social__btn--web" href="{{ social['web'] }}"
+                       target="_blank" rel="noopener noreferrer"
+                       title="{{ fn[team] }} official website" aria-label="{{ fn[team] }} official website">
+                        <i class="fa-solid fa-globe" aria-hidden="true"></i>
+                    </a>
+                    {% endif %}
+                    {% if social.get('x') %}
+                    <a class="sq-social__btn sq-social__btn--x" href="{{ social['x'] }}"
+                       target="_blank" rel="noopener noreferrer"
+                       title="{{ fn[team] }} on X" aria-label="{{ fn[team] }} on X">
+                        {#- base.html ships Font Awesome 6.4.0, which is older than the
+                            x-twitter glyph, so the mark is drawn rather than looked up -#}
+                        <svg class="sq-x" viewBox="0 0 512 512" aria-hidden="true" focusable="false">
+                            <path d="M389.2 48h70.6L305.6 224.2 487 464H345L233.7 318.6 106.5 464H35.8
+                                     L200.7 275.5 26.8 48H172.4L272.9 180.9 389.2 48zM364.4 421.8h39.1
+                                     L151.1 88h-42L364.4 421.8z"/>
+                        </svg>
+                    </a>
+                    {% endif %}
+                    {% if social.get('ig') %}
+                    <a class="sq-social__btn sq-social__btn--ig" href="{{ social['ig'] }}"
+                       target="_blank" rel="noopener noreferrer"
+                       title="{{ fn[team] }} on Instagram" aria-label="{{ fn[team] }} on Instagram">
+                        <i class="fa-brands fa-instagram" aria-hidden="true"></i>
+                    </a>
+                    {% endif %}
+                    {% if social.get('fb') %}
+                    <a class="sq-social__btn sq-social__btn--fb" href="{{ social['fb'] }}"
+                       target="_blank" rel="noopener noreferrer"
+                       title="{{ fn[team] }} on Facebook" aria-label="{{ fn[team] }} on Facebook">
+                        <i class="fa-brands fa-facebook-f" aria-hidden="true"></i>
+                    </a>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <div class="sq-jump">
+                    <a class="sq-btn sq-btn--primary" href="{{ url_for('main.displayFR') }}?fteam={{ team }}">
+                        <span class="material-icons-round">event</span>Fixtures
+                    </a>
+                    <a class="sq-btn" href="{{ url_for('main.teams') }}#tm-{{ team }}">
+                        <span class="material-icons-round">groups</span>All teams
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    {# ======================================================== at a glance #}
+    {% if sq %}
+    <div class="sq-glance">
+        <div class="sq-tile sq-tile--accent"><b>{{ sq | length }}</b><span>Players</span></div>
+        <div class="sq-tile"><b>{{ overseas }}</b><span>Overseas</span></div>
+        <div class="sq-tile"><b>{{ sq | length - overseas }}</b><span>Indian</span></div>
+        {% for g in GROUPS %}
+        <div class="sq-tile">
+            <b>{{ sq | selectattr('Role', 'equalto', g.key) | list | length }}</b>
+            <span>{{ g.title }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {# ============================================================= squad #}
+    {% if sq %}
+        {% for g in GROUPS %}
+        {{ role_block(g.title, g.icon, sq | selectattr('Role', 'equalto', g.key) | list) }}
+        {% endfor %}
+        {{ role_block('Squad', 'Role.png', OTHERS) }}
+
+        <p class="sq-note">
+            <b>C</b> captain &middot; <b>WK</b> wicket keeper &middot;
+            <span class="material-icons-round" style="font-size: 14px;">flight</span> overseas player.
+            Tap a card for that player's full profile and season stats.
+            {% if avg_age %} Average squad age <b>{{ avg_age }}</b>.{% endif %}
+        </p>
+    {% else %}
+        <div class="sq-empty">
+            <span class="material-icons-round">groups</span>
+            <span class="sq-empty__title">Squad not announced yet</span>
+            <span class="sq-empty__text">
+                {{ fn[team] }}'s 2026 squad will appear here as soon as it is confirmed.
+            </span>
+        </div>
+    {% endif %}
+</div>
+
+<nav class="bottom-nav">
+    <div class="bottom-nav-item">
+        <a href="{{ url_for('main.displayFR') }}">
+      <span class="material-icons-round">event</span>
+      <span class="bottom-nav-label">MATCHES</span>
+      </a>
+    </div>
+    <div class="bottom-nav-item">
+        <a href="{{ url_for('main.displayPT') }}">
+      <span class="material-icons-round">table_chart</span>
+      <span class="bottom-nav-label">STANDINGS</span>
+      </a>
+    </div>
+    <div class="bottom-nav-item spacer"></div>
+    <div class="bottom-nav-item live">
+        <a href="{{ url_for('main.displayFR', filter='live') }}">
+      <div class="live-circle"></div>
+      <div class="live-content">
+        <span class="material-icons-round zoomInOut">play_arrow</span>
+        <span class="bottom-nav-label">LIVE</span>
+      </div>
+      </a>
+    </div>
+    <div class="bottom-nav-item spacer"></div>
+    <div class="bottom-nav-item active">
+      <a href="{{ url_for('main.teams') }}">
+      <span class="material-icons-round">groups</span>
+      <span class="bottom-nav-label">TEAMS</span>
+      </a>
+    </div>
+    <div class="bottom-nav-item">
+      <a href="{{ url_for('main.battingstats') }}">
+      <span class="material-icons-round">bar_chart</span>
+      <span class="bottom-nav-label">STATS</span>
+      </a>
+    </div>
+  </nav>
+
+<script src="{{ url_for('static', filename='js/squad.js') }}" defer></script>
+
+{% endblock %}

@@ -1,0 +1,168 @@
+body {
+        font-family: 'Exo 2', sans-serif;
+ background: url('/static/images/headers/rounded-bg.png'), linear-gradient(90deg, #62003a, #b8006a);
+  background-size: 100%, cover;
+  background-position: center top -48px, center top;
+  background-repeat: repeat, repeat;
+    }
+    .status{
+        display: block;
+    }
+    .dropdown {
+    position: relative;
+    display: inline-block;
+  }
+
+  .dropdown-toggle {
+    background-color: #8a0053;
+    color: white;
+    padding: 7px 3px;
+    border: 0px solid #ffb09e;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    min-width: 250px;
+    text-align: center;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+  }
+
+  .dropdown-menu {
+    display: block;
+    position: absolute;
+    background-color: white;
+    min-width: 250px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    border: 0px solid #ffb09e;
+    border-radius: 8px;
+    margin-top: 8px;
+    font-weight: bold;
+    z-index: 1;
+    overflow: hidden;
+    max-height: 0;
+    opacity: 0;
+    transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease;
+  }
+
+  .dropdown-menu a {
+    color: #333;
+    padding: 5px 10px;
+    text-decoration: none;
+    display: block;
+    border-bottom: 1px solid #eaeaea;
+    font-size: 13px;
+  }
+
+  .dropdown-menu a:hover {
+    background-color: #f5f5f5;
+  }
+
+  .dropdown-menu a.activeD {
+    background-color: #8a0053;
+    color: white;
+  }
+
+  .dropdown-menu a:last-child {
+    border-bottom: none;
+  }
+
+  .dropdown.show .dropdown-menu {
+    max-height: 250px;
+    overflow-y: auto;
+    opacity: 1;
+    transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease;
+    scrollbar-width: thin;
+    scrollbar-color: #8a0053 #eaeaea;
+  }
+
+  .dropdown.show .dropdown-menu::-webkit-scrollbar {
+    width: 8px;
+    background: #eaeaea;
+    border-radius: 8px;
+  }
+  .dropdown.show .dropdown-menu::-webkit-scrollbar-thumb {
+    background: #8a0053;
+    border-radius: 8px;
+  }
+  .dropdown.show .dropdown-menu::-webkit-scrollbar-thumb:hover {
+    background: #5a163e;
+  }
+
+  .table-wrapper a {
+    color: #e0218a !important;
+  }
+
+  .table-wrapper {
+  margin-top: 20px;
+  border-radius: 10px;
+  overflow-x: auto;
+  border: 0px solid #ffb09e;
+  background-color: white;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+}
+
+/* Updated table styling */
+table {
+  border-collapse: collapse;
+  width: 100%;
+  background-color: white;
+}
+
+/* Remove bottom border from last row */
+tr:last-child td {
+  border-bottom: none !important;
+}
+
+  th, td {
+    text-align: left;
+    padding-top: 7px;
+    padding-bottom: 7px;
+    padding-right: 5px;
+    padding-left: 5px;
+    font-size: 12px;
+    border-bottom: 1px solid #ddd !important;
+  }
+
+  thead tr {
+    background-color: #8a0053;
+    color: white;
+  }
+
+  .team-logo {
+    width: 23px;
+    height: 23px;
+    vertical-align: middle;
+  }
+
+  .position {
+    text-align: center;
+  }
+
+  .logo-col {
+    text-align: center;
+  }
+
+  th, td {
+    text-align: center;
+    min-width: 40px;
+  }
+
+  th:nth-child(3), td:nth-child(3) {
+    text-align: left;
+  }
+
+  td:nth-child(4) {
+    background-color: #f0f0f0;
+  }
+
+  th:nth-child(1), td:nth-child(1) {
+    min-width: 25px;
+  }
+
+  p {
+    font-size: 14px;
+    color: #333;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    text-align: center;
+  }

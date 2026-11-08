@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+{% block head %}
+{{ super() }}
+<title>Match {{ FR.Match_No }}: {{ FR.Team_A }} vs {{ FR.Team_B }} | Playoffs Fixture Update</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='extended_beauty.css') }}" />
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/updatematch.css') }}">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+
+{# Rajasthan Royals' crest lives at RR1.png #}
+{% macro crest(t) -%}
+/static/images/squad_logos/{{ t }}.png
+{%- endmacro %}
+
+{% macro getclr(team) -%}
+    {% set c = clr[team] %}
+
+    {% if team in ['RCBW', 'MIW'] %} --team-a: {{ c['c3'] }}; --team-b: {{ c['c1'] }}
+    {% elif team == 'UPW' %} --team-a: {{ c['c2'] }}; --team-b: {{ c['c3'] }}
+    {% else %} --team-a: {{ c['c1'] }}; --team-b: {{ c['c2'] }}
+    {% endif %}
+{%- endmacro %}
+
+<div class="um-wrap">
+
+    <header class="um-top">
+        <span class="um-top__eyebrow">
+            <span class="material-icons-round">flag</span>
+            Playoffs fixture
+        </span>
+        <h1 class="um-top__title">Update Playoffs Fixture</h1>
+        <p class="um-top__sub">Choose the teams and venue for {{ FR.Match_No }}</p>
+    </header>
+
+    <div class="um-card">
+        <div class="um-meta">
+            <span class="um-chip">
+                <span class="material-icons-round">confirmation_number</span>Match&nbsp;<b>{{ FR.Match_No }}</b>
+            </span>
+            <span class="um-chip">
+                <span class="material-icons-round">event</span><b>{{ FR.Date.strftime('%d %b %Y') }}</b>
+            </span>
+            {% if FR.Time %}
+            <span class="um-chip">
+                <span class="material-icons-round">schedule</span><b>{{ FR.Time.strftime('%H:%M') }}</b>
+            </span>
+            {% endif %}
+            {% if FR.Venue %}
+            <span class="um-chip">
+                <span class="material-icons-round">place</span>{{ FR.Venue }}
+            </span>
+            {% endif %}
+        </div>
+
+        <div class="um-teams">
+            {% for t in [FR.Team_A, FR.Team_B] %}
+            {% if loop.index == 2 %}<span class="um-vs">vs</span>{% endif %}
+            <div class="um-team">
+                {% if t != 'TBA' %}
+                <span class="um-team__crest" style="{{ getclr(t) }}"><img src="{{ crest(t) }}" alt="{{ teams[t] }}"></span>
+                {% endif %}
+                <span class="um-team__abv">{{ t }}</span>
+                <span class="um-team__full">{{ teams[t] }}</span>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="um-actions">
+            <button type="button" class="um-btn um-btn--primary um-btn--block"
+                    data-toggle="modal" data-target="#mymodal">
+                <span class="material-icons-round">edit_location</span>
+                Update playoffs fixture
+            </button>
+        </div>
+
+        <a class="um-back" href="{{ url_for('main.update') }}">
+            <span class="material-icons-round">arrow_back</span>Back to control room
+        </a>
+    </div>
+
+</div>
+
+<!-- Modal -->
+<div id="mymodal" class="modal fade um-modal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h6 class="modal-title">
+                    {{ FR.Match_No }}
+                    <small>Pick teams and venue for this playoff</small>
+                </h6>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+
+            <form class="um-form" action="/updateplayoffs" method="POST" id="poForm">
+                <div class="modal-body">
+
+                    {# Role labels for Team A / Team B by playoff type. Two ties
+                       in this format, and the side that finishes first sits
+                       out the Eliminator entirely:
+                       Eliminator -> 2nd / 3rd in the league stage
+                       Final      -> 1st in the league stage / Winner of E #}
+                    {% set pa = pomatch %}
+                    {% if pa == 'Eliminator' %}
+                        {% set teamA_role = '2nd in league stage' %}
+                        {% set teamB_role = '3rd in league stage' %}
+                    {% elif pa == 'Final' %}
+                        {% set teamA_role = '1st in league stage' %}
+                        {% set teamB_role = 'Winner of Eliminator' %}
+                    {% else %}
+                        {% set teamA_role = 'First-listed side' %}
+                        {% set teamB_role = 'Second-listed side' %}
+                    {% endif %}
+
+                    <div class="um-panel">
+                        <div class="um-panel__head">
+                            <h6 class="um-panel__title">Team A<small>{{ teamA_role }}</small></h6>
+                        </div>
+                        <span class="um-label">Current team</span>
+                        <div class="um-meta" style="margin-bottom: 10px;">
+                            <span class="um-chip">
+                                {% if FR.Team_A != 'TBA' %}
+                                <span class="ud-team__crest" style="{{ getclr(FR.Team_A) }}"><img src="{{ crest(FR.Team_A) }}" alt="{{ teams[FR.Team_A] }}"></span>
+                                {% endif %}
+                                <span><b>{{ FR.Team_A }}</b><br>{{ teams[FR.Team_A] }}</span>
+                            </span>
+                        </div>
+                        <span class="um-label">Select new team (optional)</span>
+                        <div class="um-seg um-seg-teams--wrap" role="radiogroup" aria-label="Team A">
+                            {% for code, name in teams.items() %}
+                            <label class="um-seg__opt">
+                                <input type="radio" name="teamA" value="{{ code }}">
+                                <span class="um-seg__body" style="{{ getclr(code) if code in clr else '' }}">
+                                    <img src="{{ crest(code) }}" alt="{{ name }}">
+                                    <span>{{ code }}</span>
+                                </span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="um-panel">
+                        <div class="um-panel__head">
+                            <h6 class="um-panel__title">Team B<small>{{ teamB_role }}</small></h6>
+                        </div>
+                        <span class="um-label">Current team</span>
+                        <div class="um-meta" style="margin-bottom: 10px;">
+                            <span class="um-chip">
+                                {% if FR.Team_B != 'TBA' %}
+                                <span class="ud-team__crest" style="{{ getclr(FR.Team_B) }}"><img src="{{ crest(FR.Team_B) }}" alt="{{ teams[FR.Team_B] }}"></span>
+                                {% endif %}
+                                <span><b>{{ FR.Team_B }}</b><br>{{ teams[FR.Team_B] }}</span>
+                            </span>
+                        </div>
+                        <span class="um-label">Select new team (optional)</span>
+                        <div class="um-seg um-seg-teams--wrap" role="radiogroup" aria-label="Team B">
+                            {% for code, name in teams.items() %}
+                            <label class="um-seg__opt">
+                                <input type="radio" name="teamB" value="{{ code }}">
+                                <span class="um-seg__body" style="{{ getclr(code) if code in clr else '' }}">
+                                    <img src="{{ crest(code) }}" alt="{{ name }}">
+                                    <span>{{ code }}</span>
+                                </span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="um-panel">
+                        <div class="um-panel__head">
+                            <h6 class="um-panel__title">Venue<small>Neutral or home ground</small></h6>
+                        </div>
+                        <span class="um-label">Current venue</span>
+                        <p style="font-size:12px; color: var(--um-ink-2); margin:0 0 8px;">
+                            {{ FR.Venue or 'Not set yet' }}
+                        </p>
+                        <div class="um-field">
+                            <label for="venue">Venue name (optional)</label>
+                            <input type="text" class="form-control" id="venue" name="venue" placeholder="Enter new venue name">
+                        </div>
+                    </div>
+
+                    <input type="hidden" name="hint" value="after" />
+                    <input type="hidden" name="pomatch" value="{{ pomatch }}" />
+
+                    {# Backend flags: JS sets these so the existing route can decide
+                       what to change without any server-side edits.
+                       - checkA/checkB -> 'YES' when a team is picked, 'NO' otherwise
+                       - checkV -> 'YES' when venue is non-empty, 'NO' otherwise #}
+                    <input type="hidden" name="checkA" id="checkA" value="NO" />
+                    <input type="hidden" name="checkB" id="checkB" value="NO" />
+                    <input type="hidden" name="checkV" id="checkV" value="NO" />
+
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="um-btn um-btn--ghost" data-dismiss="modal">Close</button>
+                    <button type="submit" class="um-btn um-btn--primary">
+                        <span class="material-icons-round">save</span>Update fixture
+                    </button>
+                </div>
+            </form>
+
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    var form = document.getElementById('poForm');
+    if (!form) return;
+
+    var checkA = document.getElementById('checkA');
+    var checkB = document.getElementById('checkB');
+    var checkV = document.getElementById('checkV');
+    var venue = document.getElementById('venue');
+
+    function syncFlags() {
+        var teamAChosen = !!form.querySelector('input[name="teamA"]:checked');
+        var teamBChosen = !!form.querySelector('input[name="teamB"]:checked');
+
+        if (checkA) { checkA.value = teamAChosen ? 'YES' : 'NO'; }
+        if (checkB) { checkB.value = teamBChosen ? 'YES' : 'NO'; }
+
+        if (checkV && venue) {
+            var v = venue.value || '';
+            checkV.value = v.trim() ? 'YES' : 'NO';
+        }
+    }
+
+    form.addEventListener('submit', function () {
+        syncFlags();
+    });
+})();
+</script>
+
+{% endblock %}

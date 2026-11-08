@@ -1,0 +1,1338 @@
+/* ==========================================================================
+   WPL 2027 · Teams
+   Franchise directory — glass surfaces, team-tinted cards, flip-to-honours.
+   Shares the design language of css/pointstable.css, css/fixtures-modern.css
+   and css/home.css.
+
+   Loaded AFTER css/pointstable.css: the form pills, win-% bar, next-up chip
+   and rank deltas come straight from the shared macros in
+   templates/macros/points.html, so a card's season numbers read exactly as
+   they do on the standings page.
+
+   Desktop (>1080px) : three columns
+   Tablet            : two
+   Phone  (<=640px)  : one
+   ========================================================================== */
+
+:root {
+  --tm-bg-1: #16060f;
+  --tm-bg-2: #340d24;
+  --tm-ink: #fceef6;
+  --tm-ink-2: #deb6ce;
+  --tm-ink-3: #b587a2;
+  --tm-line: rgba(255, 255, 255, 0.09);
+  --tm-line-2: rgba(255, 255, 255, 0.16);
+  --tm-gold: #ffc247;
+  --tm-green: #2ee27a;
+  --tm-red: #ff6a52;
+  --tm-cyan: #29c5e8;
+  --tm-violet: #c77dff;
+  /* the card faces must be opaque — a backdrop-filter on a 3D-transformed
+     element flattens the flip in Safari and WebKit-based Android browsers */
+  --tm-face-1: #3d162c;
+  --tm-face-2: #290e1e;
+  --tm-r-lg: 20px;
+  --tm-r-md: 14px;
+  --tm-r-sm: 9px;
+  --tm-nav-h: 72px;
+  --tm-bounce: cubic-bezier(0.34, 1.42, 0.44, 1);
+}
+
+/* --------------------------------------------------------------- page shell */
+
+body {
+  margin: 0;
+  padding: var(--tm-nav-h) 0 44px;
+  min-height: 100vh;
+  color: var(--tm-ink);
+  font-family: 'Inter', 'Exo 2', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-feature-settings: 'tnum' 1;
+  background-color: var(--tm-bg-1);
+  background-image:
+    radial-gradient(1100px 620px at 10% -10%, rgba(76, 201, 240, 0.22), transparent 60%),
+    radial-gradient(920px 540px at 92% 2%, rgba(205, 88, 255, 0.20), transparent 62%),
+    radial-gradient(1200px 760px at 50% 108%, rgba(46, 226, 122, 0.13), transparent 66%),
+    linear-gradient(180deg, var(--tm-bg-2) 0%, var(--tm-bg-1) 58%, #0d0409 100%);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  overflow-x: hidden;
+}
+
+body::-webkit-scrollbar { width: 6px; }
+body::-webkit-scrollbar-track { background: transparent; }
+body::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--tm-cyan), var(--tm-violet));
+  border-radius: 99px;
+}
+
+.tm-wrap {
+  width: min(1240px, calc(100% - 32px));
+  margin: 0 auto;
+}
+
+.tm-wrap *,
+.tm-wrap *::before,
+.tm-wrap *::after { box-sizing: border-box; }
+
+.tm-wrap a { text-decoration: none; }
+
+/* several components below set an explicit display, which would otherwise win
+   over the UA rule for [hidden] once the search hides a card */
+.tm-wrap [hidden] { display: none !important; }
+
+/* Material Icons renders a ligature, so until the icon font arrives the span
+   is as wide as the literal word ("arrow_forward"). Pinning the box to the
+   glyph's own 1em square makes the swap invisible. */
+.tm-wrap [class*='material-icons'] {
+  display: inline-grid;
+  place-items: center;
+  width: 1em;
+  height: 1em;
+  overflow: hidden;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* --------------------------------------------------------------------- hero */
+
+.tm-hero {
+  text-align: center;
+  padding: 26px 0 16px;
+}
+
+.tm-hero__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 14px;
+  border: 1px solid var(--tm-line-2);
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.06);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--tm-ink-2);
+}
+
+.tm-hero__eyebrow::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--tm-green);
+  box-shadow: 0 0 0 0 rgba(46, 226, 122, 0.7);
+  animation: tm-pulse 2s infinite;
+}
+
+@keyframes tm-pulse {
+  70% { box-shadow: 0 0 0 8px rgba(46, 226, 122, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(46, 226, 122, 0); }
+}
+
+.tm-hero__title {
+  margin: 14px 0 6px;
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-size: clamp(2.1rem, 6vw, 3.6rem);
+  font-weight: 800;
+  line-height: 1.02;
+  letter-spacing: -0.025em;
+  background: linear-gradient(100deg, #ffffff 12%, #ffcfec 42%, var(--tm-gold) 88%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.tm-hero__sub {
+  margin: 0 auto;
+  max-width: 58ch;
+  font-size: 0.9rem;
+  color: var(--tm-ink-3);
+}
+
+/* season summary chips */
+
+.tm-facts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.tm-fact {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 13px;
+  border: 1px solid var(--tm-line);
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.05);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--tm-ink-3);
+  white-space: nowrap;
+}
+
+.tm-fact b {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--tm-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.tm-fact img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+
+.tm-fact--gold { border-color: rgba(255, 194, 71, 0.34); }
+.tm-fact--gold b { color: var(--tm-gold); }
+.tm-fact--cyan b { color: var(--tm-cyan); }
+
+/* ================================================================== toolbar */
+
+.tm-bar {
+  /* --tm-stick is re-measured from the real navbar height on load/resize */
+  position: sticky;
+  top: var(--tm-stick, 68px);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0 18px;
+  padding: 10px 12px;
+  border: 1px solid var(--tm-line);
+  border-radius: var(--tm-r-md);
+  background: linear-gradient(180deg, rgba(51, 18, 37, 0.94), rgba(35, 11, 25, 0.94));
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  backdrop-filter: blur(16px) saturate(150%);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.tm-bar.is-stuck {
+  border-color: var(--tm-line-2);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* ---- search ---- */
+
+.tm-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 260px;
+  min-width: 0;
+  padding: 7px 10px;
+  border: 1px solid var(--tm-line-2);
+  border-radius: var(--tm-r-sm);
+  background: rgba(0, 0, 0, 0.28);
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.tm-search:focus-within {
+  border-color: rgba(76, 201, 240, 0.6);
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.tm-search__icon {
+  flex: none;
+  font-size: 19px;
+  color: var(--tm-ink-3);
+}
+
+.tm-search input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 0;
+  background: none;
+  color: var(--tm-ink);
+  font: inherit;
+  font-size: 0.87rem;
+  font-weight: 500;
+}
+
+.tm-search input::placeholder { color: var(--tm-ink-3); }
+.tm-search input:focus { outline: none; }
+
+/* the UA widget duplicates our own clear button */
+.tm-search input::-webkit-search-cancel-button { -webkit-appearance: none; }
+
+.tm-search__clear {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--tm-ink-2);
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.tm-search__clear:hover { background: rgba(255, 255, 255, 0.22); color: #fff; }
+.tm-search__clear [class*='material-icons'] { font-size: 15px; }
+
+/* ---- sort ---- */
+
+.tm-seg {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  padding: 3px;
+  border: 1px solid var(--tm-line);
+  border-radius: var(--tm-r-sm);
+  background: rgba(0, 0, 0, 0.28);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tm-seg::-webkit-scrollbar { display: none; }
+
+.tm-seg__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--tm-ink-3);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.tm-seg__btn [class*='material-icons'] { font-size: 16px; }
+
+.tm-seg__btn:hover { color: var(--tm-ink); }
+.tm-seg__btn:focus-visible { outline: 2px solid var(--tm-cyan); outline-offset: -2px; }
+
+.tm-seg__btn[aria-pressed='true'] {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.08));
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.tm-seg__btn[disabled] { opacity: 0.35; cursor: not-allowed; }
+
+.tm-count {
+  flex: none;
+  margin-left: auto;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--tm-ink-3);
+  white-space: nowrap;
+}
+
+.tm-count b {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.95rem;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ==================================================================== grid */
+
+.tm-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: 18px;
+  align-items: stretch;
+}
+
+/* ==================================================================== card */
+
+.tm-card {
+  position: relative;
+  min-width: 0;
+  perspective: 1800px;
+  transition: transform 0.3s var(--tm-bounce);
+}
+
+.tm-card:hover { transform: translateY(-4px); }
+
+/* deep-linked from the roll of honour or a /teams#CSK link */
+.tm-card.is-target .tm-face { box-shadow: 0 0 0 2px var(--brand), 0 20px 50px rgba(0, 0, 0, 0.5); }
+
+.tm-flip {
+  display: grid;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.78s var(--tm-bounce);
+}
+
+.tm-card.is-flipped .tm-flip { transform: rotateY(180deg); }
+
+/* Both faces share one grid cell, so the card is as tall as the taller face —
+   no fixed height to keep in step with the content. */
+.tm-face {
+  grid-area: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--tm-line);
+  border-radius: var(--tm-r-lg);
+  background: linear-gradient(180deg, var(--tm-face-1) 0%, var(--tm-face-2) 100%);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  transition: box-shadow 0.3s ease;
+}
+
+.tm-card:hover .tm-face { box-shadow: 0 26px 56px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.1); }
+
+.tm-face--back {
+  transform: rotateY(180deg);
+  /* a hidden backface is still hit-testable in some engines */
+  pointer-events: none;
+}
+
+.tm-card.is-flipped .tm-face--front { pointer-events: none; }
+.tm-card.is-flipped .tm-face--back { pointer-events: auto; }
+
+/* ---- stage: squad cut-out over the team gradient ---- */
+
+.tm-stage {
+  position: relative;
+  flex: none;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 16%, var(--stage-1) 0%, var(--stage-1) 18%, var(--stage-2) 100%);
+}
+
+/* Older engines without aspect-ratio would collapse the stage before the
+   cut-out loads, which shuffles the whole grid on first paint. */
+@supports not (aspect-ratio: 16 / 9) {
+  .tm-stage { height: 186px; }
+}
+
+/* The franchise artwork, carrying the whole tile rather than sitting behind
+   it: headers/<team>.png is an opaque burst in that side's own colours, so it
+   is the background, and the gradient underneath only shows if the image is
+   missing.
+
+   `cover` rather than `contain`. The artwork is 2.22:1 and the stage is 16:9,
+   so contain would letterbox it and leave the brand colour nowhere near the
+   top and bottom edges; cover fills the height and trims a little off each
+   side, which costs nothing because the burst is radial and its middle is
+   where the interest is. The slight over-scale and the drift on hover keep the
+   trim away from the exact edge of the frame. */
+.tm-stage__motif {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 106%;
+  height: 106%;
+  transform: translate(-50%, -50%);
+  background: var(--motif) center center / cover no-repeat;
+  pointer-events: none;
+  transition: transform 0.6s var(--tm-bounce);
+}
+
+.tm-card:hover .tm-stage__motif { transform: translate(-50%, -50%) scale(1.06); }
+
+/* Enough of a scrim to read the identity word, the rank chip and the status
+   badge off the artwork, without washing the colour out of it. */
+.tm-stage__motif::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 48%, rgba(10, 2, 7, 0.42) 0%, rgba(10, 2, 7, 0.14) 55%, transparent 78%),
+    linear-gradient(180deg, rgba(10, 2, 7, 0.34) 0%, transparent 34%, rgba(10, 2, 7, 0.22) 100%);
+}
+
+.tm-stage__word {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  transform: translate(-50%, -50%) rotate(-4deg);
+  font-family: 'Outfit', sans-serif;
+  font-size: clamp(2.6rem, 8.5vw, 3.6rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.14);
+  -webkit-text-stroke: 1px rgba(255, 255, 255, 0.12);
+  pointer-events: none;
+}
+
+.tm-stage__squad {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 88%;
+  height: 94%;
+  transform: translateX(-50%);
+  object-fit: contain;
+  object-position: bottom center;
+  filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.45));
+  transition: transform 0.45s var(--tm-bounce);
+}
+
+.tm-card:hover .tm-stage__squad { transform: translateX(-50%) scale(1.045); }
+
+/* blends the cut-out's feet into the card surface */
+.tm-stage::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 42%;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent 0%, rgba(55, 20, 40, 0.5) 58%, var(--tm-face-1) 100%);
+}
+
+.tm-stage__tags {
+  position: absolute;
+  inset: 10px 10px auto 10px;
+  z-index: 2;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  pointer-events: none;
+}
+
+/* rank + movement, mirroring the standings page */
+.tm-pos {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border-radius: 99px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(22, 6, 15, 0.62);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+
+.tm-pos__cup {
+  width: 17px;
+  height: 18px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 7px rgba(255, 194, 71, 0.8));
+}
+
+.tm-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border-radius: 99px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(22, 6, 15, 0.62);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--tm-ink-2);
+  white-space: nowrap;
+}
+
+.tm-badge [class*='material-icons'] { font-size: 14px; }
+
+.tm-badge--champ { border-color: rgba(255, 194, 71, 0.55); background: rgba(80, 55, 6, 0.72); color: #ffe1a0; }
+.tm-badge--top2  { border-color: rgba(255, 194, 71, 0.45); color: var(--tm-gold); }
+.tm-badge--q     { border-color: rgba(46, 226, 122, 0.45); color: var(--tm-green); }
+.tm-badge--e     { border-color: rgba(255, 90, 114, 0.45); color: var(--tm-red); }
+.tm-badge--title { border-color: rgba(255, 194, 71, 0.4); color: var(--tm-gold); }
+.tm-badge--none  { color: var(--tm-ink-3); }
+
+/* ---- identity bar ---- */
+
+.tm-idbar {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  margin-top: -26px;
+  padding: 0 14px;
+}
+
+.tm-crest {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  border-radius: 18px;
+  /* --team-a / --team-b come from the shared crest_grad() macro, so a crest
+     here is the same two-colour pick as on the standings and home pages */
+  background: linear-gradient(145deg, var(--team-a, #502a3f), var(--team-b, #301323));
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.24);
+  transition: transform 0.3s var(--tm-bounce);
+}
+
+.tm-card:hover .tm-crest { transform: scale(1.06) rotate(-4deg); }
+
+.tm-crest img {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.45));
+}
+
+.tm-crest--sm { width: 44px; height: 44px; border-radius: 13px; }
+.tm-crest--sm img { width: 31px; height: 31px; }
+
+.tm-id {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-bottom: 3px;
+}
+
+.tm-id__pre,
+.tm-id__last {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tm-id__pre {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--tm-ink-3);
+}
+
+.tm-id__last {
+  font-family: 'Outfit', sans-serif;
+  font-size: clamp(1.25rem, 4.4vw, 1.6rem);
+  font-weight: 800;
+  line-height: 1.06;
+  letter-spacing: -0.02em;
+  color: #fff;
+}
+
+.tm-id__last::after {
+  content: '';
+  display: block;
+  width: 38px;
+  height: 3px;
+  margin-top: 5px;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--brand), transparent);
+}
+
+.tm-abv {
+  flex: none;
+  align-self: center;
+  padding: 4px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--tm-line-2);
+  background: rgba(255, 255, 255, 0.07);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: var(--tm-ink-2);
+}
+
+/* ---- season numbers ---- */
+
+.tm-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 13px 14px 0;
+}
+
+.tm-stats {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0;
+}
+
+.tm-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 7px 2px;
+  border-radius: var(--tm-r-sm);
+  background: rgba(0, 0, 0, 0.26);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.tm-stat dt {
+  margin: 0;
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--tm-ink-3);
+  white-space: nowrap;
+}
+
+.tm-stat dd {
+  margin: 0;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--tm-ink);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.tm-stat--pts {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.17), rgba(255, 255, 255, 0.05));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+}
+
+.tm-stat--pts dd { font-family: 'Outfit', sans-serif; font-size: 0.95rem; font-weight: 800; color: #fff; }
+
+.tm-stat dd.pt-nrr--pos { color: var(--tm-green); }
+.tm-stat dd.pt-nrr--neg { color: var(--tm-red); }
+
+.tm-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.tm-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.tm-label {
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--tm-ink-3);
+  white-space: nowrap;
+}
+
+/* season yet to start — says so rather than showing ten rows of zeroes */
+.tm-preseason {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 11px;
+  border: 1px dashed var(--tm-line-2);
+  border-radius: var(--tm-r-sm);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--tm-ink-3);
+}
+
+.tm-preseason [class*='material-icons'] { font-size: 17px; color: var(--tm-ink-2); }
+
+/* ---- quick facts on the front ---- */
+
+.tm-quick {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tm-quick li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  font-size: 11.5px;
+  color: var(--tm-ink-2);
+}
+
+.tm-quick [class*='material-icons'] {
+  flex: none;
+  font-size: 15px;
+  color: var(--brand);
+}
+
+.tm-quick span {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---- card footer ---- */
+
+.tm-foot {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  margin-top: auto;
+  padding: 13px 14px;
+}
+
+.tm-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 1 1 auto;
+  padding: 10px 12px;
+  border: 1px solid var(--tm-line-2);
+  border-radius: var(--tm-r-sm);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--tm-ink-2);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.tm-btn [class*='material-icons'] { font-size: 16px; }
+
+.tm-btn:hover,
+.tm-btn:focus-visible {
+  background: rgba(255, 255, 255, 0.13);
+  color: #fff;
+  text-decoration: none;
+}
+
+.tm-btn--primary {
+  border-color: color-mix(in srgb, var(--brand) 55%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--brand) 30%, transparent), rgba(255, 255, 255, 0.05));
+  color: #fff;
+}
+
+.tm-btn--primary:hover { background: color-mix(in srgb, var(--brand) 42%, transparent); }
+
+.tm-btn--icon {
+  flex: none;
+  width: 42px;
+  padding: 10px 0;
+}
+
+.tm-btn--icon [class*='material-icons'] { font-size: 19px; }
+
+/* ---- back face ---- */
+
+.tm-back__head {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 13px 13px 11px;
+  border-bottom: 1px solid var(--tm-line);
+  background: linear-gradient(120deg, color-mix(in srgb, var(--brand) 26%, transparent), transparent 72%);
+}
+
+.tm-back__id { flex: 1 1 auto; min-width: 0; }
+
+.tm-back__eyebrow {
+  display: block;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--tm-ink-3);
+}
+
+.tm-back__name {
+  display: block;
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.02rem;
+  font-weight: 800;
+  line-height: 1.15;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tm-x {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--tm-line-2);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--tm-ink-2);
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.tm-x:hover { background: rgba(255, 255, 255, 0.16); color: #fff; }
+.tm-x [class*='material-icons'] { font-size: 17px; }
+
+/* The back is the shorter face, and both share one grid cell — so let the
+   honours block take up the slack and centre itself in it, rather than
+   leaving a hole above the footer. */
+.tm-honour {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 14px;
+}
+
+.tm-honour__cup {
+  flex: none;
+  width: 58px;
+  height: 64px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 16px rgba(255, 194, 71, 0.5));
+  animation: tm-float 3s ease-in-out infinite;
+}
+
+@keyframes tm-float {
+  50% { transform: translateY(-5px) scale(1.04); }
+}
+
+.tm-honour__id { min-width: 0; }
+
+.tm-honour__count {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.tm-honour__count b {
+  font-family: 'Outfit', sans-serif;
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--tm-gold);
+  font-variant-numeric: tabular-nums;
+}
+
+.tm-honour__count span {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--tm-ink-2);
+}
+
+.tm-years {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 9px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tm-years li {
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 194, 71, 0.26);
+  background: rgba(255, 194, 71, 0.12);
+  font-size: 11px;
+  font-weight: 700;
+  color: #ffe1a0;
+  font-variant-numeric: tabular-nums;
+}
+
+.tm-years li.is-latest {
+  border-color: rgba(255, 194, 71, 0.75);
+  background: rgba(255, 194, 71, 0.26);
+  color: #fff;
+}
+
+.tm-honour--none {
+  align-items: flex-start;
+  justify-content: center;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.tm-honour__blank {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--tm-ink-2);
+}
+
+.tm-honour__blank [class*='material-icons'] { font-size: 26px; color: var(--tm-ink-3); }
+
+.tm-honour__note {
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--tm-ink-3);
+}
+
+/* franchise facts table */
+
+.tm-table {
+  margin: 0;
+  padding: 0 14px;
+}
+
+.tm-table__row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.tm-table dt {
+  flex: none;
+  width: 84px;
+  margin: 0;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--tm-ink-3);
+}
+
+.tm-table dd {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-size: 0.83rem;
+  font-weight: 600;
+  color: var(--tm-ink);
+}
+
+.tm-table dd em {
+  font-style: normal;
+  font-weight: 700;
+  color: var(--tm-ink-3);
+}
+
+/* =========================================================== empty search */
+
+.tm-empty {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 44px 18px;
+  border: 1px dashed var(--tm-line-2);
+  border-radius: var(--tm-r-lg);
+  text-align: center;
+}
+
+.tm-empty.is-on { display: flex; }
+
+.tm-empty [class*='material-icons'] { font-size: 40px; color: var(--tm-ink-3); }
+
+.tm-empty__title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+.tm-empty__text { font-size: 0.86rem; color: var(--tm-ink-3); }
+
+/* =========================================================== roll of honour */
+
+.tm-sec { margin-top: 38px; }
+
+.tm-sec__head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.tm-sec__eyebrow {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--tm-ink-3);
+}
+
+.tm-sec__title {
+  margin: 5px 0 0;
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-size: clamp(1.5rem, 4vw, 2.1rem);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: #fff;
+}
+
+.tm-sec__title::after {
+  content: '';
+  display: block;
+  width: 54px;
+  height: 3px;
+  margin-top: 8px;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--tm-cyan), var(--tm-violet));
+}
+
+.tm-sec__note {
+  flex: none;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--tm-ink-3);
+  white-space: nowrap;
+}
+
+.tm-roll {
+  display: flex;
+  gap: 10px;
+  margin: 0;
+  padding: 4px 2px 10px;
+  list-style: none;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+.tm-roll::-webkit-scrollbar { height: 7px; }
+.tm-roll::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); border-radius: 99px; }
+.tm-roll::-webkit-scrollbar-thumb {
+  background: linear-gradient(90deg, var(--tm-cyan), var(--tm-violet));
+  border-radius: 99px;
+}
+
+.tm-roll li { flex: none; scroll-snap-align: center; }
+
+.tm-roll__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  width: 92px;
+  padding: 10px 6px 9px;
+  border: 1px solid var(--tm-line);
+  border-radius: var(--tm-r-md);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.03));
+  color: var(--tm-ink-2);
+  transition: transform 0.25s var(--tm-bounce), border-color 0.2s ease, background-color 0.2s ease;
+}
+
+a.tm-roll__item:hover,
+a.tm-roll__item:focus-visible {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--brand) 60%, transparent);
+  background: color-mix(in srgb, var(--brand) 16%, rgba(255, 255, 255, 0.05));
+  color: #fff;
+}
+
+.tm-roll__year {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+
+.tm-roll__crest {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: linear-gradient(145deg, var(--team-a, #502a3f), var(--team-b, #301323));
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.tm-roll__crest img { width: 29px; height: 29px; object-fit: contain; }
+
+.tm-roll__abv {
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.tm-roll__item--now {
+  border-color: rgba(255, 194, 71, 0.5);
+  background: linear-gradient(180deg, rgba(255, 194, 71, 0.2), rgba(255, 194, 71, 0.05));
+}
+
+.tm-roll__item--now .tm-roll__year { color: var(--tm-gold); }
+
+/* a franchise that no longer competes — no squad page to link to */
+.tm-roll__item--gone { border-style: dashed; opacity: 0.72; }
+
+.tm-note {
+  margin: 18px auto 0;
+  max-width: 760px;
+  text-align: center;
+  font-size: 11.5px;
+  line-height: 1.7;
+  color: var(--tm-ink-3);
+}
+
+.tm-note b { color: var(--tm-ink-2); }
+
+/* --------------------------------------------------- back-to-top button */
+
+.floating-move-top-btn {
+  position: fixed;
+  right: 26px;
+  bottom: 26px;
+  z-index: 900;
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--tm-line-2);
+  border-radius: 50%;
+  background: linear-gradient(160deg, rgba(76, 201, 240, 0.9), rgba(205, 88, 255, 0.9));
+  color: #1f0515;
+  cursor: pointer;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  transform: translateY(14px);
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.floating-move-top-btn.is-on {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+.floating-move-top-btn:hover { filter: brightness(1.1); }
+.floating-move-top-btn:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+
+/* ======================================================================
+   Breakpoints
+   ====================================================================== */
+
+@media (max-width: 1080px) {
+  .tm-grid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+}
+
+@media (max-width: 880px) {
+  .tm-wrap { width: calc(100% - 22px); }
+  body { padding-top: 66px; }
+  .tm-hero { padding: 18px 0 12px; }
+  .tm-bar { flex-wrap: wrap; }
+  .tm-search { flex: 1 1 100%; order: -1; }
+  .tm-seg { flex: 1 1 auto; }
+  .tm-seg__btn { flex: 1 1 auto; justify-content: center; }
+}
+
+@media (max-width: 640px) {
+  .tm-grid { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .tm-sec__head { align-items: center; }
+  .tm-sec__note { display: none; }
+  .tm-stage__word { font-size: clamp(2.4rem, 12vw, 3.4rem); }
+  /* a tap is not a hover — let the touch target do the moving instead */
+  .tm-card:hover { transform: none; }
+}
+
+@media (max-width: 430px) {
+  .tm-stats { gap: 4px; }
+  .tm-stat { padding: 6px 1px; }
+  .tm-stat dt { font-size: 8px; letter-spacing: 0.04em; }
+  .tm-stat dd { font-size: 0.78rem; }
+  .tm-crest { width: 54px; height: 54px; border-radius: 16px; }
+  .tm-crest img { width: 38px; height: 38px; }
+  .tm-idbar { margin-top: -22px; }
+  .tm-quick { grid-template-columns: minmax(0, 1fr); }
+  .tm-btn { padding: 9px 8px; font-size: 10px; letter-spacing: 0.06em; }
+  .tm-btn--icon { width: 38px; }
+  .tm-table dt { width: 72px; }
+}
+
+/* room for the fixed bottom nav (it only shows under 451px) */
+@media (max-width: 450px) {
+  body { padding-bottom: 92px; }
+  .floating-move-top-btn { right: 16px; bottom: 84px; width: 42px; height: 42px; }
+}
+
+/* Browsers without color-mix() still need readable accent surfaces */
+@supports not (color: color-mix(in srgb, red 50%, blue)) {
+  .tm-btn--primary { border-color: var(--tm-line-2); background: rgba(255, 255, 255, 0.14); }
+  .tm-btn--primary:hover { background: rgba(255, 255, 255, 0.22); }
+  .tm-back__head { background: linear-gradient(120deg, rgba(255, 255, 255, 0.1), transparent 72%); }
+  a.tm-roll__item:hover { border-color: var(--tm-line-2); background: rgba(255, 255, 255, 0.1); }
+  .tm-card.is-target .tm-face { box-shadow: 0 0 0 2px var(--tm-cyan), 0 20px 50px rgba(0, 0, 0, 0.5); }
+}
+
+/* Without 3D support the faces would stack on top of each other; show the
+   front only, and let the honours button reveal the back in its place. */
+@supports not (transform-style: preserve-3d) {
+  .tm-face--back { display: none; }
+  .tm-card.is-flipped .tm-face--front { display: none; }
+  .tm-card.is-flipped .tm-face--back { display: flex; transform: none; pointer-events: auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .tm-card:hover { transform: none; }
+}
+
+@media print {
+  body { background: #fff; color: #000; padding-top: 0; }
+  .tm-bar, .tm-roll, .bottom-nav, nav.navbar, .floating-move-top-btn,
+  .tm-btn, .tm-x { display: none !important; }
+  .tm-grid { display: block; }
+  .tm-card { break-inside: avoid; margin-bottom: 12px; perspective: none; }
+  .tm-face--back { display: none; }
+}

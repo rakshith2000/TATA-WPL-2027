@@ -1,0 +1,2585 @@
+/* ==========================================================================
+   WPL 2027 · Live Match Centre
+   Modern match UI — glass surfaces, team-tinted board, ball-by-ball timeline.
+   Shares the design language of css/fixtures-modern.css and css/pointstable.css.
+
+   The page is a shell (match.html) + five panels rendered by
+   js/{info,live,scorecard,overs,livesquad}.js. Every class the panels emit is
+   styled here, so the match centre needs no Bootstrap and no per-tab
+   stylesheet.
+
+   Desktop (>900px) : board and panels sit in a centred 1080px column
+   Mobile  (<=900px): single column, sticky tab strip, bottom nav clearance
+   ========================================================================== */
+
+:root {
+  --mx-bg-1: #16060f;
+  --mx-bg-2: #340d24;
+  --mx-ink: #fceef6;
+  --mx-ink-2: #deb6ce;
+  --mx-ink-3: #b587a2;
+  --mx-line: rgba(255, 255, 255, 0.09);
+  --mx-line-2: rgba(255, 255, 255, 0.16);
+  --mx-gold: #ffc247;
+  --mx-green: #2ee27a;
+  --mx-red: #ff6a52;
+  --mx-orange: #ff9d3c;
+  --mx-cyan: #29c5e8;
+  --mx-violet: #c77dff;
+  --mx-blue: #ff4fa8;
+  --mx-r-lg: 20px;
+  --mx-r-md: 14px;
+  --mx-r-sm: 9px;
+  --mx-nav-h: 72px;
+  --mx-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  /* the sticky tab strip parks under the fixed navbar; match.js measures it */
+  --mx-stick: 80px;
+}
+
+/* --------------------------------------------------------------- page shell */
+
+body {
+  margin: 0;
+  padding: var(--mx-nav-h) 0 40px;
+  min-height: 100vh;
+  color: var(--mx-ink);
+  font-family: 'Inter', 'Exo 2', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-feature-settings: 'tnum' 1;
+  background-color: var(--mx-bg-1);
+  background-image:
+    radial-gradient(1100px 620px at 10% -10%, rgba(76, 201, 240, 0.22), transparent 60%),
+    radial-gradient(920px 540px at 92% 2%, rgba(205, 88, 255, 0.20), transparent 62%),
+    radial-gradient(1200px 760px at 50% 108%, rgba(46, 226, 122, 0.13), transparent 66%),
+    linear-gradient(180deg, var(--mx-bg-2) 0%, var(--mx-bg-1) 58%, #0d0409 100%);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  overflow-x: hidden;
+}
+
+body::-webkit-scrollbar { width: 6px; }
+body::-webkit-scrollbar-track { background: transparent; }
+body::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--mx-cyan), var(--mx-violet));
+  border-radius: 99px;
+}
+
+.mx-wrap {
+  width: min(1080px, calc(100% - 28px));
+  margin: 0 auto;
+}
+
+.mx-wrap *,
+.mx-wrap *::before,
+.mx-wrap *::after { box-sizing: border-box; }
+
+.mx-wrap [hidden] { display: none !important; }
+
+.mx-wrap a { text-decoration: none; color: inherit; }
+
+.mx-wrap a.is-off { pointer-events: none; }
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Shared surface: every card on the page is cut from this cloth. */
+.mx-card {
+  position: relative;
+  margin-top: 14px;
+  border: 1px solid var(--mx-line);
+  border-radius: var(--mx-r-lg);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.028));
+  -webkit-backdrop-filter: blur(14px) saturate(130%);
+  backdrop-filter: blur(14px) saturate(130%);
+  box-shadow: 0 20px 44px rgba(22, 2, 13, 0.42);
+  overflow: hidden;
+}
+
+.mx-card__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--mx-line);
+  background: rgba(255, 255, 255, 0.04);
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.mx-card__head .material-icons-round {
+  font-size: 19px;
+  color: var(--mx-cyan);
+}
+
+.mx-card__head small {
+  margin-left: auto;
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--mx-ink-3);
+}
+
+/* an innings card wears the batting side's colours */
+.mx-card__head--team {
+  box-shadow: inset 3px 0 0 var(--c1, var(--mx-cyan));
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--c1, #ff4fa8) 26%, transparent),
+                    rgba(255, 255, 255, 0.04) 58%);
+}
+
+.mx-card__head--team .material-icons-round { color: var(--mx-ink-2); }
+
+/* --------------------------------------------------------------------- hero
+   The masthead and the scoreboard are one card: the hero is its header strip,
+   so the two share a rounded outline and a single hairline between them.
+   It stays two tight rows — who is playing, then when and where. */
+
+.mx-hero {
+  position: relative;
+  margin-top: 16px;
+  padding: 14px 16px 12px;
+  border: 1px solid var(--mx-line-2);
+  border-bottom: 0;
+  border-radius: var(--mx-r-lg) var(--mx-r-lg) 0 0;
+  /* a dark floor under the team wash: the tints only read as colour if they
+     are not competing with the page gradient showing through the glass */
+  background:
+    /* a scrim over the lower half: the date and venue keep their contrast
+       however bright the two team colours behind them are */
+    linear-gradient(180deg, rgba(18, 4, 12, 0.05) 28%, rgba(18, 4, 12, 0.5) 100%),
+    radial-gradient(190px 190px at 0% 50%, color-mix(in srgb, var(--ha, #ff4fa8) 80%, transparent), transparent 74%),
+    radial-gradient(190px 190px at 100% 50%, color-mix(in srgb, var(--hb, #c77dff) 80%, transparent), transparent 74%),
+    linear-gradient(115deg, color-mix(in srgb, var(--ha, #ff4fa8) 40%, transparent) 0%,
+                    transparent 46%, transparent 54%,
+                    color-mix(in srgb, var(--hb, #c77dff) 40%, transparent) 100%),
+    linear-gradient(180deg, rgba(42, 12, 29, 0.82), rgba(22, 5, 15, 0.9));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
+  backdrop-filter: blur(14px) saturate(150%);
+  overflow: hidden;
+}
+
+/* browsers without color-mix still get the glass, just no team tint */
+@supports not (color: color-mix(in srgb, red 50%, blue)) {
+  .mx-hero { background: linear-gradient(180deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.04)); }
+}
+
+/* the two team colours, drawn across the very top of the card, with a lit
+   centre so the masthead announces itself against the tab strip below */
+.mx-hero::after {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4px;
+  background: linear-gradient(90deg,
+              var(--ha, var(--mx-cyan)) 0%,
+              color-mix(in srgb, var(--ha, #ff4fa8) 55%, #ffffff) 26%,
+              var(--mx-gold) 50%,
+              color-mix(in srgb, var(--hb, #c77dff) 55%, #ffffff) 74%,
+              var(--hb, var(--mx-violet)) 100%);
+  box-shadow: 0 2px 14px rgba(255, 194, 71, 0.35);
+}
+
+/* Oversized crests bleeding out of each edge. They sit behind everything,
+   which is what stops the strip reading as an empty bar. `screen` drops the
+   dark half of a crest into the background and keeps the bright half, so a
+   navy badge (RCB, GT) shows up as readably as a yellow one. */
+.mx-hero__ghost {
+  position: absolute;
+  top: 50%;
+  width: 176px;
+  height: 176px;
+  transform: translateY(-50%);
+  opacity: 0.3;
+  mix-blend-mode: screen;
+  pointer-events: none;
+  -webkit-mask-image: radial-gradient(closest-side, #000 50%, transparent 100%);
+  mask-image: radial-gradient(closest-side, #000 50%, transparent 100%);
+}
+
+/* without blend modes it would sit on top as a solid logo */
+@supports not (mix-blend-mode: screen) {
+  .mx-hero__ghost { opacity: 0.16; }
+}
+
+.mx-hero__ghost--l { left: -74px; }
+.mx-hero__ghost--r { right: -74px; }
+
+.mx-hero__ghost img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.mx-hero__bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.mx-hero__title {
+  position: relative;
+  min-width: 0;
+  margin: 0;
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-size: clamp(1.2rem, 4.2vw, 1.72rem);
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: linear-gradient(100deg, #ffffff 10%, #ffdbf1 46%, var(--mx-gold) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  /* the gradient is clipped to the glyphs, so the lift has to come from a
+     drop-shadow on the painted text rather than a text-shadow */
+  filter: drop-shadow(0 2px 10px rgba(0, 0, 0, 0.55));
+}
+
+.mx-hero__title i {
+  margin: 0 7px;
+  font-style: normal;
+  font-size: 0.58em;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+  -webkit-text-fill-color: rgba(255, 255, 255, 0.5);
+}
+
+.mx-hero__meta {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  margin-top: 9px;
+  font-size: 11.5px;
+  color: var(--mx-ink-3);
+}
+
+.mx-hero__meta > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.mx-hero__meta .material-icons-round {
+  font-size: 14px;
+  opacity: 0.8;
+}
+
+.mx-hero__meta b {
+  font-weight: 600;
+  color: var(--mx-ink-2);
+}
+
+/* --- when the game starts: the one lit chip in the meta row -------------- */
+
+/* > span.mx-hero__when: the layout rule above it is the same class + type */
+.mx-hero__meta > span.mx-hero__when {
+  gap: 6px;
+  padding: 4px 11px 4px 9px;
+  border: 1px solid rgba(255, 194, 71, 0.38);
+  border-radius: 99px;
+  background:
+    linear-gradient(100deg, rgba(76, 201, 240, 0.22), rgba(205, 88, 255, 0.16) 52%, rgba(255, 194, 71, 0.24));
+  box-shadow: 0 6px 16px rgba(22, 2, 13, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+
+.mx-hero__when .material-icons-round {
+  font-size: 15px;
+  opacity: 1;
+  color: var(--mx-cyan);
+}
+
+.mx-hero__when b {
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.mx-hero__dot {
+  font-style: normal;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.mx-hero__time {
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-style: normal;
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  font-variant-numeric: tabular-nums;
+  color: var(--mx-gold);
+  text-shadow: 0 0 14px rgba(255, 194, 71, 0.45);
+}
+
+.mx-hero__when small {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: rgba(255, 194, 71, 0.72);
+}
+
+/* the venue is the one variable-length field, so it takes the squeeze */
+.mx-hero__venue > span:last-child {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.mx-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 13px 0 9px;
+  border: 1px solid var(--mx-line-2);
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.07);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--mx-ink-2);
+  transition: background 180ms var(--mx-ease), color 180ms var(--mx-ease), transform 180ms var(--mx-ease);
+}
+
+.mx-back:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: var(--mx-ink);
+  transform: translateX(-2px);
+}
+
+.mx-back .material-icons-round { font-size: 18px; }
+
+.mx-tag {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  white-space: nowrap;
+  border: 1px solid var(--mx-line-2);
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.06);
+  font-family: 'Outfit', sans-serif;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--mx-ink-2);
+}
+
+.mx-tag--playoff {
+  border-color: rgba(255, 194, 71, 0.45);
+  background: rgba(255, 194, 71, 0.14);
+  color: var(--mx-gold);
+}
+
+.mx-hero__tools {
+  flex: none;
+  display: flex;
+  gap: 8px;
+}
+
+/* The pills at the right-hand end sit over the brightest part of a ghost
+   crest, so they carry their own dark backing rather than the usual white
+   wash — otherwise a light crest swallows the share icon. */
+.mx-hero .mx-state {
+  flex: none;
+  margin-left: auto;
+  background: rgba(24, 6, 16, 0.45);
+}
+
+.mx-hero .mx-icon-btn {
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(24, 6, 16, 0.5);
+  color: var(--mx-ink);
+}
+
+.mx-hero .mx-icon-btn:hover { background: rgba(24, 6, 16, 0.72); }
+
+.mx-hero .mx-tag {
+  background: rgba(24, 6, 16, 0.34);
+}
+
+.mx-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid var(--mx-line-2);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--mx-ink-2);
+  cursor: pointer;
+  transition: background 180ms var(--mx-ease), color 180ms var(--mx-ease), transform 180ms var(--mx-ease);
+}
+
+.mx-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: var(--mx-ink);
+  transform: translateY(-1px);
+}
+
+.mx-icon-btn.is-done {
+  border-color: rgba(46, 226, 122, 0.5);
+  color: var(--mx-green);
+}
+
+.mx-icon-btn .material-icons-round { font-size: 18px; }
+
+/* ---------------------------------------------------------------- the board */
+
+/* continues the hero card: no top border, no gap, only the hairline they
+   share — the masthead and the score are one block */
+.mx-board {
+  margin-top: 0;
+  border: 1px solid var(--mx-line-2);
+  border-top: 1px solid var(--mx-line);
+  border-radius: 0 0 var(--mx-r-lg) var(--mx-r-lg);
+  /* a shade darker than the page so the whole card — masthead and score —
+     sits forward of the tab strip underneath it */
+  background: linear-gradient(180deg, rgba(38, 11, 27, 0.66), rgba(24, 6, 16, 0.76));
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  backdrop-filter: blur(16px) saturate(140%);
+  box-shadow: 0 24px 50px rgba(22, 2, 13, 0.48);
+  overflow: hidden;
+}
+
+.mx-board__top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 16px 0;
+}
+
+/* status pill: the one element that says what the match is doing */
+.mx-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 12px;
+  border: 1px solid var(--mx-line-2);
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--mx-ink-2);
+}
+
+.mx-state__dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.mx-state--live {
+  border-color: rgba(255, 90, 114, 0.45);
+  background: rgba(255, 90, 114, 0.14);
+  color: #ff8095;
+}
+
+.mx-state--live .mx-state__dot {
+  background: #ff4d68;
+  box-shadow: 0 0 0 0 rgba(255, 77, 104, 0.7);
+  animation: mx-pulse 1.8s infinite;
+}
+
+.mx-state--soon {
+  border-color: rgba(255, 157, 60, 0.45);
+  background: rgba(255, 157, 60, 0.13);
+  color: var(--mx-orange);
+}
+
+.mx-state--done {
+  border-color: rgba(46, 226, 122, 0.4);
+  background: rgba(46, 226, 122, 0.12);
+  color: var(--mx-green);
+}
+
+.mx-state--off {
+  border-color: rgba(181, 134, 162, 0.4);
+  background: rgba(181, 134, 162, 0.12);
+  color: var(--mx-ink-3);
+}
+
+@keyframes mx-pulse {
+  70% { box-shadow: 0 0 0 7px rgba(255, 77, 104, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 77, 104, 0); }
+}
+
+.mx-board__toss {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--mx-ink-3);
+}
+
+.mx-board__toss .material-icons-round {
+  font-size: 14px;
+  opacity: 0.8;
+}
+
+.mx-board__toss b { color: var(--mx-ink-2); font-weight: 600; }
+
+/* --- the two innings lines ------------------------------------------------ */
+
+/* Both innings read as one list, not as two cards stacked inside the board:
+   no per-row box, just a hairline between them. The state of a side is told
+   by the colour of its own numbers instead of by a container around it. */
+.mx-sides {
+  display: flex;
+  flex-direction: column;
+  padding: 12px 16px 2px;
+}
+
+.mx-side {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 2px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  transition: opacity 220ms var(--mx-ease);
+}
+
+.mx-side + .mx-side::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--mx-line-2) 18%, var(--mx-line-2) 82%, transparent);
+}
+
+/* the side at the crease glows green, the winner gold — on the text itself */
+.mx-side.is-batting .mx-side__abv,
+.mx-side.is-batting .mx-side__score b { color: var(--mx-green); }
+
+.mx-side.is-won .mx-side__abv,
+.mx-side.is-won .mx-side__score b {
+  color: var(--mx-gold);
+  text-shadow: 0 0 18px rgba(255, 194, 71, 0.35);
+}
+
+.mx-side.is-lost { opacity: 0.66; }
+
+.mx-crest {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
+  background: linear-gradient(145deg, var(--c1, #552b43) 8%, var(--c2, #3a162a) 78%);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  overflow: hidden;
+}
+
+/* the abbreviation sits underneath, so a missing crest still reads */
+.mx-crest__txt {
+  position: absolute;
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.mx-crest img {
+  position: relative;
+  width: 78%;
+  height: 78%;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35));
+}
+
+.mx-crest--sm { width: 34px; height: 34px; border-radius: 11px; }
+.mx-crest--sm .mx-crest__txt { font-size: 10px; }
+.mx-crest--xs { width: 26px; height: 26px; border-radius: 8px; }
+.mx-crest--xs .mx-crest__txt { font-size: 8.5px; }
+
+.mx-side__id {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.mx-side__abv {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.mx-side__full {
+  font-size: 11.5px;
+  color: var(--mx-ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mx-side__bat {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 99px;
+  background: rgba(46, 226, 122, 0.16);
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--mx-green);
+}
+
+.mx-side__score {
+  margin-left: auto;
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.mx-side__score b {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.mx-side__score i {
+  font-style: normal;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--mx-ink-3);
+}
+
+.mx-side__score .mx-wait {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--mx-ink-3);
+}
+
+/* a super over stacks the decider under the regular innings */
+.mx-side__score--stack {
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+}
+
+.mx-side__so {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.mx-so-tag {
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: rgba(255, 194, 71, 0.2);
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--mx-gold);
+}
+
+.mx-side__prior {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--mx-ink-3);
+}
+
+/* a run of runs just landed */
+@keyframes mx-bump {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.14); color: var(--mx-gold); }
+  100% { transform: scale(1); }
+}
+
+.mx-side__score b.is-bump { animation: mx-bump 620ms var(--mx-ease); }
+
+/* --- status line + tiles -------------------------------------------------- */
+
+/* The verdict line. The tone colours the whole strip — text, icon, border and
+   wash — rather than a 3px rule nobody reads on the left edge. */
+.mx-board__info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 10px 16px 14px;
+  padding: 11px 14px;
+  border: 1px solid var(--mx-line-2);
+  border-radius: var(--mx-r-md);
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 0.92rem;
+  font-weight: 700;
+  line-height: 1.4;
+  text-align: center;
+  color: var(--mx-ink);
+}
+
+.mx-board__info::before {
+  font-family: 'Material Icons Round', 'Material Icons';
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 1;
+  flex: none;
+}
+
+.mx-board__info--live {
+  border-color: rgba(255, 157, 60, 0.45);
+  background: linear-gradient(90deg, rgba(255, 157, 60, 0.22), rgba(255, 157, 60, 0.1) 60%, rgba(255, 157, 60, 0.2));
+  color: #ffbc73;
+  text-shadow: 0 0 18px rgba(255, 157, 60, 0.3);
+}
+
+.mx-board__info--live::before { content: 'sports_cricket'; }
+
+.mx-board__info--done {
+  border-color: rgba(46, 226, 122, 0.45);
+  background: linear-gradient(90deg, rgba(46, 226, 122, 0.22), rgba(46, 226, 122, 0.09) 60%, rgba(46, 226, 122, 0.2));
+  color: #62f0a2;
+  text-shadow: 0 0 18px rgba(46, 226, 122, 0.3);
+}
+
+.mx-board__info--done::before { content: 'emoji_events'; }
+
+.mx-board__info--na {
+  border-color: rgba(181, 134, 162, 0.4);
+  background: linear-gradient(90deg, rgba(181, 134, 162, 0.18), rgba(181, 134, 162, 0.07) 60%, rgba(181, 134, 162, 0.16));
+  color: var(--mx-ink-2);
+}
+
+.mx-board__info--na::before { content: 'cloud_off'; }
+
+.mx-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 8px;
+  justify-content: center;
+  padding: 10px 16px 14px;
+}
+
+.mx-tile {
+  padding: 9px 12px;
+  border: 1px solid var(--mx-line);
+  border-radius: var(--mx-r-md);
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.mx-tile dt {
+  margin: 0 0 3px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--mx-ink-3);
+}
+
+.mx-tile dd {
+  margin: 0;
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.05rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--mx-ink);
+}
+
+.mx-tile dd small {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--mx-ink-3);
+}
+
+.mx-tile--target dd { color: var(--mx-gold); }
+.mx-tile--rrr dd { color: var(--mx-orange); }
+
+/* --- countdown ------------------------------------------------------------ */
+
+.mx-clock {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 4px 16px 16px;
+}
+
+/* each unit carries its own hue, so the wait to first ball is the brightest
+   thing on a pre-match board */
+.mx-clock__unit {
+  flex: 1 1 64px;
+  padding: 9px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--mx-r-md);
+  background: rgba(255, 255, 255, 0.045);
+  background: linear-gradient(160deg,
+              color-mix(in srgb, var(--u, #29c5e8) 28%, transparent),
+              rgba(255, 255, 255, 0.03));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  text-align: center;
+}
+
+.mx-clock__unit:nth-child(1) { --u: var(--mx-cyan); }
+.mx-clock__unit:nth-child(2) { --u: var(--mx-violet); }
+.mx-clock__unit:nth-child(3) { --u: var(--mx-gold); }
+.mx-clock__unit:nth-child(4) { --u: var(--mx-green); }
+
+.mx-clock__n {
+  display: block;
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.35rem;
+  font-weight: 800;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: #ffffff;
+  text-shadow: 0 0 18px color-mix(in srgb, var(--u, #29c5e8) 75%, transparent);
+}
+
+.mx-clock__u {
+  display: block;
+  margin-top: 2px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--mx-ink-3);
+  color: color-mix(in srgb, var(--u, #29c5e8) 55%, #ffffff);
+}
+
+.mx-clock.is-soon .mx-clock__n { color: var(--mx-orange); }
+.mx-clock.is-over .mx-clock__n { color: var(--mx-ink-3); text-shadow: none; }
+
+/* ------------------------------------------------------------------ tab bar */
+
+.mx-tabbar {
+  position: sticky;
+  top: var(--mx-stick);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 7px;
+  border: 1px solid var(--mx-line);
+  border-radius: 99px;
+  background: rgba(34, 10, 24, 0.72);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  backdrop-filter: blur(16px) saturate(140%);
+  transition: box-shadow 240ms var(--mx-ease), background 240ms var(--mx-ease);
+}
+
+.mx-tabbar.is-stuck {
+  background: rgba(29, 8, 20, 0.9);
+  box-shadow: 0 16px 34px rgba(22, 2, 13, 0.5);
+}
+
+.mx-tabs {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  justify-content: space-evenly;
+}
+
+.mx-tabs::-webkit-scrollbar { display: none; }
+
+.mx-tab {
+  flex: 1 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 15px;
+  border: 0;
+  border-radius: 99px;
+  background: transparent;
+  font-family: 'Inter', sans-serif;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  color: var(--mx-ink-3);
+  cursor: pointer;
+  transition: color 180ms var(--mx-ease), background 180ms var(--mx-ease);
+}
+
+.mx-tab:hover { color: var(--mx-ink); background: rgba(255, 255, 255, 0.06); }
+
+.mx-tab[aria-selected='true'] {
+  color: #1f0615;
+  background: linear-gradient(135deg, var(--mx-cyan), #8fe0f2 55%, var(--mx-gold));
+  box-shadow: 0 8px 20px rgba(76, 201, 240, 0.25);
+}
+
+.mx-tab__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--mx-red);
+  box-shadow: 0 0 0 0 rgba(255, 77, 104, 0.7);
+  animation: mx-pulse 1.8s infinite;
+}
+
+.mx-tab[aria-selected='true'] .mx-tab__dot { background: #b3004a; animation: none; }
+
+/* refresh pill: how fresh the numbers are, and a way to stop the polling */
+.mx-live {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px 0 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--mx-ink-3);
+  white-space: nowrap;
+}
+
+.mx-live__age { font-variant-numeric: tabular-nums; }
+
+.mx-live__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--mx-line-2);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--mx-ink-2);
+  cursor: pointer;
+  transition: background 180ms var(--mx-ease), color 180ms var(--mx-ease);
+}
+
+.mx-live__btn:hover { background: rgba(255, 255, 255, 0.15); color: var(--mx-ink); }
+.mx-live__btn .material-icons-round { font-size: 17px; }
+.mx-live__btn.is-spinning .material-icons-round { animation: mx-spin 900ms linear infinite; }
+
+@keyframes mx-spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 720px) {
+  .mx-live__age { display: none; }
+  .mx-live { padding-left: 4px; }
+}
+
+/* -------------------------------------------------------------- panel shell */
+
+.mx-panel { padding-bottom: 8px; }
+
+.mx-note {
+  margin: 16px 0 0;
+  font-size: 11.5px;
+  line-height: 1.6;
+  text-align: center;
+  color: var(--mx-ink-3);
+}
+
+/* Empty / error states -------------------------------------------------- */
+
+.mx-empty {
+  margin-top: 14px;
+  padding: 44px 20px;
+  border: 1px dashed var(--mx-line-2);
+  border-radius: var(--mx-r-lg);
+  background: rgba(255, 255, 255, 0.03);
+  text-align: center;
+}
+
+.mx-empty .material-icons-round {
+  font-size: 40px;
+  color: var(--mx-ink-3);
+  opacity: 0.7;
+}
+
+.mx-empty b {
+  display: block;
+  margin: 10px 0 4px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.mx-empty p {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--mx-ink-3);
+}
+
+.mx-empty--error .material-icons-round { color: var(--mx-red); opacity: 0.85; }
+
+.mx-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 14px;
+  padding: 9px 18px;
+  border: 1px solid var(--mx-line-2);
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--mx-ink);
+  cursor: pointer;
+  transition: background 180ms var(--mx-ease), transform 180ms var(--mx-ease);
+}
+
+.mx-btn:hover { background: rgba(255, 255, 255, 0.16); transform: translateY(-1px); }
+.mx-btn .material-icons-round { font-size: 17px; }
+
+/* Skeletons -------------------------------------------------------------- */
+
+.mx-skel {
+  border-radius: var(--mx-r-sm);
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.05) 25%,
+                                     rgba(255, 255, 255, 0.11) 37%,
+                                     rgba(255, 255, 255, 0.05) 63%);
+  background-size: 400% 100%;
+  animation: mx-shimmer 1.4s ease infinite;
+}
+
+@keyframes mx-shimmer {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+
+.mx-skel--line { height: 12px; margin: 10px 0; }
+.mx-skel--row { height: 54px; margin: 10px 0; border-radius: var(--mx-r-md); }
+.mx-skel--board { height: 150px; border-radius: var(--mx-r-lg); }
+.mx-skel--pad { padding: 16px; }
+
+/* ================================================================== SHARED
+   Tables used by the live, scorecard and info panels.
+   ========================================================================= */
+
+.mx-tablewrap {
+  width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.mx-tablewrap::-webkit-scrollbar { height: 5px; }
+.mx-tablewrap::-webkit-scrollbar-thumb {
+  background: var(--mx-line-2);
+  border-radius: 99px;
+}
+
+.mx-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.mx-table thead th {
+  padding: 9px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--mx-line);
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  text-align: right;
+  color: var(--mx-ink-3);
+  white-space: nowrap;
+}
+
+.mx-table thead th:first-child { text-align: left; }
+
+.mx-table tbody td {
+  padding: 9px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.055);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--mx-ink-2);
+  white-space: nowrap;
+}
+
+.mx-table tbody td:first-child {
+  text-align: left;
+  white-space: normal;
+}
+
+.mx-table tbody tr:last-child td { border-bottom: 0; }
+.mx-table tbody tr:hover td { background: rgba(255, 255, 255, 0.035); }
+
+.mx-table tbody td b { color: var(--mx-ink); font-weight: 700; }
+
+.mx-table .mx-col-main { width: 46%; }
+
+/* a player cell: crest-less avatar + name, links through to the player page */
+.mx-plr {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  color: var(--mx-ink);
+}
+
+.mx-plr__pic {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.07);
+  object-fit: cover;
+}
+
+.mx-plr__name {
+  font-weight: 700;
+  color: var(--mx-ink);
+  transition: color 160ms var(--mx-ease);
+}
+
+a:hover .mx-plr__name { color: var(--mx-cyan); }
+
+.mx-plr__badge {
+  margin-left: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--mx-ink-3);
+}
+
+.mx-plr__mark {
+  width: 16px;
+  height: 16px;
+  margin-left: 5px;
+  vertical-align: -3px;
+  opacity: 0.95;
+}
+
+.mx-out {
+  display: block;
+  margin-top: 2px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--mx-ink-3);
+}
+
+.mx-out--not { color: var(--mx-green); }
+
+/* Ball chips — shared by every timeline on the page --------------------- */
+
+.mx-ball {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 25px;
+  height: 25px;
+  padding: 0 5px;
+  border: 1px solid var(--mx-line-2);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--mx-ink);
+  white-space: nowrap;
+}
+
+.mx-ball--dot {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--mx-ink-3);
+}
+
+.mx-ball--four {
+  border-color: transparent;
+  background: linear-gradient(145deg, #ff4fa8, #b8006a);
+  color: #fff;
+}
+
+.mx-ball--six {
+  border-color: transparent;
+  background: linear-gradient(145deg, #34d97a, #16995a);
+  color: #052015;
+}
+
+.mx-ball--wicket {
+  border-color: transparent;
+  background: linear-gradient(145deg, #ff6a52, #c21f3a);
+  color: #fff;
+  box-shadow: 0 0 0 3px rgba(255, 90, 114, 0.16);
+}
+
+.mx-ball--extra {
+  border-style: dashed;
+  border-color: rgba(255, 194, 71, 0.5);
+  background: rgba(255, 194, 71, 0.12);
+  color: var(--mx-gold);
+}
+
+.mx-ball--wide { min-width: 28px; }
+
+/* "x" is a slot in the timeline the feed has not filled in yet */
+.mx-ball--miss {
+  border-style: dashed;
+  border-color: var(--mx-line);
+  background: transparent;
+}
+
+/* inline coloured run in a text summary */
+.mx-run--four { color: var(--mx-blue); font-weight: 800; }
+.mx-run--six { color: var(--mx-green); font-weight: 800; }
+.mx-run--wicket { color: var(--mx-red); font-weight: 800; }
+
+/* ============================================================== INFO panel */
+
+.mx-info {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 1px;
+  background: var(--mx-line);
+}
+
+.mx-info__row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 16px;
+  background: rgba(30, 9, 21, 0.55);
+}
+
+.mx-info__row .material-icons-round {
+  font-size: 18px;
+  color: var(--mx-cyan);
+  opacity: 0.85;
+}
+
+.mx-info__k {
+  display: block;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--mx-ink-3);
+}
+
+.mx-info__v {
+  display: block;
+  margin-top: 3px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--mx-ink);
+}
+
+.mx-info__v small {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--mx-ink-3);
+}
+
+/* the pre-match head-to-head strip */
+.mx-vs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 20px 16px;
+}
+
+.mx-vs__team {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 38%;
+  text-align: center;
+}
+
+.mx-vs__name {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.mx-vs__sep {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--mx-ink-3);
+}
+
+/* ============================================================== LIVE panel */
+
+/* --- recent overs strip --------------------------------------------------- */
+
+.mx-timeline { position: relative; }
+
+.mx-timeline::before,
+.mx-timeline::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  z-index: 2;
+  width: 34px;
+  height: 100%;
+  pointer-events: none;
+  transition: opacity 200ms var(--mx-ease);
+}
+
+.mx-timeline::before {
+  left: 0;
+  background: linear-gradient(90deg, rgba(30, 9, 21, 0.95), transparent);
+}
+
+.mx-timeline::after {
+  right: 0;
+  background: linear-gradient(270deg, rgba(30, 9, 21, 0.95), transparent);
+}
+
+.mx-timeline.at-start::before { opacity: 0; }
+.mx-timeline.at-end::after { opacity: 0; }
+
+.mx-timeline__bar {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 12px 14px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.mx-timeline__bar::-webkit-scrollbar { display: none; }
+
+.mx-over-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 12px;
+  padding-right: 12px;
+}
+
+.mx-over-group:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 15%;
+  height: 70%;
+  width: 1px;
+  background: var(--mx-line);
+}
+
+.mx-over-group:last-child { margin-right: 0; padding-right: 0; }
+
+.mx-over-group__label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--mx-ink-3);
+  white-space: nowrap;
+}
+
+.mx-over-group__balls { display: flex; gap: 5px; }
+
+.mx-over-group__total {
+  padding: 3px 9px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.07);
+  font-family: 'Outfit', sans-serif;
+  font-size: 11.5px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+/* --- win probability ------------------------------------------------------ */
+
+.mx-prob { padding: 14px 16px 16px; }
+
+.mx-prob__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.mx-prob__mid {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--mx-ink-3);
+}
+
+.mx-prob__bar {
+  position: relative;
+  display: flex;
+  height: 10px;
+  border-radius: 99px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.mx-prob__seg {
+  height: 100%;
+  background: var(--c, var(--mx-cyan));
+  transition: width 600ms var(--mx-ease);
+}
+
+.mx-prob__seg--a { border-radius: 99px 0 0 99px; }
+.mx-prob__seg--b { border-radius: 0 99px 99px 0; margin-left: auto; }
+
+.mx-prob__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- player of the match / series ---------------------------------------- */
+
+.mx-potm {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+}
+
+.mx-potm__pic {
+  flex: none;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 86px;
+  height: 86px;
+  border-radius: 22px;
+  background: linear-gradient(145deg, var(--c1, #552b43) 10%, var(--c2, #3a162a) 72%);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  overflow: hidden;
+}
+
+.mx-potm__pic img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mx-potm__id { min-width: 0; flex: 1; }
+
+.mx-potm__name {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--mx-ink);
+}
+
+a:hover .mx-potm__name { color: var(--mx-cyan); }
+
+.mx-potm__team {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mx-ink-3);
+}
+
+.mx-potm__team img { width: 18px; height: 18px; object-fit: contain; }
+
+.mx-potm__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.mx-potm__stat {
+  flex: 1 1 96px;
+  padding: 7px 12px;
+  border: 1px solid var(--mx-line);
+  border-radius: var(--mx-r-md);
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.mx-potm__stat dt {
+  margin: 0 0 2px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--mx-ink-3);
+}
+
+.mx-potm__stat dd {
+  margin: 0;
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.mx-card--award .mx-card__head {
+  background: linear-gradient(90deg, rgba(255, 194, 71, 0.22), rgba(255, 255, 255, 0.04) 70%);
+}
+
+.mx-card--award .mx-card__head .material-icons-round { color: var(--mx-gold); }
+
+/* --- innings sub-tabs ----------------------------------------------------- */
+
+.mx-subtabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.mx-subtab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border: 1px solid var(--mx-line-2);
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--mx-ink-2);
+  cursor: pointer;
+  transition: background 180ms var(--mx-ease), color 180ms var(--mx-ease), border-color 180ms var(--mx-ease);
+}
+
+.mx-subtab:hover { background: rgba(255, 255, 255, 0.11); color: var(--mx-ink); }
+
+.mx-subtab[aria-selected='true'] {
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--c1, var(--mx-cyan)), var(--c2, var(--mx-violet)));
+  color: #fff;
+  box-shadow: 0 10px 22px rgba(22, 2, 13, 0.45);
+}
+
+.mx-subtab__crest { width: 20px; height: 20px; object-fit: contain; }
+
+.mx-pane[hidden] { display: none; }
+
+/* --- commentary ----------------------------------------------------------- */
+
+.mx-comm { display: flex; flex-direction: column; }
+
+.mx-comm__ball {
+  display: flex;
+  gap: 14px;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.055);
+}
+
+.mx-comm__ball:last-child { border-bottom: 0; }
+
+.mx-comm__mark {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 44px;
+}
+
+.mx-comm__no {
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--mx-ink-3);
+}
+
+.mx-comm__text {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--mx-ink-2);
+}
+
+.mx-comm__text b { color: var(--mx-ink); font-weight: 700; }
+
+.mx-comm__ball.is-wicket { background: rgba(255, 90, 114, 0.07); }
+.mx-comm__ball.is-six { background: rgba(46, 226, 122, 0.06); }
+.mx-comm__ball.is-four { background: rgba(255, 79, 181, 0.06); }
+
+/* end-of-over summary band */
+.mx-comm__over {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  padding: 12px 16px;
+  background: linear-gradient(90deg, rgba(76, 201, 240, 0.12), rgba(255, 255, 255, 0.03));
+  border-top: 1px solid var(--mx-line);
+  border-bottom: 1px solid var(--mx-line);
+}
+
+.mx-comm__ovno {
+  padding: 4px 11px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.1);
+  font-family: 'Outfit', sans-serif;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.mx-comm__ovscore {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.mx-comm__ovballs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+}
+
+.mx-comm__ovruns {
+  margin-left: auto;
+  padding: 4px 11px;
+  border-radius: 99px;
+  background: rgba(255, 194, 71, 0.16);
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--mx-gold);
+  white-space: nowrap;
+}
+
+.mx-comm__who {
+  width: 100%;
+  font-size: 11.5px;
+  color: var(--mx-ink-3);
+}
+
+.mx-comm__who b { color: var(--mx-ink-2); font-weight: 700; }
+
+/* ========================================================= SCORECARD panel */
+
+.mx-inn__total {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 18px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--mx-line);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.mx-inn__total b {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.15rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.mx-inn__total span { font-size: 11.5px; color: var(--mx-ink-3); }
+.mx-inn__total .mx-inn__crr { margin-left: auto; }
+
+.mx-inn__extras {
+  padding: 10px 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.055);
+  font-size: 12px;
+  color: var(--mx-ink-3);
+}
+
+.mx-inn__extras b { color: var(--mx-ink); font-weight: 700; }
+
+.mx-inn__yet {
+  padding: 12px 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.055);
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--mx-ink-3);
+}
+
+.mx-inn__yet b {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--mx-ink-3);
+}
+
+.mx-inn__yet a { color: var(--mx-ink-2); font-weight: 600; }
+.mx-inn__yet a:hover { color: var(--mx-cyan); }
+
+.mx-sub {
+  padding: 10px 16px;
+  border-top: 1px solid var(--mx-line);
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--mx-ink-3);
+}
+
+/* The squad panel heads a head-to-head pair of columns, so its title belongs
+   over the gap between them rather than against the left edge. */
+.mx-sub--mid { text-align: center; }
+
+/* top performers */
+.mx-top {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1px;
+  background: var(--mx-line);
+}
+
+.mx-top__col { padding: 14px 16px; background: rgba(30, 9, 21, 0.55); }
+
+.mx-top__head {
+  margin-bottom: 12px;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--mx-ink-3);
+}
+
+.mx-top__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.mx-top__pic {
+  flex: none;
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.07);
+  object-fit: cover;
+}
+
+.mx-top__id { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+
+.mx-top__name {
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mx-top__fig {
+  margin-top: 2px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--mx-gold);
+  font-variant-numeric: tabular-nums;
+}
+
+.mx-top__fig span { font-family: 'Inter', sans-serif; font-size: 0.75rem; font-weight: 600; color: var(--mx-ink-3); }
+
+/* ============================================================== OVERS panel */
+
+.mx-over {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.055);
+  transition: background 180ms var(--mx-ease);
+}
+
+.mx-over:last-child { border-bottom: 0; }
+.mx-over:hover { background: rgba(255, 255, 255, 0.03); }
+
+.mx-over__left {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  width: 64px;
+}
+
+.mx-over__no {
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.mx-over__score {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--mx-ink-3);
+}
+
+.mx-over__mid {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-inline: 12px;
+  border-inline: 1px dashed var(--mx-line);
+}
+
+.mx-over__who {
+  font-size: 12px;
+  color: var(--mx-ink-3);
+}
+
+.mx-over__who b { color: var(--mx-ink); font-weight: 700; }
+
+.mx-over__balls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.mx-over__right {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 54px;
+}
+
+.mx-over__runs {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.15rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.mx-over__runs small {
+  display: block;
+  font-family: 'Inter', sans-serif;
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--mx-ink-3);
+  text-align: center;
+}
+
+.mx-over.is-big .mx-over__runs { color: var(--mx-green); }
+.mx-over.is-wkt .mx-over__runs { color: var(--mx-red); }
+
+/* ============================================================= GRAPHS panel
+   Manhattan, worm, run rate and the phase breakdown. js/graphs.js builds the
+   three plots as inline SVG sized to the container's real pixel width, so there
+   is no aspect-ratio box here: the card is as tall as the drawing it was handed.
+   --mxg-c is the colour of whichever innings is selected, set by the panel so
+   the chrome around a chart (the wicket key, the disclosure marker) can follow
+   it without the stylesheet knowing a thing about team colours. */
+
+.mxg-wrap { --mxg-surface: #381a2b; }
+
+/* the innings filter — one row, above everything it scopes */
+.mxg-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin-top: 14px;
+}
+
+.mxg-filter__label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--mx-ink-3);
+}
+
+.mxg-filter .mx-subtabs { margin-top: 0; }
+
+.mxg-card .mx-card__head small {
+  font-family: 'Inter', sans-serif;
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  color: var(--mx-ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- legend: always there for two series, never colour on its own --------- */
+
+.mxg-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  padding: 10px 16px 0;
+}
+
+.mxg-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--mx-ink-2);
+  transition: opacity 180ms var(--mx-ease);
+}
+
+.mxg-legend__item.is-quiet { opacity: 0.5; }
+.mxg-legend__item img { width: 16px; height: 16px; object-fit: contain; }
+
+.mxg-legend__line {
+  width: 16px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--c, var(--mx-cyan));
+}
+
+/* --- the plot itself ------------------------------------------------------ */
+
+.mxg-fig {
+  margin: 0;
+  padding: 12px 14px 6px;
+}
+
+.mxg-fig--flat { padding: 4px 0 6px; }
+
+.mxg-stage { position: relative; }
+
+.mxg-plot {
+  display: block;
+  width: 100%;
+  border-radius: var(--mx-r-sm);
+  outline-offset: 3px;
+  touch-action: pan-y;               /* a swipe still scrolls the page */
+}
+
+.mxg-plot:focus-visible { outline: 2px solid var(--mx-cyan); }
+
+.mxg-svg {
+  display: block;
+  width: 100%;
+  overflow: visible;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+.mxg-cursor { pointer-events: none; }
+.mxg-cross { pointer-events: none; }
+
+/* --- tooltip: values lead, the series name follows ----------------------- */
+
+.mxg-tip {
+  position: absolute;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 11px;
+  border: 1px solid var(--mx-line-2);
+  border-radius: var(--mx-r-sm);
+  background: rgba(31, 9, 22, 0.95);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 14px 30px rgba(22, 2, 13, 0.55);
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.mxg-tip__head {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--mx-ink-3);
+}
+
+.mxg-tip__row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--mx-ink-3);
+}
+
+/* a short stroke of the series colour, not a filled block */
+.mxg-tip__row i {
+  align-self: center;
+  width: 12px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--c, var(--mx-ink-3));
+}
+
+.mxg-tip__row b {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--mx-ink);
+}
+
+/* --- caption + the wicket key -------------------------------------------- */
+
+.mxg-cap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  margin-top: 8px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--mx-ink-3);
+}
+
+.mxg-fig--flat .mxg-cap { padding-inline: 16px; }
+
+.mxg-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.mxg-key__dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--mxg-c, var(--mx-ink-3));
+  box-shadow: 0 0 0 2px var(--mxg-surface);
+}
+
+/* A pointer discovers the readout by hovering; a finger has to be told it is
+   there, so the hint only shows where there is no hover to rely on. */
+.mxg-hint { display: none; }
+
+@media (hover: none) {
+  .mxg-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-left: auto;
+    padding: 2px 8px;
+    border: 1px solid var(--mx-line);
+    border-radius: 99px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    color: var(--mx-ink-3);
+  }
+}
+
+/* --- innings progression -------------------------------------------------- */
+
+.mxg-prog { display: flex; flex-direction: column; }
+
+.mxg-prog__inn {
+  padding: 4px 0 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.055);
+  transition: opacity 180ms var(--mx-ease);
+}
+
+.mxg-prog__inn:last-child { border-bottom: 0; padding-bottom: 4px; }
+.mxg-prog__inn.is-quiet { opacity: 0.52; }
+
+.mxg-prog__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  padding: 10px 16px 0;
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.mxg-prog__head img { width: 18px; height: 18px; object-fit: contain; }
+
+.mxg-prog__head small {
+  margin-left: auto;
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--mx-ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.mxg-phase {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 16px;
+}
+
+.mxg-phase__ov {
+  flex: none;
+  width: 44px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--mx-ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.mxg-phase__track {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 10px;
+  border-radius: 0 5px 5px 0;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+/* grows from the baseline at the left: square there, 4px rounded data-end */
+.mxg-phase__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 0 4px 4px 0;
+  background: var(--c, var(--mx-cyan));
+}
+
+.mxg-pip {
+  position: absolute;
+  top: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 99px;
+  background: var(--c, var(--mx-cyan));
+  box-shadow: 0 0 0 2px var(--mxg-surface);   /* the surface ring, not a border */
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--ink, #fff);
+  transform: translate(-50%, -50%);
+}
+
+.mxg-phase__runs {
+  flex: none;
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  min-width: 86px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--mx-ink-3);
+}
+
+.mxg-phase__runs b {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  color: var(--mx-ink);
+}
+
+.mxg-phase__runs small {
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  color: var(--mx-ink-3);
+  opacity: 0.85;
+}
+
+/* --- the table twin ------------------------------------------------------- */
+
+.mxg-data { border-top: 1px solid var(--mx-line); }
+
+.mxg-data > summary {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 16px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--mx-ink-3);
+  cursor: pointer;
+  list-style: none;
+  transition: color 180ms var(--mx-ease), background 180ms var(--mx-ease);
+}
+
+.mxg-data > summary::-webkit-details-marker { display: none; }
+
+.mxg-data > summary::before {
+  content: '';
+  width: 0;
+  height: 0;
+  border: 4px solid transparent;
+  border-left-color: var(--mxg-c, var(--mx-ink-3));
+  transition: transform 180ms var(--mx-ease);
+}
+
+.mxg-data[open] > summary::before { transform: rotate(90deg) translateX(1px); }
+.mxg-data > summary:hover { color: var(--mx-ink); background: rgba(255, 255, 255, 0.04); }
+
+.mxg-table { font-size: 12px; }
+.mxg-table tbody td { font-variant-numeric: tabular-nums; }
+
+/* ============================================================== SQUAD panel */
+
+.mx-sq {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--mx-line);
+}
+
+.mx-sq__col { background: rgba(30, 9, 21, 0.55); }
+
+.mx-sq__col--r .mx-sq__row { flex-direction: row-reverse; text-align: right; }
+.mx-sq__col--r .mx-sq__meta { align-items: flex-end; }
+
+.mx-sq__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  transition: background 180ms var(--mx-ease);
+}
+
+.mx-sq__row:last-child { border-bottom: 0; }
+.mx-sq__row:hover { background: rgba(255, 255, 255, 0.04); }
+
+.mx-sq__row.is-in { background: rgba(46, 226, 122, 0.09); }
+.mx-sq__row.is-out { background: rgba(255, 90, 114, 0.09); }
+
+.mx-sq__pic {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.07);
+  object-fit: cover;
+}
+
+.mx-sq__meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mx-sq__name {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--mx-ink);
+  line-height: 1.25;
+}
+
+.mx-sq__col--r .mx-sq__name { flex-direction: row-reverse; }
+
+.mx-sq__name img { width: 14px; height: 14px; }
+
+.mx-sq__role {
+  font-size: 10.5px;
+  color: var(--mx-ink-3);
+}
+
+.mx-sq__c {
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: rgba(255, 194, 71, 0.18);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--mx-gold);
+}
+
+.mx-sq__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--mx-line);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.mx-sq__team {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.mx-sq__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--mx-line);
+  font-size: 10.5px;
+  color: var(--mx-ink-3);
+}
+
+.mx-sq__legend span { display: inline-flex; align-items: center; gap: 5px; }
+.mx-sq__legend img { width: 12px; height: 12px; }
+
+.mx-sq__legend i {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  font-style: normal;
+}
+
+.mx-sq__legend .is-in { background: rgba(46, 226, 122, 0.5); }
+.mx-sq__legend .is-out { background: rgba(255, 90, 114, 0.5); }
+
+/* -------------------------------------------------------- floating buttons */
+
+.floating-move-top-btn {
+  position: fixed;
+  right: 20px;
+  bottom: 24px;
+  z-index: 900;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--mx-line-2);
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(76, 201, 240, 0.9), rgba(205, 88, 255, 0.9));
+  color: #1f0414;
+  cursor: pointer;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(10px);
+  box-shadow: 0 14px 30px rgba(22, 2, 13, 0.5);
+  transition: opacity 220ms var(--mx-ease), transform 220ms var(--mx-ease), visibility 220ms;
+}
+
+.floating-move-top-btn.is-on { opacity: 1; visibility: visible; transform: none; }
+.floating-move-top-btn .material-icons-round { font-size: 22px; }
+
+.mx-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 26px;
+  z-index: 1200;
+  padding: 11px 20px;
+  border: 1px solid var(--mx-line-2);
+  border-radius: 99px;
+  background: rgba(34, 10, 24, 0.94);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 18px 38px rgba(22, 2, 13, 0.55);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--mx-ink);
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(-50%, 14px);
+  transition: opacity 220ms var(--mx-ease), transform 220ms var(--mx-ease), visibility 220ms;
+}
+
+.mx-toast.is-on { opacity: 1; visibility: visible; transform: translate(-50%, 0); }
+
+/* ------------------------------------------------------------- responsive */
+
+@media (max-width: 900px) {
+  .mx-side__score b { font-size: 1.4rem; }
+  .mx-potm__pic { width: 72px; height: 72px; border-radius: 18px; }
+  .mx-hero__ghost { width: 148px; height: 148px; }
+  .mx-hero__ghost--l { left: -62px; }
+  .mx-hero__ghost--r { right: -62px; }
+}
+
+/* the broadcaster is the first thing to go when the row gets tight
+   (matched through .mx-hero__meta so it outranks the layout rule above) */
+@media (max-width: 720px) {
+  .mx-hero__meta .mx-hero__tv { display: none; }
+}
+
+@media (max-width: 640px) {
+  :root { --mx-nav-h: 64px; }
+
+  .mx-wrap { width: calc(100% - 20px); }
+
+  .mx-hero { padding: 12px 13px 11px; }
+  .mx-hero__meta { gap: 5px 11px; margin-top: 8px; font-size: 11px; }
+  .mx-hero__meta .material-icons-round { font-size: 13px; }
+  .mx-hero__meta > span.mx-hero__when { gap: 5px; padding: 3px 9px 3px 8px; font-size: 10.5px; }
+  .mx-hero__when .material-icons-round { font-size: 14px; }
+  .mx-hero__time { font-size: 11.5px; }
+  .mx-hero__title i { margin: 0 5px; }
+  .mx-hero__ghost { width: 124px; height: 124px; opacity: 0.26; }
+  .mx-hero__ghost--l { left: -52px; }
+  .mx-hero__ghost--r { right: -52px; }
+
+  .mx-board__top { padding: 11px 12px 0; }
+  .mx-board__toss { font-size: 10.5px; }
+  .mx-sides { padding: 10px 12px 2px; }
+  .mx-side { gap: 10px; padding: 9px 1px; }
+  .mx-crest { width: 38px; height: 38px; border-radius: 11px; }
+  .mx-side__abv { font-size: 0.95rem; }
+  .mx-side__full { display: none; }
+  .mx-side__score b { font-size: 1.25rem; }
+  .mx-board__info { margin: 9px 12px 12px; padding: 9px 11px; gap: 6px; font-size: 0.82rem; }
+  .mx-board__info::before { font-size: 16px; }
+  /* minmax(0,…) so a long label like PARTNERSHIP cannot widen its column */
+  .mx-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; padding: 9px 12px 12px; }
+  .mx-tile { padding: 8px 9px; }
+  .mx-tile dt { font-size: 8.5px; letter-spacing: 0.08em; }
+  .mx-tile dd { font-size: 0.98rem; }
+  .mx-clock { padding: 4px 12px 12px; }
+  .mx-clock__n { font-size: 1.15rem; }
+
+  /* all six tabs have to fit a 360px phone before the strip has to scroll */
+  .mx-tabbar { border-radius: var(--mx-r-lg); padding: 6px; gap: 6px; }
+  .mx-tabs { gap: 2px; }
+  .mx-tab { flex: 0 0 auto; padding: 0 9px; font-size: 11px; }
+
+  .mx-comm__ball { gap: 10px; padding: 11px 12px; }
+  .mx-comm__over { padding: 11px 12px; }
+  .mx-over { gap: 8px; padding: 11px 10px; }
+  .mx-over__left { width: 54px; }
+  .mx-over__mid { padding-inline: 9px; }
+  .mx-over__right { width: 42px; }
+
+  /* the phase card's subtitle is the one that pushes its head onto two lines */
+  .mxg-card[data-chart="prog"] .mx-card__head small { display: none; }
+
+  .mxg-fig { padding: 10px 10px 6px; }
+  .mxg-fig--flat .mxg-cap { padding-inline: 12px; }
+  .mxg-legend { gap: 6px 14px; padding: 9px 12px 0; }
+  .mxg-cap { font-size: 10.5px; }
+  .mxg-prog__head { padding: 9px 12px 0; }
+  .mxg-phase { gap: 9px; padding: 6px 12px; }
+  .mxg-phase__ov { width: 38px; font-size: 11px; }
+  .mxg-phase__runs { min-width: 72px; font-size: 9px; }
+  .mxg-phase__runs b { font-size: 0.95rem; }
+  .mxg-data > summary { padding: 9px 12px; }
+  .mxg-table { font-size: 11.5px; }
+  .mx-potm { gap: 12px; padding: 13px; }
+  .mx-table { font-size: 12px; }
+  .mx-table thead th,
+  .mx-table tbody td { padding: 8px 7px; }
+  .mx-plr__pic { width: 24px; height: 24px; border-radius: 8px; }
+  .mx-sq__row { padding: 8px 9px; gap: 8px; }
+  .mx-sq__pic { width: 28px; height: 28px; border-radius: 9px; }
+  .mx-sq__name { font-size: 11.5px; }
+  .mx-sq__role { font-size: 9.5px; }
+}
+
+/* Small phones. The phase row is the first thing to get cramped: the runs
+   column drops its "down" note and the bars take the space back. */
+@media (max-width: 420px) {
+  .mx-tab { padding: 0 8px; font-size: 10.5px; }
+
+  .mxg-filter { gap: 5px 9px; }
+  .mxg-filter__label { font-size: 9px; letter-spacing: 0.1em; }
+  .mxg-fig { padding: 8px 6px 6px; }
+  .mxg-phase { gap: 7px; padding: 6px 10px; }
+  .mxg-phase__ov { width: 33px; font-size: 10px; }
+  .mxg-phase__runs { min-width: 56px; }
+  .mxg-phase__runs small { display: none; }
+  .mxg-pip { min-width: 16px; height: 16px; font-size: 8px; }
+  .mxg-tip { padding: 7px 9px; }
+  .mxg-tip__row b { font-size: 12px; }
+}
+
+/* the bottom nav only shows on phones — keep the last card clear of it */
+@media (max-width: 450px) {
+  body { padding-bottom: 92px; }
+  .floating-move-top-btn { bottom: 84px; right: 14px; }
+  .mx-toast { bottom: 84px; width: max-content; max-width: calc(100% - 28px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mx-wrap *,
+  .floating-move-top-btn,
+  .mx-toast {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media print {
+  body { padding: 0; background: #fff; color: #000; }
+  .mx-tabbar, .bottom-nav, nav.navbar,
+  .floating-move-top-btn, .mx-toast, .mx-hero__tools { display: none !important; }
+  .mx-card, .mx-board, .mx-hero {
+    border-color: #ccc;
+    background: #fff;
+    box-shadow: none;
+  }
+  /* the screen styles paint these with light-on-dark colour */
+  .mx-hero__title {
+    background: none;
+    -webkit-text-fill-color: #000;
+    color: #000;
+    filter: none;
+  }
+  .mx-board__info {
+    border-color: #ccc;
+    background: #fff;
+    color: #000;
+    text-shadow: none;
+  }
+}

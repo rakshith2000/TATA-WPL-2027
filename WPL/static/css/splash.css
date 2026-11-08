@@ -1,0 +1,381 @@
+/* ==========================================================================
+   TATA WPL 2027 · Launch splash
+   --------------------------------------------------------------------------
+   Android draws its own splash from the manifest — a flat background_color,
+   the icon, the app name — and there is no way to animate it. What it can do
+   is hand over cleanly: manifest background_color is #2b071b, which is the
+   base of the gradient below, so the native screen dissolves into this one
+   with no seam and no white flash.
+
+   Shown only when the app is running installed (display-mode: standalone) and
+   only on the first page of a session: this is a multi-page app, and a splash
+   on every navigation would be an obstacle rather than a flourish. The gate is
+   the .is-launching class on <html>, set by the inline script in base.html
+   before first paint; without it everything here stays display: none, so a
+   browser tab and a no-JS visitor never see any of it.
+
+   Built in layers, back to front: a slowly turning colour wash, two swaying
+   floodlight shafts, shockwaves breaking out of the badge, a comet running the
+   rim, and the badge itself flipping in out of the dark. Every moving part is
+   transform or opacity only, so the whole thing composites on the GPU and the
+   main thread stays free for the page that is loading behind it.
+   ========================================================================== */
+
+.app-splash { display: none; }
+
+html.is-launching .app-splash {
+  display: grid;
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  place-content: center;
+  justify-items: center;
+  gap: 30px;
+  overflow: hidden;
+  background-color: #2b071b;
+  background-image:
+    radial-gradient(900px 520px at 50% 38%, rgba(189, 11, 113, 0.38), transparent 62%),
+    linear-gradient(180deg, #300b20 0%, #2b071b 54%, #0d0309 100%);
+  animation: splash-open 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* the page underneath must not scroll behind the splash */
+html.is-launching, html.is-launching body { overflow: hidden; }
+
+@keyframes splash-open { from { opacity: 0; } to { opacity: 1; } }
+
+/* ------------------------------------------------------------------ layer 1
+   Colour wash. A conic gradient painted once and then simply rotated, which
+   the compositor can do for free — repainting a gradient this size every
+   frame could not. */
+
+/* Sized past the viewport diagonal so no corner is ever uncovered as it turns.
+   Deliberately no will-change: a layer this big would cost several megabytes of
+   GPU memory on a phone, and a continuously animated transform gets promoted
+   anyway — the only thing will-change would buy is a first frame the opening
+   fade already hides. */
+.app-splash__aurora {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 150vmax;
+  height: 150vmax;
+  margin: -75vmax 0 0 -75vmax;
+  opacity: 0.55;
+  background: conic-gradient(from 0deg,
+      rgba(76, 201, 240, 0.55) 0deg,
+      rgba(189, 11, 113, 0.1) 60deg,
+      rgba(205, 88, 255, 0.5) 130deg,
+      rgba(43, 7, 27, 0) 190deg,
+      rgba(255, 194, 71, 0.4) 260deg,
+      rgba(46, 226, 122, 0.3) 310deg,
+      rgba(76, 201, 240, 0.55) 360deg);
+  -webkit-mask: radial-gradient(closest-side, #000 25%, transparent 72%);
+  mask: radial-gradient(closest-side, #000 25%, transparent 72%);
+  animation: splash-turn 18s linear infinite;
+}
+
+@keyframes splash-turn { to { transform: rotate(360deg); } }
+
+/* ------------------------------------------------------------------ layer 2
+   Two floodlight shafts raking across, swaying as if the gantry were moving. */
+
+.app-splash__beams {
+  position: absolute;
+  inset: -20%;
+  background:
+    linear-gradient(196deg, rgba(255, 255, 255, 0.085) 0 5%, transparent 13%),
+    linear-gradient(164deg, rgba(255, 255, 255, 0.065) 0 4%, transparent 11%);
+  animation: splash-sway 7s ease-in-out infinite alternate;
+}
+
+@keyframes splash-sway {
+  from { transform: translate3d(-2.5%, 0, 0) rotate(-1.2deg); }
+  to   { transform: translate3d(2.5%, 0, 0) rotate(1.2deg); }
+}
+
+/* ------------------------------------------------------------------ layer 3
+   The badge and everything orbiting it. The stage carries the perspective so
+   the badge can flip in rather than simply appear. */
+
+.app-splash__stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 300px;
+  height: 300px;
+  perspective: 900px;
+}
+
+/* --- shockwaves: rings breaking out, as if struck ------------------------ */
+
+.app-splash__wave {
+  position: absolute;
+  width: 186px;
+  height: 186px;
+  border-radius: 50%;
+  border: 2px solid rgba(76, 201, 240, 0.55);
+  opacity: 0;
+  transform: scale(0.42);
+}
+
+html.is-launching .app-splash__wave {
+  animation: splash-wave 2.8s cubic-bezier(0.16, 0.6, 0.3, 1) infinite;
+}
+
+html.is-launching .app-splash__wave:nth-of-type(1) { animation-delay: 620ms; }
+html.is-launching .app-splash__wave:nth-of-type(2) { animation-delay: 1500ms; border-color: rgba(205, 88, 255, 0.5); }
+html.is-launching .app-splash__wave:nth-of-type(3) { animation-delay: 2380ms; border-color: rgba(255, 194, 71, 0.45); }
+
+/* transform and opacity only — animating border-width here would thin the ring
+   as it grows, but it costs a paint per frame and the fade already sells it */
+@keyframes splash-wave {
+  0%   { opacity: 0;    transform: scale(0.42); }
+  12%  { opacity: 0.85; }
+  100% { opacity: 0;    transform: scale(1.55); }
+}
+
+/* --- comet: a head running the rim, dragging an arc behind it ------------ */
+
+/* The trail is a conic gradient bright at 12 o'clock and fading backwards, cut
+   to a ring by the mask. It turns at exactly the speed of the head below, so
+   the two read as one object. */
+.app-splash__trail {
+  position: absolute;
+  width: 230px;
+  height: 230px;
+  border-radius: 50%;
+  opacity: 0;
+  background: conic-gradient(from 0deg,
+      rgba(255, 255, 255, 0.95) 0deg,
+      rgba(76, 201, 240, 0.55) 14deg,
+      rgba(205, 88, 255, 0.18) 58deg,
+      transparent 110deg,
+      transparent 360deg);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2.5px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2.5px));
+  will-change: transform;
+}
+
+.app-splash__orbit {
+  position: absolute;
+  width: 230px;
+  height: 230px;
+  opacity: 0;
+  will-change: transform;
+}
+
+.app-splash__orbit i {
+  position: absolute;
+  top: -5px;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 10px 3px rgba(76, 201, 240, 0.95),
+              0 0 26px 9px rgba(205, 88, 255, 0.45);
+}
+
+/* The arc runs backwards from the head, so both turn clockwise together. */
+html.is-launching .app-splash__trail,
+html.is-launching .app-splash__orbit {
+  animation: splash-turn 2.4s linear 480ms infinite,
+             splash-in 420ms ease 480ms forwards;
+}
+
+@keyframes splash-in { to { opacity: 1; } }
+
+/* --- the badge ----------------------------------------------------------- */
+
+/* Arrives edge-on and swings flat, overshooting a few degrees before it
+   settles — the thing that makes it read as an object rather than a fade. */
+.app-splash__tile {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 176px;
+  height: 176px;
+  border-radius: 40px;
+  overflow: hidden;
+  background: linear-gradient(170deg, #ffffff 0%, #ffeef8 55%, #fbddef 100%);
+  box-shadow: 0 34px 80px rgba(22, 2, 13, 0.72),
+              0 0 0 1px rgba(255, 255, 255, 0.2),
+              0 0 90px rgba(76, 201, 240, 0.4);
+  opacity: 0;
+  transform: rotateY(-78deg) scale(0.62);
+  animation: splash-flip 900ms cubic-bezier(0.2, 1.15, 0.32, 1) 100ms forwards;
+  will-change: transform, opacity;
+}
+
+.app-splash__tile img {
+  width: 78%;
+  height: 78%;
+  object-fit: contain;
+}
+
+@keyframes splash-flip {
+  0%   { opacity: 0; transform: rotateY(-78deg) scale(0.62); }
+  45%  { opacity: 1; }
+  68%  { transform: rotateY(9deg) scale(1.05); }
+  100% { opacity: 1; transform: rotateY(0deg) scale(1); }
+}
+
+/* A highlight crossing the face once it has landed, then every few seconds —
+   the glint that says glass rather than paper. */
+.app-splash__glare {
+  position: absolute;
+  top: -60%;
+  left: -70%;
+  width: 55%;
+  height: 220%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.78), transparent);
+  transform: rotate(18deg) translateX(0);
+  opacity: 0;
+}
+
+html.is-launching .app-splash__glare {
+  animation: splash-glare 3.4s ease-in-out 900ms infinite;
+}
+
+@keyframes splash-glare {
+  0%   { opacity: 0;    transform: rotate(18deg) translateX(0); }
+  8%   { opacity: 0.95; }
+  38%  { opacity: 0;    transform: rotate(18deg) translateX(420%); }
+  100% { opacity: 0;    transform: rotate(18deg) translateX(420%); }
+}
+
+/* ------------------------------------------------------------------ layer 4
+   Wordmark, wiped in left to right rather than faded. */
+
+.app-splash__name {
+  font-family: 'Outfit', 'Inter', system-ui, sans-serif;
+  font-size: clamp(1.6rem, 7vw, 2.2rem);
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-indent: 0.18em;                  /* balance the trailing letter-spacing */
+  text-transform: uppercase;
+  background: linear-gradient(100deg, #ffffff 8%, #ffcfec 44%, #ffc247 94%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  -webkit-clip-path: inset(0 100% 0 0);
+  clip-path: inset(0 100% 0 0);
+  animation: splash-wipe 700ms cubic-bezier(0.22, 1, 0.36, 1) 520ms forwards;
+}
+
+@keyframes splash-wipe {
+  to { -webkit-clip-path: inset(0 0 0 0); clip-path: inset(0 0 0 0); }
+}
+
+.app-splash__sub {
+  margin-top: -20px;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.42em;
+  text-indent: 0.42em;
+  text-transform: uppercase;
+  color: rgba(222, 182, 206, 0.8);
+  opacity: 0;
+  transform: translateY(10px);
+  animation: splash-rise 600ms cubic-bezier(0.22, 1, 0.36, 1) 780ms forwards;
+}
+
+@keyframes splash-rise { to { opacity: 1; transform: translateY(0); } }
+
+/* --- loading line -------------------------------------------------------- */
+
+.app-splash__bar {
+  position: relative;
+  width: 148px;
+  height: 3px;
+  border-radius: 99px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.1);
+  opacity: 0;
+  animation: splash-in 420ms ease 920ms forwards;
+}
+
+.app-splash__bar i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 45%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, transparent, #29c5e8 35%, #c77dff 70%, transparent);
+  box-shadow: 0 0 12px rgba(76, 201, 240, 0.8);
+  animation: splash-sweep 1.25s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+@keyframes splash-sweep {
+  from { transform: translateX(-115%); }
+  to   { transform: translateX(340%); }
+}
+
+/* ------------------------------------------------------------------ leaving
+   Opens onto the app: the badge pushes toward you as the whole thing clears,
+   rather than a layer being switched off. */
+
+.app-splash.is-done {
+  animation: splash-out 480ms cubic-bezier(0.5, 0, 0.9, 0.2) forwards;
+  pointer-events: none;
+}
+
+.app-splash.is-done .app-splash__stage {
+  animation: splash-depart 480ms cubic-bezier(0.5, 0, 0.9, 0.2) forwards;
+}
+
+@keyframes splash-out { to { opacity: 0; visibility: hidden; } }
+@keyframes splash-depart { to { transform: scale(1.35); opacity: 0; } }
+
+/* ------------------------------------------------------------- small screens */
+
+@media (max-height: 620px), (max-width: 360px) {
+  html.is-launching .app-splash { gap: 22px; }
+  .app-splash__stage { width: 236px; height: 236px; }
+  .app-splash__tile { width: 138px; height: 138px; border-radius: 32px; }
+  .app-splash__wave { width: 146px; height: 146px; }
+  .app-splash__trail, .app-splash__orbit { width: 182px; height: 182px; }
+  .app-splash__sub { margin-top: -14px; }
+}
+
+/* ----------------------------------------------------------- reduced motion */
+
+/* Everything still arrives, nothing travels: no turning, no sweeping, no
+   swaying, no flipping. The badge fades up flat and the rest follows. */
+@media (prefers-reduced-motion: reduce) {
+  html.is-launching .app-splash,
+  .app-splash__aurora,
+  .app-splash__beams,
+  .app-splash__glare,
+  .app-splash__bar i,
+  html.is-launching .app-splash__wave,
+  html.is-launching .app-splash__trail,
+  html.is-launching .app-splash__orbit,
+  html.is-launching .app-splash__glare,
+  .app-splash.is-done .app-splash__stage { animation: none; }
+
+  .app-splash__trail, .app-splash__orbit { opacity: 0.85; }
+  .app-splash__wave { opacity: 0.3; transform: scale(1); }
+
+  .app-splash__tile {
+    transform: none;
+    animation: splash-in 260ms ease forwards;
+  }
+
+  .app-splash__name {
+    -webkit-clip-path: none;
+    clip-path: none;
+    animation: splash-in 260ms ease 120ms forwards;
+    opacity: 0;
+  }
+
+  .app-splash__sub, .app-splash__bar {
+    transform: none;
+    animation: splash-in 260ms ease 200ms forwards;
+  }
+
+  .app-splash.is-done { animation: splash-out 200ms linear forwards; }
+}

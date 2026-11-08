@@ -1,0 +1,163 @@
+{#  ==========================================================================
+    The stats page shell — shared by battingStat.html, bowlingStat.html and
+    awards.html so the three leaderboards cannot drift apart.
+
+    Everything inside the card is rendered by static/js/stats.js from
+    /api/stats; the markup here is the frame, the default labels (which the
+    script overwrites once it knows the category) and the page's identity.
+
+    `page`  : 'batting' | 'bowling' | 'awards' — picks the category list in JS
+    `lead`  : the category shown first, so the heading is right before JS runs
+    `blurb` : its one-line description
+    `clr`   : the brand-colour triples, handed to JS for the crest gradients
+    ========================================================================== #}
+
+{% macro stats_shell(page, lead, blurb, clr) %}
+
+{% set TABS = [
+    ('batting', 'Batting', 'sports_cricket', url_for('main.battingstats')),
+    ('bowling', 'Bowling', 'sports_baseball', url_for('main.bowlingstats')),
+    ('awards',  'Awards',  'workspace_premium', url_for('main.awards'))
+] %}
+
+<div class="st-wrap" id="stApp" data-page="{{ page }}">
+
+    {# ============================================================== hero #}
+    <header class="st-hero">
+        <span class="st-hero__eyebrow">TATA WPL 2027 &middot; {{ page | capitalize }} Stats</span>
+        <h1 class="st-hero__title" id="stTitle">{{ lead }}</h1>
+        <p class="st-hero__sub" id="stSub">{{ blurb }}</p>
+
+        <nav class="st-tabs" aria-label="Stats sections">
+            {% for key, label, icon, href in TABS %}
+            <a class="st-tab {{ 'is-on' if key == page }}" href="{{ href }}"
+               {% if key == page %}aria-current="page"{% endif %}>
+                <span class="material-icons-round">{{ icon }}</span>{{ label }}
+            </a>
+            {% endfor %}
+        </nav>
+    </header>
+
+    {# =========================================================== toolbar #}
+    <div class="st-bar" id="stBar">
+        {#- a real disclosure widget, so the menu opens without JS too -#}
+        <details class="st-dd" id="stDd">
+            <summary class="st-dd__btn" aria-label="Choose a leaderboard">
+                <span class="st-dd__icon">
+                    <span class="material-icons-round">
+                        {{- 'sports_cricket' if page == 'batting' else ('sports_baseball' if page == 'bowling' else 'workspace_premium') -}}
+                    </span>
+                </span>
+                <span class="st-dd__label">
+                    <span class="st-dd__cap">Leaderboard</span>
+                    <span class="st-dd__val" id="stDdVal">{{ lead }}</span>
+                </span>
+                <span class="material-icons-round st-dd__chev">expand_more</span>
+            </summary>
+            <div class="st-dd__menu" id="stMenu" role="listbox" aria-label="Leaderboards"></div>
+        </details>
+
+        <div class="st-search">
+            <span class="material-icons-round st-search__icon">search</span>
+            <label class="sr-only" for="stSearch">Search this leaderboard</label>
+            <input type="search" id="stSearch" autocomplete="off" spellcheck="false"
+                   placeholder="Search a player or team">
+            <button type="button" class="st-search__clear" id="stClear" aria-label="Clear search" hidden>
+                <span class="material-icons-round">close</span>
+            </button>
+        </div>
+
+        <div class="st-meta">
+            <button type="button" class="st-reset" id="stReset" hidden
+                    title="Back to the official order">
+                <span class="material-icons-round">restart_alt</span>Reset
+            </button>
+            <span class="st-count"><b id="stShown">0</b> rows</span>
+        </div>
+    </div>
+
+    {# ============================================================ podium #}
+    <div class="st-podium" id="stPodium" hidden></div>
+
+    {# ============================================================= table #}
+    <div class="st-card" id="stCard" hidden>
+        <div class="st-scroll" id="stScroll">
+            <table class="st-table" id="stTable">
+                <caption class="sr-only">WPL 2027 leaderboard</caption>
+                <thead id="stHead"></thead>
+                <tbody id="stBody"></tbody>
+            </table>
+        </div>
+        <div class="st-hint">
+            <span>Swipe to see every column</span>
+            <span class="st-hint__arrow">&rarr;</span>
+        </div>
+    </div>
+
+    {# loading skeleton, empty search, and the feed-is-down message all land here #}
+    <div class="st-state" id="stState"></div>
+
+    <p class="st-note" id="stNote">Season totals. <b>Click any column</b> to re-rank the table.</p>
+
+    <noscript>
+        <div class="st-state">
+            <span class="material-icons-round">query_stats</span>
+            <span class="st-state__title">JavaScript is switched off</span>
+            <span class="st-state__text">
+                The leaderboards are loaded from the live stats feed, so they need JavaScript.
+            </span>
+        </div>
+    </noscript>
+</div>
+
+<nav class="bottom-nav">
+    <div class="bottom-nav-item">
+        <a href="{{ url_for('main.displayFR') }}">
+      <span class="material-icons-round">event</span>
+      <span class="bottom-nav-label">MATCHES</span>
+      </a>
+    </div>
+    <div class="bottom-nav-item">
+        <a href="{{ url_for('main.displayPT') }}">
+      <span class="material-icons-round">table_chart</span>
+      <span class="bottom-nav-label">STANDINGS</span>
+      </a>
+    </div>
+    <div class="bottom-nav-item spacer"></div>
+    <div class="bottom-nav-item live">
+        <a href="{{ url_for('main.displayFR', filter='live') }}">
+      <div class="live-circle"></div>
+      <div class="live-content">
+        <span class="material-icons-round zoomInOut">play_arrow</span>
+        <span class="bottom-nav-label">LIVE</span>
+      </div>
+      </a>
+    </div>
+    <div class="bottom-nav-item spacer"></div>
+    <div class="bottom-nav-item">
+      <a href="{{ url_for('main.teams') }}">
+      <span class="material-icons-round">groups</span>
+      <span class="bottom-nav-label">TEAMS</span>
+      </a>
+    </div>
+    <div class="bottom-nav-item active">
+      <a href="{{ url_for('main.battingstats') }}">
+      <span class="material-icons-round">bar_chart</span>
+      <span class="bottom-nav-label">STATS</span>
+      </a>
+    </div>
+  </nav>
+
+<script>window.WPL_CLR = {{ clr | tojson }};</script>
+<script src="{{ url_for('static', filename='js/stats.js') }}" defer></script>
+
+{% endmacro %}
+
+
+{#  The stylesheets every stats page needs, in the order they have to load. #}
+{% macro stats_head() %}
+<link rel="stylesheet" href="{{ url_for('static', filename='extended_beauty.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/bottom-nav.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/stats-modern.css') }}">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+{% endmacro %}

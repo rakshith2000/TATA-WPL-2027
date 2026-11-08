@@ -1,0 +1,350 @@
+/*
+Template Name: Cricket News
+File: Layout CSS
+Author: TemplatesOnWeb
+Author URI: https://www.templateonweb.com/
+Licence: <a href="https://www.templateonweb.com/license">Website Template Licence</a>
+*/
+
+/*********************center_home****************/
+
+.video{
+width:60px;
+height:60px;
+line-height:60px; 
+ }
+.schedule2_left1_left3{
+bottom:18%; 
+ }
+.schedule2_left1_left4{
+border-radius:0px 0px 10px 10px; 
+ }
+
+.nav-tabs .nav-link.active {
+    color: #000;
+	border:none;
+    border-bottom:3px solid var(--blue);
+	font-weight:bold;
+}
+.nav-tabs .nav-link {
+  border:none;
+  border-bottom:3px solid transparent;
+  color: #000;
+  line-height:1.2em;
+  padding: 0.3rem 1rem;
+}
+.nav-tabs .nav-link:hover {
+border:none;
+border-bottom:3px solid var(--blue);
+}
+
+
+.scroll-container {
+            display: flex;
+            overflow-x: auto;
+            white-space: nowrap; /* Prevent items from wrapping to the next line */
+            cursor: grab; /* Cursor to indicate draggable content */
+        }
+.scroll-container::-webkit-scrollbar {
+            display: none; /* Hide scrollbar */
+     }
+
+
+
+.moment_1li2{
+top:0;
+padding-top:25%; 
+width:100%;
+height:100%;
+display:none;
+transition: 0.3s;
+background:var(--bg_back);
+ }
+.moment_1li:hover .moment_1li2{
+display:block;
+transition: 0.3s; 
+ }
+#gallery .modal-dialog {
+  max-width: 800px;
+}
+/*********************center_home_end****************/
+
+
+@media screen and (max-width : 767px){
+    #carouselMatches .row{
+	   flex-wrap:nowrap;
+	}
+    #carouselMatches .carousel-inner{
+	       overflow: auto;
+	}
+	#carouselMatches .carousel-item{
+	       position: relative; 
+		 display: flex!important; 
+		 float: left; 
+		 width: 100%; 
+		 margin-right: 93px; 
+		/*
+		-webkit-backface-visibility: hidden;
+		 backface-visibility: hidden; 
+		 transition: transform .6s ease-in-out;
+		 */
+	}
+.coverage_left{
+margin-top:10px;
+margin-bottom:10px; 
+ }
+.schedule2_left2 .ps-0{
+padding-left:12px!important; 
+ }
+.schedule2_left2 .nav-tabs li a{
+margin-top:5px;
+margin-bottom:5px; 
+ }
+.series_left{
+margin-top:5px;
+margin-bottom:5px;  
+ }
+#carouselpickmobile{
+margin-top:15px; 
+ }
+.pick_inner_left b{
+display:none!important; 
+ }
+.moment_1l{
+margin-top:10px; 
+ }
+ }
+
+
+@media (min-width:576px) and (max-width:767px) {
+
+ }
+ 
+@media (min-width:768px) and (max-width:991px) {
+.writer_inner_left img{
+width:40px; 
+ }
+ }
+
+@media (min-width:992px) and (max-width:1200px) {
+
+ }
+
+@media (min-width:1201px) and (max-width:1300px) {
+
+ }
+@media (min-width:1400px) and (max-width:2000px) {
+
+ }
+
+.pt-main-container{
+	display: flex;
+	flex-direction: column;
+	padding-inline: 10px;
+    margin-top: 20px;
+    margin-inline: 10px;
+	background: #ffffff2d;
+	border-radius: 18px;
+	box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.pt-header {
+	display: flex;
+	justify-content: flex-start;
+	font-size: 28px;
+	text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+	font-weight: 700;
+	color: #ffffff;
+	margin-top: 16px;
+	margin-left: 10px;
+}
+
+.standings-container {
+    display: flex;
+    justify-content: flex-start;
+    align-items: flex-start;
+    gap: 20px;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-top: 22px;
+    padding-bottom: 16px;
+    scrollbar-width: none; /* Firefox */
+}
+
+.standings-container::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+}
+
+.team-card {
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    padding: 10px 12px 10px 12px;
+    width: 300px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    position: relative;
+    flex-shrink: 0;
+    overflow: visible;
+}
+
+.team-rank-logo {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    position: relative;
+    align-items: center;
+}
+
+.rank {
+    font-size: 48px;
+    font-weight: 700;
+    color: #222;
+    margin-right: 8px;
+    line-height: 1;
+    z-index: 1;
+}
+
+.team-logo-1 {
+    width: 64px;
+    height: 64px;
+    border-radius: 25%;
+    padding: 5px;
+	background: linear-gradient(145deg, var(--c1) 10%, var(--c2) 70%);
+    border: 0px solid #fff;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.50);
+    position: absolute;
+    top: -30px;
+    left: 210px;
+    right: auto;
+    z-index: 2;
+}
+
+.team-name {
+	text-transform: uppercase;
+    font-size: 17px;
+    font-weight: 700;
+    color: #222;
+    margin-bottom: 8px;
+    margin-top: 8px;
+}
+
+.team-stats::before {
+    position: absolute;
+    content: "";
+    left: 0;
+    width: 100%;
+    height: 0.1rem;
+    background: linear-gradient(90deg, hsl(240 23% 97% / 0) 0%, hsla(0, 0%, 18%, 0.5) 25%, hsla(0, 0%, 18%, 0.5) 75%, hsl(240 23% 97% / 0) 100%);
+}
+
+.team-stats {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 10px;
+}
+
+.team-stats > div {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.stat-value {
+    padding-top: 8px;
+    font-size: 20px;
+    font-weight: 600;
+    color: #222;
+}
+
+.stat-value.nrr.positive {
+    color: #2e9d4d;
+}
+
+.stat-value.nrr.negative {
+	color: #e74c3c;
+}
+
+.stat-label {
+    font-size: 12px;
+    color: #888;
+    margin-top: 2px;
+}
+
+.recent-form-label {
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: #222;
+	font-size: 14px;
+}
+
+.recent-form {
+    display: flex;
+    gap: 8px;
+}
+
+.form {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    font-size: 16px;
+    font-weight: 600;
+    border: 2px solid #d1d1d1;
+    color: #222;
+    background: #fff;
+}
+
+.form.W {
+    border-color: #2e9d4d;
+    color: #2e9d4d;
+	content: "W";
+}
+
+.form.L {
+    border-color: #e74c3c;
+    color: #e74c3c;
+	content: "L";
+}
+
+.form.D {
+    border-color: #888;
+    color: #888;
+	content: "N";
+}
+
+.form.q {
+    background: #b7e3c2;
+    border: 2px solid #2e9d4d;
+    border-radius: 20%;
+    color: #2e9d4d;
+    /*font-family: Inter, Inter Fallback, system-ui, arial;*/
+    font-size: 20px;
+    display: block;
+    line-height: 1;
+    font-weight: 700;
+}
+
+.form.e {
+    background: #f8b5b5;
+    border: 2px solid #ce0707;
+    border-radius: 20%;
+    color: #ce0707;
+    /*font-family: Inter, Inter Fallback, system-ui, arial;*/
+    font-size: 20px;
+    display: block;
+    line-height: 1;
+    font-weight: 700;
+}
+
+.rank-border {
+    position: absolute;
+    z-index: -1;
+    top: -2px;
+    left: 2px;
+    -webkit-text-fill-color: transparent;
+    -webkit-text-stroke: 1.2px #C4C4C4;
+}

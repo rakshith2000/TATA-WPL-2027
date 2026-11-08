@@ -1,0 +1,15 @@
+# Python bytecode. The trailing slash with no other slash in the pattern is
+# what makes this match at any depth - WPL/routes/, WPL/services/, WPL/utils/
+# and anything added later. A pattern like "WPL/__pycache__/*" contains a
+# slash, which anchors it to the directory holding this file, so it would
+# never match a nested __pycache__.
+__pycache__/
+*.py[cod]
+
+venv/
+.idea/
+flask_start.sh
+git_start.sh
+qodana.yaml
+# the SQLite database the app creates and seeds on first boot
+instance/

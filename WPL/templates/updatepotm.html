@@ -1,0 +1,308 @@
+{% extends "base.html" %}
+{% block head %}
+{{ super() }}
+<title>Match {{ FR.Match_No }}: {{ FR.Team_A }} vs {{ FR.Team_B }} | Update POTM</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='extended_beauty.css') }}" />
+{# shared `um-` shell — must load before the POTM-only additions #}
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/updatematch.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/updatepotm.css') }}">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+
+{# Rajasthan Royals' crest lives at RR1.png #}
+{% macro crest(t) -%}
+/static/images/squad_logos/{{ t }}.png
+{%- endmacro %}
+
+{% macro getclr(team) -%}
+    {% set c = clr[team] %}
+
+    {% if team in ['RCBW', 'MIW'] %} --team-a: {{ c['c3'] }}; --team-b: {{ c['c1'] }}
+    {% elif team == 'UPW' %} --team-a: {{ c['c2'] }}; --team-b: {{ c['c3'] }}
+    {% else %} --team-a: {{ c['c1'] }}; --team-b: {{ c['c2'] }}
+    {% endif %}
+{%- endmacro %}
+
+{# Headshots use the lighter -MICRO cut, same as the POTM strip on /fixtures #}
+{% macro headshot(team, name) -%}
+/static/images/squads/{{ team }}-MICRO/{{ name.replace(' ', '-') }}.png
+{%- endmacro %}
+
+{# POTM is a JSON column: {'name': ..., 'team': ...}. Guard against legacy rows. #}
+{% set current = FR.POTM if FR.POTM is mapping else None %}
+
+<div class="um-wrap">
+
+    <header class="um-top">
+        <span class="um-top__eyebrow">
+            <span class="material-icons-round">military_tech</span>Match {{ FR.Match_No }}
+        </span>
+        <h1 class="um-top__title">Player of the Match</h1>
+        <p class="um-top__sub">Pick the team, then the player who won the award</p>
+    </header>
+
+    <div class="um-card">
+        <div class="um-meta">
+            <span class="um-chip">
+                <span class="material-icons-round">confirmation_number</span>Match&nbsp;<b>{{ FR.Match_No }}</b>
+            </span>
+            <span class="um-chip">
+                <span class="material-icons-round">event</span><b>{{ FR.Date.strftime('%d %b %Y') }}</b>
+            </span>
+            {% if FR.Time %}
+            <span class="um-chip">
+                <span class="material-icons-round">schedule</span><b>{{ FR.Time.strftime('%H:%M') }}</b>
+            </span>
+            {% endif %}
+            {% if FR.Venue %}
+            <span class="um-chip">
+                <span class="material-icons-round">place</span>{{ FR.Venue }}
+            </span>
+            {% endif %}
+        </div>
+
+        <div class="um-teams">
+            {% for t in [FR.Team_A, FR.Team_B] %}
+            {% if loop.index == 2 %}<span class="um-vs">vs</span>{% endif %}
+            <div class="um-team">
+                <span class="um-team__crest" style="{{ getclr(t) }}"><img src="{{ crest(t) }}" alt="{{ fn[t] }}"></span>
+                <span class="um-team__abv">{{ t }}</span>
+                <span class="um-team__full">{{ fn[t] }}</span>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="um-actions">
+            <button type="button" class="um-btn um-btn--primary um-btn--block"
+                    data-toggle="modal" data-target="#mymodal">
+                <span class="material-icons-round">military_tech</span>
+                {{ 'Change POTM' if current else 'Update POTM' }}
+            </button>
+        </div>
+
+        <a class="um-back" href="{{ url_for('main.update') }}">
+            <span class="material-icons-round">arrow_back</span>Back to control room
+        </a>
+    </div>
+
+</div>
+
+<!-- ============================================================== Modal -->
+<div id="mymodal" class="modal fade um-modal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h6 class="modal-title">
+                    {{ FR.Team_A }} vs {{ FR.Team_B }}
+                    <small>Match {{ FR.Match_No }} &middot; player of the match</small>
+                </h6>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+
+            <form class="um-form" action="/updatepotm" method="POST" id="upForm">
+                <div class="modal-body">
+
+                    {% if current %}
+                    <div class="up-current">
+                        <span class="up-current__photo">
+                            <img src="{{ headshot(current['team'], current['name']) }}" alt=""
+                                 onerror="this.onerror=null;this.src='/static/images/Default.png';">
+                        </span>
+                        <span class="up-current__text">
+                            <span class="up-current__label">Currently awarded to</span>
+                            <span class="up-current__name">{{ current['name'] }}</span>
+                            <span class="up-current__team">{{ current['team'] }}</span>
+                        </span>
+                    </div>
+                    {% endif %}
+
+                    <div class="um-panel">
+                        <div class="up-step">
+                            <span class="up-step__no">1</span>
+                            <h6 class="up-step__title">POTM team<small>Which side did the player come from</small></h6>
+                        </div>
+                        <div class="um-seg um-seg--winner" role="radiogroup" aria-label="POTM team">
+                            {% for t in [FR.Team_A, FR.Team_B] %}
+                            <label class="um-seg__opt">
+                                <input type="radio" name="team" value="{{ t }}" required
+                                       {{ 'checked' if current and current['team'] == t }}>
+                                <span class="um-seg__body" style="{{ getclr(t) }}">
+                                    <img src="{{ crest(t) }}" alt="">
+                                    <span>{{ t }}</span>
+                                </span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="um-placeholder" id="pick_team">
+                        <span class="material-icons-round">touch_app</span>
+                        <span>Pick a team above to see its squad.</span>
+                    </div>
+
+                    <div class="um-panel" id="player_panel" style="display:none;">
+                        <div class="up-step">
+                            <span class="up-step__no">2</span>
+                            <h6 class="up-step__title">Player<small>Tap the match winner</small></h6>
+                        </div>
+
+                        <div class="up-search" id="searchWrap">
+                            <span class="material-icons-round up-search__icon">search</span>
+                            <input type="text" id="playerSearch" placeholder="Search player&hellip;"
+                                   autocomplete="off" aria-label="Search player">
+                            <button type="button" class="up-search__clear" id="searchClear" aria-label="Clear search">
+                                <span class="material-icons-round">close</span>
+                            </button>
+                        </div>
+
+                        <div class="up-grid" id="playerGrid">
+                            {% for p in sq %}
+                            <label class="up-player is-hidden"
+                                   data-team="{{ p.Team }}"
+                                   data-name="{{ p.Name|lower }}">
+                                <input type="radio" name="potm" value="{{ p.Name }}"
+                                       {{ 'checked' if current and current['name'] == p.Name and current['team'] == p.Team }}>
+                                <span class="up-player__body">
+                                    <span class="up-player__photo">
+                                        <img src="{{ headshot(p.Team, p.Name) }}" alt="" loading="lazy"
+                                             onerror="this.onerror=null;this.src='/static/images/Default.png';">
+                                    </span>
+                                    <span class="up-player__text">
+                                        <span class="up-player__name">{{ p.Name }}</span>
+                                        <span class="up-player__role">{{ p.Role or 'Player' }}</span>
+                                    </span>
+                                    <span class="up-player__tags">
+                                        {% if p.Captain == 'Y' %}<span class="up-tag up-tag--c" title="Captain">C</span>{% endif %}
+                                        {% if p.Keeper == 'Y' %}<span class="up-tag up-tag--wk" title="Wicket-keeper">WK</span>{% endif %}
+                                        {% if p.Overseas == 'Y' %}
+                                        <span class="up-tag up-tag--os" title="Overseas">
+                                            <span class="material-icons-round">flight</span>
+                                        </span>
+                                        {% endif %}
+                                    </span>
+                                    <span class="material-icons-round up-player__tick">check_circle</span>
+                                </span>
+                            </label>
+                            {% endfor %}
+                        </div>
+
+                        <div class="up-empty" id="playerEmpty">
+                            <span class="material-icons-round">search_off</span>
+                            <span>No player matches that search.</span>
+                        </div>
+                    </div>
+
+                    <input type="hidden" name="hint" value="after" />
+                    <input type="hidden" name="match" value="{{ match }}" />
+                </div>
+
+                <div class="modal-footer">
+                    <span class="up-pick" id="pickSummary" hidden>
+                        <span class="material-icons-round">military_tech</span>
+                        <b id="pickName"></b>
+                    </span>
+                    <button type="button" class="um-btn um-btn--ghost" data-dismiss="modal">Close</button>
+                    <button type="submit" class="um-btn um-btn--primary" id="upSubmit" disabled>
+                        <span class="material-icons-round">save</span>Update
+                    </button>
+                </div>
+            </form>
+
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    var form = document.getElementById('upForm');
+    if (!form) return;
+
+    var panel       = document.getElementById('player_panel');
+    var placeholder = document.getElementById('pick_team');
+    var grid        = document.getElementById('playerGrid');
+    var empty       = document.getElementById('playerEmpty');
+    var search      = document.getElementById('playerSearch');
+    var searchWrap  = document.getElementById('searchWrap');
+    var clearBtn    = document.getElementById('searchClear');
+    var submitBtn   = document.getElementById('upSubmit');
+    var summary     = document.getElementById('pickSummary');
+    var pickName    = document.getElementById('pickName');
+    var players     = Array.prototype.slice.call(grid.querySelectorAll('.up-player'));
+
+    function checkedValue(name) {
+        var el = form.querySelector('input[name="' + name + '"]:checked');
+        return el ? el.value : '';
+    }
+
+    // Show only the chosen team's squad, minus anything filtered out by the
+    // search box. A checked card always stays visible so the selection can't
+    // be silently hidden.
+    function render() {
+        var team = checkedValue('team');
+        var q = (search.value || '').trim().toLowerCase();
+        var shown = 0;
+
+        players.forEach(function (el) {
+            var input = el.querySelector('input');
+            var mine = el.getAttribute('data-team') === team;
+            var hit = !q || el.getAttribute('data-name').indexOf(q) !== -1;
+            var show = mine && (hit || input.checked);
+
+            el.classList.toggle('is-hidden', !show);
+            // a disabled radio is never submitted, so the other squad can't leak through
+            input.disabled = !mine;
+            if (show) shown++;
+        });
+
+        panel.style.display = team ? '' : 'none';
+        placeholder.style.display = team ? 'none' : '';
+        empty.classList.toggle('is-shown', !!team && shown === 0);
+        searchWrap.classList.toggle('is-filled', !!q);
+
+        var potm = checkedValue('potm');
+        submitBtn.disabled = !(team && potm);
+        summary.hidden = !potm;
+        pickName.textContent = potm;
+    }
+
+    form.addEventListener('change', function (e) {
+        var name = e.target && e.target.name;
+        if (name !== 'team' && name !== 'potm') return;
+        if (name === 'team') {
+            // a player from the previous team must not stay selected
+            var checked = form.querySelector('input[name="potm"]:checked');
+            if (checked && checked.closest('.up-player').getAttribute('data-team') !== e.target.value) {
+                checked.checked = false;
+            }
+            search.value = '';
+        }
+        render();
+    });
+
+    search.addEventListener('input', render);
+
+    clearBtn.addEventListener('click', function () {
+        search.value = '';
+        search.focus();
+        render();
+    });
+
+    // Enter in the search box shouldn't submit a half-filled form
+    search.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); }
+    });
+
+    form.addEventListener('submit', function (e) {
+        if (!checkedValue('team') || !checkedValue('potm')) { e.preventDefault(); }
+    });
+
+    render();
+})();
+</script>
+
+{% endblock %}

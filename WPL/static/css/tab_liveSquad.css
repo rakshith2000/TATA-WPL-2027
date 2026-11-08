@@ -1,0 +1,53 @@
+    .cb-col{
+    	display: inline-block;
+    	box-sizing: border-box;
+    	float: left;
+    	min-height: 1px;
+    }
+    .cb-teams-hdr{
+    	display: flex;
+    	justify-content: space-between;
+    }
+    .cb-col-100{
+    	width: 100%;
+    }
+    .cb-col-50{
+    	width: 50%;
+    }
+    .score_2_inner a{
+        color: #e0218a !important;
+    }
+    .potm-image {
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          overflow: hidden;
+          box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+          border: 0px solid white;
+          position: relative;
+          z-index: 1;
+          /*margin-right: 20px;*/
+          transition: transform 0.3s ease;
+        }
+        .potm-image img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+        .squad-image {
+          width: 30px;
+          height: 30px;
+          border-radius: 50%;
+          overflow: hidden;
+          box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+          border: 0px solid white;
+          position: relative;
+          z-index: 1;
+          /*margin-right: 20px;*/
+          transition: transform 0.3s ease;
+        }
+        .squad-image img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }

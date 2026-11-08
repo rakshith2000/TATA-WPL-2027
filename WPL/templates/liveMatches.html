@@ -1,0 +1,422 @@
+{% extends "base.html" %} {% block head %} {{ super() }}
+<title>WPL 2027 Fixtures | Live Matches</title>
+<link rel="stylesheet" href="{{ url_for('static', filename= 'extended_beauty.css') }}"/>
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/bottom-nav.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='fixtures.css') }}">
+<style>
+body {
+  background: url('/static/images/headers/rounded-bg.png'), linear-gradient(90deg, #62003a, #b8006a);
+  background-size: 100%, cover;
+  background-position: center top -48px, center top;
+  background-repeat: repeat, repeat;
+}
+:root {
+   --border_orange :#ffb09e;
+   --border_orange_light :#ffe4dd;
+}
+.plain-link {
+  text-decoration: none !important; /* Removes underline */
+  color: inherit;        /* Keeps color same as surrounding text */
+  cursor: pointer;       /* Normal text cursor */
+}
+.border {
+  border:0px solid #ffe4dd !important;
+}
+.border_orange {
+  border:0px solid #ffb09e !important;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="padding-top: 79px;">
+<center>
+  {% macro num_suffix(n) %}
+    {% if n % 100 in [11, 12, 13] %}
+        {{ n }}th
+    {% elif n % 10 == 1 %}
+        {{ n }}st
+    {% elif n % 10 == 2 %}
+        {{ n }}nd
+    {% elif n % 10 == 3 %}
+        {{ n }}rd
+    {% else %}
+        {{ n }}th
+    {% endif %}
+{% endmacro %}
+
+<div style="padding-bottom: 20px;"></div>
+{% for i in FR[1:] %}
+{% if i[1] > current_date %}
+<div class="main-container">
+  <div class="score-card border">
+    <a href="{{ url_for('main.FRScore', match=i[0], source='liveMatches') }}" class="plain-link">
+    <div class="header" style="{% if i[0] | int(default=None) is not none %} --c: #8a0053; {% else %} --c: #431f52; {% endif %}" data-deadline="{{ i[1].strftime('%Y-%m-%dT%H:%M:%S') }}">
+    <div style="display: block;">
+      <div class="date">{% if i[0] | int(default=None) is not none %}{{ "MATCH" ~ " " ~ i[0]  }}{% else %}{{ i[0] | upper }}{% endif %}</div>{{ i[1].strftime('%A, %d %B %Y') }}
+    </div>
+  </div>
+    <div class="match-info">{{ i[2] }}</div></a>
+    <a href="{{ url_for('main.FRScore', match=i[0], source='liveMatches') }}" class="plain-link">
+    <div class="score-container">
+      <div class="team-new left-team">
+        <div class="team-display" full="{{ fn[i[3]] }}" short="{{ i[3] }}">
+          {{ fn[i[3]] }}
+        </div>
+        <div class="team-logo">
+          <img src="/static/images/squad_logos/{{ i[3] }}.png" alt="Team logo">
+        </div>
+      </div>
+
+      {% if i[0] | int(default=None) is not none %}
+      <div class="vs-circle">VS</div>
+      {% elif i[0] == 'Final' %}
+      <div class="final"><img src="/static/images/final.png"></div>
+      {% else %}
+      <div class="eliminator"><img src="/static/images/playoffs.png"></div>
+      {% endif %}
+
+      <div class="team-new right-team">
+        <div class="team-logo">
+          <img src="/static/images/squad_logos/{{ i[4] }}.png" alt="Team logo">
+        </div>
+        <div class="team-display" full="{{ fn[i[4]] }}" short="{{ i[4] }}">
+          {{ fn[i[4]] }}
+        </div>
+      </div>
+    </div></a>
+      <!-- Result -->
+       <a href="{{ url_for('main.FRScore', match=i[0], source='liveMatches') }}" class="plain-link">
+       {% if current_date.date() == i[1].date() %}
+      <div class="result" style="color: #dc6604">Starts Today &bull; {{ i[1].strftime('%I:%M %p') }} IST</div>
+       {% elif i[1].date() == (current_date | add_days(1)).date() %}
+       <div class="result" style="color: #dc6604">Starts Tomorrow &bull; {{ i[1].strftime('%I:%M %p') }} IST</div>
+       {% else %}
+      <div class="result" style="color: #dc6604">Starts {{ i[1].strftime('%a, %d %b') }} &bull; {{ i[1].strftime('%I:%M %p') }} IST</div>
+      {% endif %}</a>
+    </div>
+
+  <div class="timer-card border">
+    <div class="header" style="{% if i[0] | int(default=None) is not none %} --c: #8a0053; {% else %} --c: #431f52; {% endif %}">Match starts in</div>
+
+      <div class="clockdiv" data-deadline="{{ i[1].strftime('%Y-%m-%dT%H:%M:%S') }}" style="padding-top: 20px">
+    <div>
+        <span class="days" id="day"></span>
+        <div class="smalltext">DAYS</div>
+    </div>
+    <div>
+        <span class="hours" id="hour"></span>
+        <div class="smalltext">HRS</div>
+    </div>
+    <div>
+        <span class="minutes" id="minute"></span>
+        <div class="smalltext">MINS</div>
+    </div>
+    <div>
+        <span class="seconds" id="second"></span>
+        <div class="smalltext">SECS</div>
+    </div>
+</div>
+  </div>
+</div>
+
+{% elif i[1] <= current_date and i[7] == 'TBA' %}
+<div class="main-container">
+  <div class="score-card border">
+    <a href="{{ url_for('main.FRScore', match=i[0], source='liveMatches') }}" class="plain-link">
+    <div class="header" style="{% if i[0] | int(default=None) is not none %} --c: #8a0053; {% else %} --c: #431f52; {% endif %}" data-deadline="{{ i[1].strftime('%Y-%m-%dT%H:%M:%S') }}">
+    <div style="display: block;">
+      <div class="date">{% if i[0] | int(default=None) is not none %}{{ "MATCH" ~ " " ~ i[0]  }}{% else %}{{ i[0] | upper }}{% endif %}</div>{{ i[1].strftime('%A, %d %B %Y') }}
+    </div>
+  </div>
+    <div class="match-info">{{ i[2] }}</div></a>
+    <a href="{{ url_for('main.FRScore', match=i[0], source='liveMatches') }}" class="plain-link">
+     <div class="score-container">
+      <div class="team-new left-team">
+        <div class="team-display" full="{{ fn[i[3]] }}" short="{{ i[3] }}">
+          {{ fn[i[3]] }}
+        </div>
+        <div class="team-logo">
+          <img src="/static/images/squad_logos/{{ i[3] }}.png" alt="Team logo">
+        </div>
+      </div>
+
+      {% if i[0] | int(default=None) is not none %}
+      <div class="vs-circle">VS</div>
+      {% elif i[0] == 'Final' %}
+      <div class="final"><img src="/static/images/final.png"></div>
+      {% else %}
+      <div class="eliminator"><img src="/static/images/playoffs.png"></div>
+      {% endif %}
+
+      <div class="team-new right-team">
+        <div class="team-logo">
+          <img src="/static/images/squad_logos/{{ i[4] }}.png" alt="Team logo">
+        </div>
+        <div class="team-display" full="{{ fn[i[4]] }}" short="{{ i[4] }}">
+          {{ fn[i[4]] }}
+        </div>
+      </div>
+    </div></a>
+      <!-- Result -->
+       <a href="{{ url_for('main.FRScore', match=i[0], source='liveMatches') }}" class="plain-link">
+      <div class="result" style="color: #c11616"><span class="result-span blink">Match is In-Progress</span></div></a>
+  </div>
+  <div class="timer-card">
+    <div class="header" style="{% if i[0] | int(default=None) is not none %} --c: #8a0053; {% else %} --c: #431f52; {% endif %}">Match is In-Progress</div>
+      <div class="vsblock" style="padding-top: 35px;">
+		<img class="team-image" style="{% if i[3] in ['RCBW', 'MIW'] %} --c1: {{ clr[i[3]]['c3'] }}; --c2: {{ clr[i[3]]['c1'] }}; {% elif i[3] == 'UPW' %} --c1: {{ clr[i[3]]['c2'] }}; --c2: {{ clr[i[3]]['c3'] }}; {% else %} --c1: {{ clr[i[3]]['c1'] }}; --c2: {{ clr[i[3]]['c2'] }}; {% endif %}" src="\static\images\squad_logos\{{ i[3] }}.png" alt="Team Logo" />
+		<img class="vs-image" src="\static\images\vs.png" alt="Team Logo" />
+		<img class="team-image" style="{% if i[4] in ['RCBW', 'MIW'] %} --c1: {{ clr[i[4]]['c3'] }}; --c2: {{ clr[i[4]]['c1'] }}; {% elif i[4] == 'UPW' %} --c1: {{ clr[i[4]]['c2'] }}; --c2: {{ clr[i[4]]['c3'] }}; {% else %} --c1: {{ clr[i[4]]['c1'] }}; --c2: {{ clr[i[4]]['c2'] }}; {% endif %}" src="\static\images\squad_logos\{{ i[4] }}.png" alt="Team Logo" />
+</div>
+  </div>
+</div>
+
+{% elif i[7] != 'TBA' %}
+<div class="main-container">
+  <div class="score-card border">
+    <a href="{{ url_for('main.FRScore', match=i[0], source='liveMatches') }}" class="plain-link">
+    <div class="header" style="{% if i[0] | int(default=None) is not none %} --c: #8a0053; {% else %} --c: #431f52; {% endif %}" data-deadline="{{ i[1].strftime('%Y-%m-%dT%H:%M:%S') }}">
+    <div style="display: block;">
+      <div class="date">{% if i[0] | int(default=None) is not none %}{{ "MATCH" ~ " " ~ i[0]  }}{% else %}{{ i[0] | upper }}{% endif %}</div>{{ i[1].strftime('%A, %d %B %Y') }}
+  </div>
+  </div>
+    <div class="match-info">{{ i[2] }}</div></a>
+    {#- a tie the super over could not settle is a no result, Win_T 'NA', and its
+        reason names the super over - so it is not a super-over result -#}
+    {% set tied_nr = i[7] == 'NA' and i[10].startswith('Match tied') %}
+    {% set decided_by_so = 'Super over' in i[10] and i[7] != 'NA' %}
+    {% if not decided_by_so %}
+      {% if i[7] == i[3] and i[8] == "runs" %}
+      {% set TA, TB, TA_S, TB_S = i[3], i[4], i[5], i[6] %}
+      {% elif i[7] == i[3] and i[8] == "wickets" %}
+      {% set TA, TB, TA_S, TB_S = i[4], i[3], i[6], i[5] %}
+      {% elif i[7] == i[4] and i[8] == "runs" %}
+      {% set TA, TB, TA_S, TB_S = i[4], i[3], i[6], i[5] %}
+      {% else %}
+      {% set TA, TB, TA_S, TB_S = i[3], i[4], i[5], i[6] %}
+      {% endif %}
+    {% else %}
+      {% if i[7] == i[3] and i[8] == "runs" %}
+      {% set TA, TB, TA_S, TB_S = i[4], i[3], i[6], i[5] %}
+      {% elif i[7] == i[3] and i[8] == "wickets" %}
+      {% set TA, TB, TA_S, TB_S = i[3], i[4], i[5], i[6] %}
+      {% elif i[7] == i[4] and i[8] == "runs" %}
+      {% set TA, TB, TA_S, TB_S = i[3], i[4], i[5], i[6] %}
+      {% else %}
+      {% set TA, TB, TA_S, TB_S = i[4], i[3], i[6], i[5] %}
+      {% endif %}
+    {% endif %}
+
+    {#- a tied super over is replayed, so each side can have more than one -#}
+    {% set TA_SO = super_overs(TA_S) if decided_by_so else [] %}
+    {% set TB_SO = super_overs(TB_S) if decided_by_so else [] %}
+
+    <a href="{{ url_for('main.FRScore', match=i[0], source='liveMatches') }}" class="plain-link">
+    <div class="score-container">
+      <div class="team-new left-team">
+        {% if not TA_SO %}
+          {% if TA_S['overs'] == 0 and TA_S['runs'] == 0 and TA_S['wkts'] == 0 %}
+            <div class="team-display" full="{{ fn[i[3]] }}" short="{{ i[3] }}">
+            {{ fn[i[3]] }}
+            </div>
+          {% else %}
+            <div class="score-board">
+              <div class="score-new {% if TA == i[7] and i[0] | int(default=None) is none %}playoff-win{% elif TA == i[7] %}score-win{% endif %}">{{ TA_S['runs'] }}{{ "" if TA_S['wkts'] == 10 else '/' ~ TA_S['wkts'] }}</div>
+              <div class="overs {% if TA == i[7] %}overs-win{% endif %}">({{ TA_S['overs'] }})</div>
+            </div>
+          {% endif %}
+        {% else %}
+        <div class="score-board">
+          <div class="score-new">{{ TA_S['runs'] }}{{ "" if TA_S['wkts'] == 10 else '/' ~ TA_S['wkts'] }}&nbsp;<span class="overs overs-so-font">({{ TA_S['overs'] }})</span></div>
+          {# only the last super over settled the match, so only it wins the tone #}
+          {% for s in TA_SO %}
+          <div class="score-new {% if loop.last and TA == i[7] and i[0] | int(default=None) is none %}playoff-win{% elif loop.last and TA == i[7] %}score-win{% endif %}">{{ s['runs'] }}{{ "" if s['wkts'] == 10 else '/' ~ s['wkts'] }}&nbsp;<span class="overs overs-so-font {% if loop.last and TA == i[7] %}overs-win{% endif %}">({{ s['overs'] }})</span></div>
+          {% endfor %}
+        </div>
+        {% endif %}
+        <div class="team-logo">
+          <img src="/static/images/squad_logos/{{ TA }}.png" alt="Team logo">
+        </div>
+      </div>
+
+      {% if i[0] | int(default=None) is not none %}
+      <div class="vs-circle">VS</div>
+      {% elif i[0] == 'Final' %}
+      <div class="final"><img src="/static/images/final.png"></div>
+      {% else %}
+      <div class="eliminator"><img src="/static/images/playoffs.png"></div>
+      {% endif %}
+
+      <div class="team-new right-team">
+        <div class="team-logo">
+          <img src="/static/images/squad_logos/{{ TB }}.png" alt="Team logo">
+        </div>
+        {% if not TB_SO %}
+          {% if TB_S['overs'] == 0 and TB_S['runs'] == 0 and TB_S['wkts'] == 0 %}
+          <div class="team-display" full="{{ fn[i[4]] }}" short="{{ i[4] }}">
+            {{ fn[i[4]] }}
+          </div>
+          {% else %}
+          <div class="score-board">
+            <div class="score-new {% if TB == i[7] and i[0] | int(default=None) is none %}playoff-win{% elif TB == i[7] %}score-win{% endif %}">{{ TB_S['runs'] }}{{ "" if TB_S['wkts'] == 10 else '/' ~ TB_S['wkts'] }}</div>
+            <div class="overs {% if TB == i[7] %}overs-win{% endif %}">({{ TB_S['overs'] }})</div>
+          </div>
+          {% endif %}
+        {% else %}
+        <div class="score-board">
+          <div class="score-new">{{ TB_S['runs'] }}{{ "" if TB_S['wkts'] == 10 else '/' ~ TB_S['wkts'] }}&nbsp;<span class="overs overs-so-font">({{ TB_S['overs'] }})</span></div>
+          {% for s in TB_SO %}
+          <div class="score-new {% if loop.last and TB == i[7] and i[0] | int(default=None) is none %}playoff-win{% elif loop.last and TB == i[7] %}score-win{% endif %}">{{ s['runs'] }}{{ "" if s['wkts'] == 10 else '/' ~ s['wkts'] }}&nbsp;<span class="overs overs-so-font {% if loop.last and TB == i[7] %}overs-win{% endif %}">({{ s['overs'] }})</span></div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+    </div></a>
+      <!-- Result -->
+       <a href="{{ url_for('main.FRScore', match=i[0], source='liveMatches') }}" class="plain-link">
+      {% if i[7] == "NA" %}
+      <div class="result">{{ i[10] }}</div>
+      {% else %}
+      <div class="result"><span class="team-name" full="{{ fn[i[7]] }}" short="{{ i[7] }}">{{ fn[i[7]] }}</span> {{ i[10] if '1' not in i[10].split(' ') else (i[10].replace('runs', 'run') if 'runs' in i[10] else i[10].replace('wickets', 'wicket')) }}</div>
+      {% endif %}</a>
+      </div>
+  <div class="timer-card">
+    {% if i[7] == "NA" or i[11][0] == "NA" %}
+    <div class="header" style="{% if i[0] | int(default=None) is not none %} --c: #8a0053; {% else %} --c: #431f52; {% endif %}">{{ 'Match Tied' if tied_nr else ('Match Abandoned' if i[7] == 'NA' else 'Matched Completed') }}</div>
+    <div class="vsblock" style="padding-top: 35px;">
+		  <img class="team-image" style="{% if i[3] in ['RCBW', 'MIW'] %} --c1: {{ clr[i[3]]['c3'] }}; --c2: {{ clr[i[3]]['c1'] }}; {% elif i[3] == 'UPW' %} --c1: {{ clr[i[3]]['c2'] }}; --c2: {{ clr[i[3]]['c3'] }}; {% else %} --c1: {{ clr[i[3]]['c1'] }}; --c2: {{ clr[i[3]]['c2'] }}; {% endif %}" src="\static\images\squad_logos\{{ i[3] }}.png" alt="Team Logo" />
+		  <img class="vs-image" src="\static\images\vs.png" alt="Team Logo" />
+		  <img class="team-image" style="{% if i[4] in ['RCBW', 'MIW'] %} --c1: {{ clr[i[4]]['c3'] }}; --c2: {{ clr[i[4]]['c1'] }}; {% elif i[4] == 'UPW' %} --c1: {{ clr[i[4]]['c2'] }}; --c2: {{ clr[i[4]]['c3'] }}; {% else %} --c1: {{ clr[i[4]]['c1'] }}; --c2: {{ clr[i[4]]['c2'] }}; {% endif %}" src="\static\images\squad_logos\{{ i[4] }}.png" alt="Team Logo" />
+    </div>
+    {% else %}
+    <div class="header" style="{% if i[0] | int(default=None) is not none %} --c: #8a0053; {% else %} --c: #431f52; {% endif %}">Player of the match</div>
+    <div class="potm-content">
+                <a href="/team-{{ i[11][1] }}/squad_details/{{ i[11][0] }}" class="{{ 'disabled' if i[11][1] == 'NA' else '' }}">
+                <div class="potm-image text-blue" style="{% if i[11][1] in ['RCBW', 'MIW'] %} --c1: {{ clr[i[11][1]]['c3'] }}; --c2: {{ clr[i[11][1]]['c1'] }}; {% elif i[11][1] == 'UPW' %} --c1: {{ clr[i[11][1]]['c2'] }}; --c2: {{ clr[i[11][1]]['c3'] }}; {% else %} --c1: {{ clr[i[11][1]]['c1'] }}; --c2: {{ clr[i[11][1]]['c2'] }}; {% endif %}">
+                    <img src="/static/images/squads/{{ i[11][1] }}-MICRO/{{ i[11][0].replace(' ', '-') }}.png" alt="{{ i[11][0] }}">
+                </div></a>
+                <div class="potm-details">
+                  <a href="/team-{{ i[11][1] }}/squad_details/{{ i[11][0] }}" class="{{ 'disabled' if i[11][1] == 'NA' else '' }} plain-link">
+                    <div class="potm-name">{{ i[11][0] }}</div>
+                  </a>
+                    <div class="potm-team fw-bold">
+                        <img src="/static/images/squad_logos/{{ i[11][1] }}.png" alt="Team Logo" class="team-logo2">
+                        {{ fn[i[11][1]] }}
+                    </div>
+                </div>
+
+            </div>
+    {% endif %}
+  </div>
+</div></a>
+{% endif %}
+{% endfor %}
+</center>
+<nav class="bottom-nav">
+    <div class="bottom-nav-item">
+        <a href="{{ url_for('main.displayFR') }}">
+      <span class="material-icons-round">event</span>
+      <span class="bottom-nav-label">MATCHES</span>
+      </a>
+    </div>
+    <div class="bottom-nav-item">
+        <a href="{{ url_for('main.displayPT') }}">
+      <span class="material-icons-round">table_chart</span>
+      <span class="bottom-nav-label">STANDINGS</span>
+      </a>
+    </div>
+    <div class="bottom-nav-item spacer"></div>
+    <div class="bottom-nav-item active live">
+        <a href="{{ url_for('main.todayMatch') }}">
+      <div class="live-circle"></div>
+      <div class="live-content">
+        <span class="material-icons-round zoomInOut">play_arrow</span>
+        <span class="bottom-nav-label">LIVE</span>
+      </div>
+      </a>
+    </div>
+    <div class="bottom-nav-item spacer"></div>
+    <div class="bottom-nav-item">
+      <a href="{{ url_for('main.teams') }}">
+      <span class="material-icons-round">groups</span>
+      <span class="bottom-nav-label">TEAMS</span>
+      </a>
+    </div>
+    <div class="bottom-nav-item">
+      <a href="{{ url_for('main.battingstats') }}">
+      <span class="material-icons-round">bar_chart</span>
+      <span class="bottom-nav-label">STATS</span>
+      </a>
+    </div>
+  </nav>
+
+<script>
+      // Function to create a timer for a given clock element
+      function createTimer(clockElement) {
+      const deadline = new Date(clockElement.getAttribute("data-deadline")).getTime();
+
+      const daysSpan = clockElement.querySelector(".days");
+      const hoursSpan = clockElement.querySelector(".hours");
+      const minutesSpan = clockElement.querySelector(".minutes");
+      const secondsSpan = clockElement.querySelector(".seconds");
+
+      function updateTimer() {
+        const Tnow = new Date();
+        const timeZone = 'Asia/Kolkata';
+        const dateInTimeZone = new Date(Tnow.toLocaleString('en-US', { timeZone }));
+        const now = dateInTimeZone.getTime();
+        const t = deadline - now;
+
+        if (t < 0) {
+          daysSpan.textContent = "0";
+          hoursSpan.textContent = "0";
+          minutesSpan.textContent = "0";
+          secondsSpan.textContent = "0";
+          return;
+        }
+
+        const days = Math.floor(t / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((t % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((t % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((t % (1000 * 60)) / 1000);
+
+        daysSpan.textContent = days;
+        hoursSpan.textContent = hours;
+        minutesSpan.textContent = minutes;
+        secondsSpan.textContent = seconds;
+      }
+
+      updateTimer(); // Show timer instantly
+      const interval = setInterval(updateTimer, 1000);
+    }
+
+    // Initialize timers for all clock elements
+    document.querySelectorAll(".clockdiv").forEach(function(clockElement) {
+  createTimer(clockElement); // This will start the timer instantly
+});
+
+    </script>
+    <script>
+    function updateTeamNames() {
+      const screenWidth = window.innerWidth;
+      const teamElements = document.querySelectorAll('.team-name, .result1, .team-display');
+
+      teamElements.forEach(element => {
+        const fullName = element.getAttribute('full');
+        const shortName = element.getAttribute('short');
+
+        if (screenWidth <= 845) { // Mobile view breakpoint
+          element.textContent = shortName;
+        } else {
+          element.textContent = fullName;
+        }
+      });
+    }
+
+    // Update team names on load and window resize
+    window.addEventListener('resize', updateTeamNames);
+    window.addEventListener('load', updateTeamNames);
+  </script>
+
+{% endblock %}

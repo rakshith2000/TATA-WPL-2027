@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% from "macros/stats.html" import stats_shell, stats_head %}
+
+{% block head %}
+{{ super() }}
+<title>WPL {{ SEASON }} Awards | MVP, Fair Play &amp; Player of the Match</title>
+<meta name="description" content="WPL {{ SEASON }} award leaderboards — most valuable players, the fair play table and the players with the most player-of-the-match awards.">
+{{ stats_head() }}
+{% endblock %}
+
+{% block content %}
+{{ stats_shell('awards', 'Most Valuable Players',
+               'Every contribution with bat, ball and in the field, in one number', clr) }}
+{% endblock %}

@@ -1,0 +1,256 @@
+.tp-main-container{
+	display: flex;
+	flex-direction: column;
+	padding-inline: 10px;
+    margin-inline: 10px;
+	background: #ffffff2d;
+	border-radius: 18px;
+    margin-top: 20px;
+	box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.tp-container a {
+    text-decoration: none;
+}
+.tp-container a:hover {
+    color: #fff;
+}
+
+.tp-headline {
+	display: flex;
+	justify-content: flex-start;
+	font-size: 28px;
+	text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+	font-weight: 700;
+	color: #ffffff;
+	margin-top: 16px;
+	margin-left: 10px;
+}
+
+.tp-container {
+    display: flex;
+    justify-content: flex-start;
+    align-items: flex-start;
+    gap: 20px;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    scrollbar-width: none; /* Firefox */
+}
+.tp-container::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+}
+.tp-card-container {
+    width: 370px;
+    margin: 20px auto;
+    border-radius: 10px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+}
+.orange {
+    background: #ff6a00;
+}
+.purple {
+    background: #a855f7;
+}
+.sr {
+    background: #29c5e8;
+}
+.s6 {
+    background: #970660;
+}
+.hs {
+    background: #6b0123;
+}
+.gdb {
+    background: #199b02;
+}
+.bbi {
+    background: #d30000;
+}
+.mvp {
+    background: #ce00a1;
+}
+.fpa {
+    background-color: #aa8b00;
+}
+.orange-text {
+    color: #ff6a00;
+}
+.purple-text {
+    color: #a855f7;
+}
+.sr-text {
+    color: #29c5e8;
+}
+.s6-text {
+    color: #970660;
+}
+.hs-text {
+    color: #6b0123;
+}
+.gdb-text {
+    color: #199b02;
+}
+.bbi-text {
+    color: #d30000;
+}
+.mvp-text {
+    color: #ce00a1;
+}
+.fpa-text {
+    color: #aa8b00;
+}
+.mvp-extra {
+    padding-left: 30px!important;
+}
+.tp-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 18px;
+}
+.tp-icon {
+    width: 36px;
+    height: 36px;
+    margin-right: 10px;
+}
+.tp-label {
+    font-size: 18px;
+    font-weight: 600;
+    color: #555;
+    background: #eaeaea;
+    border-radius: 8px;
+    padding: 6px 16px;
+}
+.player-card {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    gap: 8px;
+    background: #f9f9f9;
+    border-radius: 10px;
+}
+.card-name {
+    text-align: left;
+    align-items: center;
+    font-size: 25px;
+    width: 100%;
+    text-transform: uppercase;
+    font-weight: 600;
+    margin-bottom: 10px;
+    text-wrap: nowrap;
+}
+.team-image img {
+    position: relative;
+    width: 90px;
+    height: 90px;
+    z-index: 3;
+    object-fit: cover;
+}
+.player-image img {
+    position: relative;
+    width: 110px;
+    height: 160px;
+    z-index: 3;
+    object-fit: cover;
+}
+.player-info {
+    display: flex;
+    flex-direction: column; 
+    align-items: center;
+    padding-right: 15px;
+    flex-grow: 1;
+}
+.player-primary {
+    display: flex;
+    flex-direction: row;
+    gap: 12px;
+    width: 100%;
+    justify-content: space-between;
+    align-items: center;
+    text-align: center;
+}
+.player-stats::before {
+    position: absolute;
+    content: "";
+    left: 0;
+    width: 100%;
+    height: 0.1rem;
+    z-index: 0;
+    background: linear-gradient(90deg, hsl(240 23% 97% / 0) 0%, hsla(0, 0%, 18%, 0.5) 25%, hsla(0, 0%, 18%, 0.5) 75%, hsl(240 23% 97% / 0) 100%);
+}
+.player-rank {
+    font-size: 32px;
+    font-weight: bold;
+    justify-content: center;
+    color: #bcbcbc;
+    margin-bottom: 4px;
+}
+.player-name-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: #222;
+    font-size: 20px;
+}
+.firstname {
+    font-weight: normal;
+}
+.lastname {
+    font-weight: 700;
+}
+.player-runs {
+    display: flex;
+    flex-direction: column;
+    align-items: baseline;
+    margin-bottom: 10px;
+    text-align: center;
+    align-items: center;
+    justify-content: center;
+}
+.runs {
+    font-size: 26px;
+    font-weight: 700;
+}
+.runs-label {
+    font-size: 16px;
+    color: #888;
+}
+.player-stats {
+    display: flex;
+    gap: 14px;
+    font-size: 15px;
+    color: #444;
+    position: relative;
+    width: 100%;
+    justify-content: space-around;
+}
+.stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 10px;
+    gap: 2px;
+    text-align: center;
+}
+.stat span:first-child {
+    font-weight: 500;
+    color: #888;
+    font-size: 13px;
+}
+.stat span:last-child {
+    font-weight: 600;
+    color: #222;
+    font-size: 15px;
+}
+.leaderboard-btn {
+    display: block;
+    width: 100%;
+    text-align: center;
+    color: #fff;
+    font-style: italic;
+    font-size: 18px;
+    font-weight: 600;
+    border-radius: 10px;
+    padding: 10px 0;
+    text-decoration: none;
+    transition: background 0.2s;
+}

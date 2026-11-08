@@ -1,0 +1,129 @@
+{#  ==========================================================================
+    Shared building blocks — used by displayPT.html (standings), index.html
+    (the home-page strip), teams.html and squad.html, so they always agree.
+
+    Styling for everything above crest_grad lives in static/css/pointstable.css;
+    any page that imports those macros has to load that stylesheet. The colour
+    macros at the bottom only emit custom properties, so they carry no styling
+    of their own.
+    ========================================================================== #}
+
+{# Rank number + movement indicator, or the trophy for the champions #}
+{% macro rank_cell(pos, delta) -%}
+    {%- if pos == 'Champions' -%}
+        <img class="pt-trophy" src="/static/images/trophy.png" alt="Champions" title="Champions">
+    {%- else -%}
+        <span class="pt-rank">
+            <span class="pt-rank__no">{{ pos }}</span>
+            {%- if delta > 0 -%}
+                <span class="pt-delta pt-delta--up" title="Up {{ delta }} from last match">
+                    <span class="pt-delta__arrow">&#9650;</span>{{ delta }}
+                </span>
+            {%- elif delta < 0 -%}
+                <span class="pt-delta pt-delta--down" title="Down {{ delta|abs }} from last match">
+                    <span class="pt-delta__arrow">&#9660;</span>{{ delta|abs }}
+                </span>
+            {%- else -%}
+                <span class="pt-delta pt-delta--same" title="No change">&#8212;</span>
+            {%- endif -%}
+        </span>
+    {%- endif -%}
+{%- endmacro %}
+
+{# Just the movement indicator — the card layout stacks it under the number #}
+{% macro delta_pill(delta) -%}
+    {%- if delta > 0 -%}
+        <span class="pt-delta pt-delta--up" title="Up {{ delta }} from last match">
+            <span class="pt-delta__arrow">&#9650;</span>{{ delta }}
+        </span>
+    {%- elif delta < 0 -%}
+        <span class="pt-delta pt-delta--down" title="Down {{ delta|abs }} from last match">
+            <span class="pt-delta__arrow">&#9660;</span>{{ delta|abs }}
+        </span>
+    {%- else -%}
+        <span class="pt-delta pt-delta--same" title="No change">&#8212;</span>
+    {%- endif -%}
+{%- endmacro %}
+
+{# Last-5 form as coloured pills; the most recent result pulses #}
+{% macro form_pills(results) -%}
+    {%- if results -%}
+        <span class="pt-form">
+        {%- for r in results -%}
+            {%- set kind = 'w' if r == 'W' else ('d' if r == 'D' else 'l') -%}
+            {%- set label = 'Won' if r == 'W' else ('No result' if r == 'D' else 'Lost') -%}
+            <span class="pt-pill pt-pill--{{ kind }}{{ ' pt-pill--latest' if loop.last }}" title="{{ label }}">
+                {{- 'N' if r == 'D' else r -}}
+            </span>
+        {%- endfor -%}
+        </span>
+    {%- else -%}
+        <span class="pt-form__empty">&mdash;</span>
+    {%- endif -%}
+{%- endmacro %}
+
+{# Next opponent chip with crest #}
+{% macro next_chip(nxt) -%}
+    {%- set opp = nxt|replace('vs ', '')|trim -%}
+    {%- if opp and opp != '--' -%}
+        <span class="pt-next" title="Next up: {{ opp }}">
+            <img src="/static/images/squad_logos/{{ opp }}.png" alt="">{{ opp }}
+        </span>
+    {%- else -%}
+        <span class="pt-next pt-next--none" title="No fixtures left">&mdash;</span>
+    {%- endif -%}
+{%- endmacro %}
+
+{# Probability meter — fill width and hue are both driven by --v in CSS #}
+{% macro meter(val, label) -%}
+    {%- set v = val|float -%}
+    {%- set v = 0 if v < 0 else (100 if v > 100 else v) -%}
+    {%- set tone = 'pt-meter--sure' if v >= 99.95 else ('pt-meter--none' if v <= 0 else '') -%}
+    <span class="pt-meter {{ tone }}" role="img" aria-label="{{ label }}: {{ val }} percent" title="{{ label }}: {{ val }}%">
+        <span class="pt-meter__fill" style="--v: {{ v }}"></span>
+        <span class="pt-meter__val">{{ val }}%</span>
+    </span>
+{%- endmacro %}
+
+{# Win percentage: (W + 0.5 * NR) / P #}
+{% macro win_pct(p, w, nr) -%}
+    {%- set pct = ((w + 0.5 * nr) / p * 100)|round(1) if p else 0 -%}
+    <span class="pt-winpct">
+        <span class="pt-winpct__val">{{ pct }}%</span>
+        <span class="pt-winpct__track"><span class="pt-winpct__bar" style="--v: {{ pct }}"></span></span>
+    </span>
+{%- endmacro %}
+
+{# The two brand colours that read best as a crest gradient, per team #}
+{% macro crest_grad(abv, clr) -%}
+    {%- set c = clr[abv] -%}
+    {%- if abv in ['RCBW'] -%}--team-a: {{ c['c3'] }}; --team-b: {{ c['c1'] }};
+    {%- elif abv == 'UPW' -%}--team-a: {{ c['c1'] }}; --team-b: {{ c['c3'] }};
+    {%- else -%}--team-a: {{ c['c1'] }}; --team-b: {{ c['c2'] }};
+    {%- endif -%}
+{%- endmacro %}
+
+{#  Card-art gradient — the per-team colour pairs the squad cut-outs were
+    tuned against. Behind the players on the team cards and the squad hero.
+    Lighter at the top, darker at the foot, which is the way the cut-outs are
+    lit. `clr` is the brand triples, `sqclr` the two-colour squad pairs. #}
+{% macro stage_grad(abv, clr, sqclr) -%}
+    {%- if abv in ['RCBW', 'GG'] -%}--stage-1: {{ clr[abv]['c1'] }}; --stage-2: {{ clr[abv]['c3'] }};
+    {%- else -%}--stage-1: {{ clr[abv]['c2'] }}; --stage-2: {{ clr[abv]['c1'] }};
+    {%- endif -%}
+{%- endmacro %}
+
+{#  Accent colour for the dark pages. The points-table colour (ptclr) is a
+    brand colour picked for white cards and several are near-black against
+    this background, so config.json carries a readable stand-in per team
+    (teams.accent) and create_app() puts it here. #}
+{% macro brand(abv) -%}
+    {{- TEAM_ACCENT.get(abv, '#ec008c') -}}
+{%- endmacro %}
+
+{#  The identity word behind the card art: the half of the name that is not
+    on the crest, so a card still says who it is at a glance. From
+    config.json's teams.word. #}
+{% macro team_word(abv) -%}
+    {{- TEAM_WORD.get(abv, abv) -}}
+{%- endmacro %}
