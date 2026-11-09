@@ -49,7 +49,7 @@
 {% macro hue(t) -%}
     {%- set c = sqclr.get(t) -%}
     {%- if not c -%}#ff4fa8
-    {%- elif t in ['UPW', 'GG'] -%}{{ c['c2'] }}
+    {%- elif t in ['UPW', 'GG', 'RCBW', 'MIW'] -%}{{ c['c2'] }}
     {%- else -%}{{ c['c1'] }}
     {%- endif -%}
 {%- endmacro %}

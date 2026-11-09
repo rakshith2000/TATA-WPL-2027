@@ -38,7 +38,7 @@ def seed_users():
         f'Admin WPL{SEASON_YEAR} Phone':  f'adminwpl{SEASON_YEAR}phone@gmail.com',
     }
     have = {e for (e,) in db.session.query(User.email)}
-    pwd = os.environ.get('ADMIN_PASSWORD', 'Admin@wpl2027')
+    pwd = os.environ.get('ADMIN_PASSWORD', '*****************')
     new = [User(name=n, email=e,
                 password=generate_password_hash(pwd, method='pbkdf2:sha256', salt_length=8))
            for n, e in wanted.items() if e not in have]

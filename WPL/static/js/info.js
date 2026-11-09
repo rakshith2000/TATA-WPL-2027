@@ -71,7 +71,7 @@ function renderTabInfo(data) {
               '<div class="mx-card__head"><span class="material-icons-round">info</span>Match details</div>' +
               '<div class="mx-info">' +
                 row('emoji_events', 'Match', esc(dt2[0] || dt1.Match_No || '—'),
-                    'TATA Indian Premier League 2026') +
+                    'TATA Women\'s Premier League 2027') +
                 row('event', 'Date', esc(dateStr), timeStr) +
                 row('place', 'Venue', esc(dt1.Venue || dt2[1] || 'TBA')) +
                 row('toll', 'Toss', toss) +

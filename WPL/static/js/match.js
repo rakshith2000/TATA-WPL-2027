@@ -70,8 +70,8 @@
     var c = map && map[team];
     if (!c || typeof c !== 'object') return '--c1: #ff4fa8; --c2: #c77dff;';
     var a, b;
-    if (team === 'RCBW' || team === 'MIW') { a = c.c3; b = c.c1; }
-    else if (team === 'UPW') { a = c.c2; b = c.c3; }
+    if (team === 'RCBW') { a = c.c3; b = c.c1; }
+    else if (team === 'UPW') { a = c.c1; b = c.c3; }
     else { a = c.c1; b = c.c2; }
     return '--c1: ' + esc(a || '#ff4fa8') + '; --c2: ' + esc(b || '#c77dff') + ';';
   }
