@@ -127,7 +127,11 @@ def _homepage_records(fixtures):
 
     return {
         'highest_total': max(totals, key=lambda row: row['runs']) if totals else None,
-        'closest_win': min(margins, key=lambda row: row['value']) if margins else None,
+        'lowest_total': min(totals, key=lambda row: row['runs']) if totals else None,
+        'narrowest_win_runs': min((m for m in margins if m['unit'] == 'runs'),
+                                  key=lambda row: row['value'], default=None),
+        'narrowest_win_wickets': min((m for m in margins if m['unit'] == 'wickets'),
+                                     key=lambda row: row['value'], default=None),
         'biggest_win_runs': max((m for m in margins if m['unit'] == 'runs'),
                                 key=lambda row: row['value'], default=None),
         'biggest_win_wickets': max((m for m in margins if m['unit'] == 'wickets'),

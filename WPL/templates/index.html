@@ -398,9 +398,10 @@
             </a>
         </div>
 
-        {% if records.highest_total or records.highest_successful_chase or records.lowest_successful_defend
-              or records.biggest_win_runs or records.biggest_win_wickets
-              or records.closest_win or records.winning_streak or records.losing_streak %}
+        {% if records.highest_total or records.lowest_total or records.highest_successful_chase
+              or records.lowest_successful_defend or records.biggest_win_runs
+              or records.biggest_win_wickets or records.narrowest_win_runs
+              or records.narrowest_win_wickets or records.winning_streak or records.losing_streak %}
         <div class="hm-records">
             {% if records.highest_total %}
             <article class="hm-record">
@@ -411,13 +412,13 @@
                 {{ record_scorecard(records.highest_total.scorecard) }}
             </article>
             {% endif %}
-            {% if records.closest_win %}
+            {% if records.lowest_total %}
             <article class="hm-record">
-                <span class="material-icons-round">flare</span>
-                <span class="hm-record__label">Narrowest win</span>
-                <b>{{ records.closest_win.value }} <small>{{ records.closest_win.unit }}</small></b>
-                <span>{{ teams.get(records.closest_win.winner, records.closest_win.winner) }}</span>
-                {{ record_scorecard(records.closest_win.scorecard) }}
+                <span class="material-icons-round">south</span>
+                <span class="hm-record__label">Lowest team total</span>
+                <b>{{ records.lowest_total.runs }}</b>
+                <span>{{ teams.get(records.lowest_total.team, records.lowest_total.team) }}</span>
+                {{ record_scorecard(records.lowest_total.scorecard) }}
             </article>
             {% endif %}
             {% if records.biggest_win_runs %}
@@ -436,6 +437,24 @@
                 <b>{{ records.biggest_win_wickets.value }} <small>{{ records.biggest_win_wickets.unit }}</small></b>
                 <span>{{ teams.get(records.biggest_win_wickets.winner, records.biggest_win_wickets.winner) }}</span>
                 {{ record_scorecard(records.biggest_win_wickets.scorecard) }}
+            </article>
+            {% endif %}
+            {% if records.narrowest_win_runs %}
+            <article class="hm-record">
+                <span class="material-icons-round">flare</span>
+                <span class="hm-record__label">Narrowest win · runs</span>
+                <b>{{ records.narrowest_win_runs.value }} <small>runs</small></b>
+                <span>{{ teams.get(records.narrowest_win_runs.winner, records.narrowest_win_runs.winner) }}</span>
+                {{ record_scorecard(records.narrowest_win_runs.scorecard) }}
+            </article>
+            {% endif %}
+            {% if records.narrowest_win_wickets %}
+            <article class="hm-record">
+                <span class="material-icons-round">flare</span>
+                <span class="hm-record__label">Narrowest win · wickets</span>
+                <b>{{ records.narrowest_win_wickets.value }} <small>wickets</small></b>
+                <span>{{ teams.get(records.narrowest_win_wickets.winner, records.narrowest_win_wickets.winner) }}</span>
+                {{ record_scorecard(records.narrowest_win_wickets.scorecard) }}
             </article>
             {% endif %}
             {% if records.highest_successful_chase %}
