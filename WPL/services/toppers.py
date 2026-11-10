@@ -57,8 +57,25 @@ def update_potm():
         potms = sorted(potms, key=lambda x: (x['potm'], x['runs'], x['wickets']), reverse=True)
     except Exception as e:
         print(f"Error while sorting the toppers for Most POTM: {e}")
+        batStat = Toppers.query.filter_by(category="Most Runs").first()
+        bowlStat = Toppers.query.filter_by(category="Most Wickets").first()
+        if batStat and batStat.stats:
+            batMat = {item['StrikerName']: item['Matches'] for item in batStat.stats}
+            batInns = {item['StrikerName']: item['Innings'] for item in batStat.stats}
+            batRuns = {item['StrikerName']: item['TotalRuns'] for item in batStat.stats}
+        else:
+            batMat, batInns, batRuns = {}, {}, {}
+        if bowlStat and bowlStat.stats:
+            bowlWkts = {item['BowlerName']: item['Wickets'] for item in bowlStat.stats}
+        else:
+            bowlWkts = {}
+        for potm in potms:
+            potm['matches'] = batMat.get(potm['name'], 0)
+            potm['innings'] = batInns.get(potm['name'], 0)
+            potm['runs'] = batRuns.get(potm['name'], 0)
+            potm['wickets'] = bowlWkts.get(potm['name'], 0)
+        potms = sorted(potms, key=lambda x: (x['potm'], x['runs'], x['wickets']), reverse=True)
     finally:
-        potms = sorted(potms, key=lambda x: (x['potm']), reverse=True)
         toppers = Toppers.query.filter_by(category="Most POTM").first()
         if toppers:
             toppers.stats = potms
@@ -74,7 +91,7 @@ def update_toppers():
     so this is the path every category takes.
     """
     SquadFull = (db.session.execute(text('SELECT * FROM Squad')).fetchall())
-    update_potm()
+    # update_potm()
     for stats_type, stats in statsList.items():
         for stat_name, token in stats.items():
             try:
@@ -116,6 +133,7 @@ def update_toppers():
 
                     flag_modified(tp, "stats")
                     db.session.commit()
+    update_potm()
 
 
 def get_stats():
