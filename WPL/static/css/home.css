@@ -1352,19 +1352,6 @@ body::-webkit-scrollbar-thumb {
   box-shadow: 0 0 10px rgba(46,226,122,.45);
 }
 
-.hm-playoff-edge {
-  flex: none;
-  padding: 2px 6px;
-  border-radius: 5px;
-  background: rgba(255,194,71,.16);
-  color: var(--hm-gold);
-  font-size: 8px;
-  font-weight: 800;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-}
-
-.hm-playoff-edge--outside { background: rgba(255,255,255,.08); color: var(--hm-ink-3); }
 .hm-standings .ptc__probs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
 /* Season records */
@@ -1391,7 +1378,7 @@ body::-webkit-scrollbar-thumb {
 .hm-record > b { margin-top: 2px; color: #fff; font-family: 'Outfit',sans-serif; font-size: 1.8rem; line-height: 1.1; }
 .hm-record > b small { color: var(--hm-ink-2); font-family: 'Inter',sans-serif; font-size: .48em; text-transform: uppercase; }
 .hm-record > span:not(.hm-record__label) { margin-top: 4px; color: var(--hm-ink-2); font-size: 11px; font-weight: 700; }
-.hm-record > small { margin-top: auto; padding-top: 8px; color: var(--hm-ink-3); font-size: 9px; line-height: 1.4; }
+.hm-record__detail { margin-top: 4px; color: var(--hm-ink-3); font-size: 9px; line-height: 1.4; }
 .hm-record__match {
   display: grid;
   gap: 5px;

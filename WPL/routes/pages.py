@@ -18,6 +18,8 @@ def _homepage_records(fixtures):
                  and 'abandoned' not in (fx.Result or '').lower()]
     totals = []
     margins = []
+    successful_chases = []
+    successful_defends = []
 
     def match_card(fx):
         def score(info):
@@ -28,7 +30,9 @@ def _homepage_records(fixtures):
                 overs = float(info.get('overs') or 0)
             except (TypeError, ValueError):
                 runs, wickets, overs = 0, 0, 0.0
-            return {'runs': runs, 'wickets': wickets, 'overs': f'{overs:.1f}'}
+            score_display = str(runs) if wickets == 10 else f'{runs}/{wickets}'
+            return {'runs': runs, 'wickets': wickets, 'overs': f'{overs:.1f}',
+                    'display': score_display}
 
         return {
             'match': fx.Match_No,
@@ -52,13 +56,44 @@ def _homepage_records(fixtures):
                 totals.append({'team': side, 'opponent': opponent, 'runs': runs,
                                'match': fx.Match_No, 'scorecard': card})
 
-        if fx.Win_T not in ('NA', None):
-            margin = re.search(r'won by\s+(\d+)\s+(runs|wickets)', fx.Result or '', re.I)
+        result = fx.Result or ''
+        if fx.Win_T in TEAMS and 'super over' not in result.lower():
+            margin = re.search(r'won by\s+(\d+)\s+(runs?|wickets?)\b', result, re.I)
             if margin:
-                margins.append({'value': int(margin.group(1)),
-                                'unit': margin.group(2).lower(),
-                                'winner': fx.Win_T, 'match': fx.Match_No,
-                                'scorecard': card})
+                value = int(margin.group(1))
+                unit = 'runs' if margin.group(2).lower().startswith('run') else 'wickets'
+                record = {'value': value, 'unit': unit, 'winner': fx.Win_T,
+                          'match': fx.Match_No, 'scorecard': card}
+                margins.append(record)
+
+                if unit == 'wickets':
+                    winning_score = card['score_a' if fx.Win_T == fx.Team_A else 'score_b']
+                    target = fx.B_info if fx.Win_T == fx.Team_A else fx.A_info
+                    target_runs = target.get('runs', 0) if isinstance(target, dict) else 0
+                    try:
+                        target_runs = int(target_runs or 0)
+                    except (TypeError, ValueError):
+                        target_runs = 0
+                    dls_target = re.search(r'\bTarget\s+(\d+)', result, re.I)
+                    successful_chases.append({
+                        'team': fx.Win_T,
+                        'runs': winning_score['runs'],
+                        'target': int(dls_target.group(1)) if dls_target else target_runs + 1,
+                        'match': fx.Match_No,
+                        'scorecard': card,
+                    })
+                else:
+                    winning_info = fx.A_info if fx.Win_T == fx.Team_A else fx.B_info
+                    defended_runs = winning_info.get('runs', 0) if isinstance(winning_info, dict) else 0
+                    try:
+                        defended_runs = int(defended_runs or 0)
+                    except (TypeError, ValueError):
+                        defended_runs = 0
+                    if defended_runs > 0:
+                        successful_defends.append({
+                            'team': fx.Win_T, 'runs': defended_runs,
+                            'match': fx.Match_No, 'scorecard': card,
+                        })
 
     ordered = sorted(completed, key=lambda fx: start_DT(fx.Date, fx.Time))
     streaks = {team: 0 for team in TEAMS}
@@ -84,6 +119,14 @@ def _homepage_records(fixtures):
     return {
         'highest_total': max(totals, key=lambda row: row['runs']) if totals else None,
         'closest_win': min(margins, key=lambda row: row['value']) if margins else None,
+        'biggest_win_runs': max((m for m in margins if m['unit'] == 'runs'),
+                                key=lambda row: row['value'], default=None),
+        'biggest_win_wickets': max((m for m in margins if m['unit'] == 'wickets'),
+                                   key=lambda row: row['value'], default=None),
+        'highest_successful_chase': max(successful_chases, key=lambda row: row['target'],
+                                        default=None),
+        'lowest_successful_defend': min(successful_defends, key=lambda row: row['runs'],
+                                        default=None),
         'winning_streak': best_streak,
     }
 

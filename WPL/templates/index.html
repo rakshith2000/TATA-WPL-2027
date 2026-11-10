@@ -112,7 +112,7 @@
             <img src="/static/images/squad_logos/{{ side }}.png"
                  alt="{{ teams.get(side, side) }} logo" loading="lazy">
             <span title="{{ teams.get(side, side) }}">{{ side }}</span>
-            <b>{{ score.runs }}/{{ score.wickets }} <small>({{ score.overs }})</small></b>
+            <b>{{ score.display }} <small>({{ score.overs }})</small></b>
         </div>
         {% endfor %}
         <span class="hm-record__matchno">Match {{ card.match }}</span>
@@ -328,8 +328,6 @@
                         <div class="ptc__meta">
                             {% if badge %}<span class="ptc__badge ptc__badge--{{ status }}">{{ badge }}</span>{% endif %}
                             <span class="ptc__full">{{ teams[abv] }}</span>
-                            {% if loop.index == SPOTS %}<span class="hm-playoff-edge">Last playoff spot</span>
-                            {% elif loop.index == SPOTS + 1 %}<span class="hm-playoff-edge hm-playoff-edge--outside">Just outside</span>{% endif %}
                         </div>
                     </div>
 
@@ -375,10 +373,10 @@
                 {% endif %}
             </article>
 
-            <!--
+            {#- the line under the last side that still makes the playoffs -#}
             {% if loop.index == SPOTS and not loop.last %}
             <div class="pt-cut"><span>Playoff cut-off</span></div>
-            {% endif %}-->
+            {% endif %}
 
             {% endfor %}
         </div>
@@ -400,7 +398,9 @@
             </a>
         </div>
 
-        {% if records.highest_total or records.closest_win or records.winning_streak %}
+        {% if records.highest_total or records.highest_successful_chase or records.lowest_successful_defend
+              or records.biggest_win_runs or records.biggest_win_wickets
+              or records.closest_win or records.winning_streak %}
         <div class="hm-records">
             {% if records.highest_total %}
             <article class="hm-record">
@@ -409,6 +409,44 @@
                 <b>{{ records.highest_total.runs }}</b>
                 <span>{{ teams.get(records.highest_total.team, records.highest_total.team) }}</span>
                 {{ record_scorecard(records.highest_total.scorecard) }}
+            </article>
+            {% endif %}
+            {% if records.highest_successful_chase %}
+            <article class="hm-record">
+                <span class="material-icons-round">sports_cricket</span>
+                <span class="hm-record__label">Highest successful chase</span>
+                <b>{{ records.highest_successful_chase.target }}</b>
+                <span>{{ teams.get(records.highest_successful_chase.team, records.highest_successful_chase.team) }}</span>
+                <small class="hm-record__detail">Target chased · {{ records.highest_successful_chase.runs }} runs</small>
+                {{ record_scorecard(records.highest_successful_chase.scorecard) }}
+            </article>
+            {% endif %}
+            {% if records.biggest_win_runs %}
+            <article class="hm-record">
+                <span class="material-icons-round">trending_up</span>
+                <span class="hm-record__label">Biggest win · runs</span>
+                <b>{{ records.biggest_win_runs.value }} <small>{{ records.biggest_win_runs.unit }}</small></b>
+                <span>{{ teams.get(records.biggest_win_runs.winner, records.biggest_win_runs.winner) }}</span>
+                {{ record_scorecard(records.biggest_win_runs.scorecard) }}
+            </article>
+            {% endif %}
+            {% if records.biggest_win_wickets %}
+            <article class="hm-record">
+                <span class="material-icons-round">trending_up</span>
+                <span class="hm-record__label">Biggest win · wickets</span>
+                <b>{{ records.biggest_win_wickets.value }} <small>{{ records.biggest_win_wickets.unit }}</small></b>
+                <span>{{ teams.get(records.biggest_win_wickets.winner, records.biggest_win_wickets.winner) }}</span>
+                {{ record_scorecard(records.biggest_win_wickets.scorecard) }}
+            </article>
+            {% endif %}
+            {% if records.lowest_successful_defend %}
+            <article class="hm-record">
+                <span class="material-icons-round">shield</span>
+                <span class="hm-record__label">Lowest successful defend</span>
+                <b>{{ records.lowest_successful_defend.runs }}</b>
+                <span>{{ teams.get(records.lowest_successful_defend.team, records.lowest_successful_defend.team) }}</span>
+                <small class="hm-record__detail">Runs defended</small>
+                {{ record_scorecard(records.lowest_successful_defend.scorecard) }}
             </article>
             {% endif %}
             {% if records.closest_win %}
