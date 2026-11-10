@@ -1414,6 +1414,17 @@ body::-webkit-scrollbar-thumb {
 .hm-record__score b small { color: var(--hm-ink-3); font-size: 9px; font-weight: 500; }
 .hm-record__matchno { color: var(--hm-ink-3); font-size: 8px; letter-spacing: .06em; text-transform: uppercase; }
 .hm-records__empty { padding: 24px; border: 1px dashed var(--hm-line-2); border-radius: var(--hm-r-md); color: var(--hm-ink-3); font-size: 12px; text-align: center; }
+.hm-record .hm-streak-form { flex-wrap: wrap; gap: 5px; width: 100%; margin-top: 12px; }
+.hm-streak-pill { opacity: .58; filter: saturate(.72); }
+.hm-streak-pill--active {
+  position: relative;
+  z-index: 1;
+  outline: 2px solid rgba(255,255,255,.92);
+  outline-offset: 1px;
+  opacity: 1;
+  filter: none;
+  box-shadow: 0 0 10px rgba(255,255,255,.3);
+}
 
 /* Predictor teaser */
 .hm-predictor {

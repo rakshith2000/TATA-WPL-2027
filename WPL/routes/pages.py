@@ -98,8 +98,10 @@ def _homepage_records(fixtures):
 
     ordered = sorted(completed, key=lambda fx: start_DT(fx.Date, fx.Time))
     streaks = {team: 0 for team in TEAMS}
+    winning_streak_matches = {team: [] for team in TEAMS}
     best_streak = None
     losing_streaks = {team: 0 for team in TEAMS}
+    losing_streak_matches = {team: [] for team in TEAMS}
     worst_streak = None
     for fx in ordered:
         sides = (fx.Team_A, fx.Team_B)
@@ -109,21 +111,47 @@ def _homepage_records(fixtures):
                     continue
                 if fx.Win_T == team:
                     streaks[team] += 1
+                    winning_streak_matches[team].append(fx.id)
                     if best_streak is None or streaks[team] > best_streak['wins']:
                         best_streak = {'team': team, 'wins': streaks[team],
-                                       'scorecard': match_card(fx)}
+                                       'streak_matches': winning_streak_matches[team].copy()}
                     losing_streaks[team] = 0
+                    losing_streak_matches[team] = []
                 else:
                     streaks[team] = 0
+                    winning_streak_matches[team] = []
                     losing_streaks[team] += 1
+                    losing_streak_matches[team].append(fx.id)
                     if worst_streak is None or losing_streaks[team] > worst_streak['losses']:
                         worst_streak = {'team': team, 'losses': losing_streaks[team],
-                                        'scorecard': match_card(fx)}
+                                        'streak_matches': losing_streak_matches[team].copy()}
         else:
             for team in sides:
                 if team in streaks:
                     streaks[team] = 0
+                    winning_streak_matches[team] = []
                     losing_streaks[team] = 0
+                    losing_streak_matches[team] = []
+
+    all_results = sorted((fx for fx in fixtures if fx.Win_T is not None),
+                         key=lambda fx: start_DT(fx.Date, fx.Time))
+    for streak in (best_streak, worst_streak):
+        if streak is None:
+            continue
+        streak_matches = set(streak['streak_matches'])
+        streak['form'] = [
+            {
+                'match': fx.Match_No,
+                'result': ('W' if fx.Win_T == streak['team'] else
+                           'L' if fx.Win_T in TEAMS else 'D'),
+                'in_streak': fx.id in streak_matches,
+                'description': ('Won' if fx.Win_T == streak['team'] else
+                                'Lost' if fx.Win_T in TEAMS else
+                                'No result' if 'abandoned' in (fx.Result or '').lower()
+                                else 'Draw'),
+            }
+            for fx in all_results if streak['team'] in (fx.Team_A, fx.Team_B)
+        ]
 
     return {
         'highest_total': max(totals, key=lambda row: row['runs']) if totals else None,

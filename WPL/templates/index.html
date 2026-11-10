@@ -119,6 +119,16 @@
     </div>
 {%- endmacro %}
 
+{% macro streak_form(form) -%}
+    <div class="pt-form hm-streak-form" aria-label="All season match results">
+        {% for item in form %}
+        {% set kind = 'w' if item.result == 'W' else ('d' if item.result == 'D' else 'l') %}
+        <span class="pt-pill pt-pill--{{ kind }} hm-streak-pill{{ ' hm-streak-pill--active' if item.in_streak }}"
+              title="Match {{ item.match }}: {{ item.description }}">{{ item.result }}</span>
+        {% endfor %}
+    </div>
+{%- endmacro %}
+
 <div class="hm-wrap">
 
     {# ============================================================== hero #}
@@ -483,7 +493,7 @@
                 <span class="hm-record__label">Best winning streak</span>
                 <b>{{ records.winning_streak.wins }} <small>{{ 'wins' if records.winning_streak.wins != 1 else 'win' }}</small></b>
                 <span>{{ teams.get(records.winning_streak.team, records.winning_streak.team) }}</span>
-                {{ record_scorecard(records.winning_streak.scorecard) }}
+                {{ streak_form(records.winning_streak.form) }}
             </article>
             {% endif %}
             {% if records.losing_streak %}
@@ -492,7 +502,7 @@
                 <span class="hm-record__label">Longest losing streak</span>
                 <b>{{ records.losing_streak.losses }} <small>{{ 'losses' if records.losing_streak.losses != 1 else 'loss' }}</small></b>
                 <span>{{ teams.get(records.losing_streak.team, records.losing_streak.team) }}</span>
-                {{ record_scorecard(records.losing_streak.scorecard) }}
+                {{ streak_form(records.losing_streak.form) }}
             </article>
             {% endif %}
         </div>
