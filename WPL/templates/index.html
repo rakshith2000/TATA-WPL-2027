@@ -105,6 +105,20 @@
     {%- endif -%}
 {%- endmacro %}
 
+{% macro record_scorecard(card) -%}
+    <div class="hm-record__match" aria-label="Match {{ card.match }} scorecard">
+        {% for side, score in [(card.team_a, card.score_a), (card.team_b, card.score_b)] %}
+        <div class="hm-record__score">
+            <img src="/static/images/squad_logos/{{ side }}.png"
+                 alt="{{ teams.get(side, side) }} logo" loading="lazy">
+            <span title="{{ teams.get(side, side) }}">{{ side }}</span>
+            <b>{{ score.runs }}/{{ score.wickets }} <small>({{ score.overs }})</small></b>
+        </div>
+        {% endfor %}
+        <span class="hm-record__matchno">Match {{ card.match }}</span>
+    </div>
+{%- endmacro %}
+
 <div class="hm-wrap">
 
     {# ============================================================== hero #}
@@ -394,7 +408,7 @@
                 <span class="hm-record__label">Highest team total</span>
                 <b>{{ records.highest_total.runs }}</b>
                 <span>{{ teams.get(records.highest_total.team, records.highest_total.team) }}</span>
-                <small>vs {{ teams.get(records.highest_total.opponent, records.highest_total.opponent) }} · Match {{ records.highest_total.match }}</small>
+                {{ record_scorecard(records.highest_total.scorecard) }}
             </article>
             {% endif %}
             {% if records.closest_win %}
@@ -403,7 +417,7 @@
                 <span class="hm-record__label">Narrowest win</span>
                 <b>{{ records.closest_win.value }} <small>{{ records.closest_win.unit }}</small></b>
                 <span>{{ teams.get(records.closest_win.winner, records.closest_win.winner) }}</span>
-                <small>Match {{ records.closest_win.match }}</small>
+                {{ record_scorecard(records.closest_win.scorecard) }}
             </article>
             {% endif %}
             {% if records.winning_streak %}
@@ -412,7 +426,7 @@
                 <span class="hm-record__label">Best winning streak</span>
                 <b>{{ records.winning_streak.wins }} <small>{{ 'wins' if records.winning_streak.wins != 1 else 'win' }}</small></b>
                 <span>{{ teams.get(records.winning_streak.team, records.winning_streak.team) }}</span>
-                <small>Consecutive completed matches</small>
+                {{ record_scorecard(records.winning_streak.scorecard) }}
             </article>
             {% endif %}
         </div>

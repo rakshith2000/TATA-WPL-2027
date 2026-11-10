@@ -19,7 +19,27 @@ def _homepage_records(fixtures):
     totals = []
     margins = []
 
+    def match_card(fx):
+        def score(info):
+            info = info if isinstance(info, dict) else {}
+            try:
+                runs = int(info.get('runs') or 0)
+                wickets = int(info.get('wkts') or 0)
+                overs = float(info.get('overs') or 0)
+            except (TypeError, ValueError):
+                runs, wickets, overs = 0, 0, 0.0
+            return {'runs': runs, 'wickets': wickets, 'overs': f'{overs:.1f}'}
+
+        return {
+            'match': fx.Match_No,
+            'team_a': fx.Team_A,
+            'team_b': fx.Team_B,
+            'score_a': score(fx.A_info),
+            'score_b': score(fx.B_info),
+        }
+
     for fx in completed:
+        card = match_card(fx)
         for side, opponent, info in (
                 (fx.Team_A, fx.Team_B, fx.A_info),
                 (fx.Team_B, fx.Team_A, fx.B_info)):
@@ -30,28 +50,36 @@ def _homepage_records(fixtures):
                 runs = 0
             if runs > 0:
                 totals.append({'team': side, 'opponent': opponent, 'runs': runs,
-                               'match': fx.Match_No})
+                               'match': fx.Match_No, 'scorecard': card})
 
         if fx.Win_T not in ('NA', None):
             margin = re.search(r'won by\s+(\d+)\s+(runs|wickets)', fx.Result or '', re.I)
             if margin:
                 margins.append({'value': int(margin.group(1)),
                                 'unit': margin.group(2).lower(),
-                                'winner': fx.Win_T, 'match': fx.Match_No})
+                                'winner': fx.Win_T, 'match': fx.Match_No,
+                                'scorecard': card})
 
     ordered = sorted(completed, key=lambda fx: start_DT(fx.Date, fx.Time))
     streaks = {team: 0 for team in TEAMS}
     best_streak = None
     for fx in ordered:
-        for team in (fx.Team_A, fx.Team_B):
-            if team not in streaks:
-                continue
-            if fx.Win_T == team:
-                streaks[team] += 1
-                if best_streak is None or streaks[team] > best_streak['wins']:
-                    best_streak = {'team': team, 'wins': streaks[team]}
-            elif fx.Win_T in TEAMS:
-                streaks[team] = 0
+        sides = (fx.Team_A, fx.Team_B)
+        if fx.Win_T in TEAMS:
+            for team in sides:
+                if team not in streaks:
+                    continue
+                if fx.Win_T == team:
+                    streaks[team] += 1
+                    if best_streak is None or streaks[team] > best_streak['wins']:
+                        best_streak = {'team': team, 'wins': streaks[team],
+                                       'scorecard': match_card(fx)}
+                else:
+                    streaks[team] = 0
+        else:
+            for team in sides:
+                if team in streaks:
+                    streaks[team] = 0
 
     return {
         'highest_total': max(totals, key=lambda row: row['runs']) if totals else None,
