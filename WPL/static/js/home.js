@@ -11,108 +11,190 @@
 (function () {
   'use strict';
 
-  /* ------------------------------------------------------ match spotlight */
+  /* -------------------------------------------- standings scroll hints */
 
-  var featured = document.querySelector('.hm-featured[data-live-url]');
+  Array.prototype.forEach.call(document.querySelectorAll('.hm-standings'), function (strip) {
+    var wrapper = strip.parentElement;
+    if (!wrapper || !wrapper.classList.contains('hm-standings-wrap')) return;
 
-  if (featured) {
-    var matchState = featured.getAttribute('data-state');
-    var liveUrl = featured.getAttribute('data-live-url');
-    var status = featured.querySelector('[data-live-status]');
-    var scoreA = featured.querySelector('[data-live-score-a]');
-    var scoreB = featured.querySelector('[data-live-score-b]');
-    var stateLabel = featured.querySelector('[data-feature-state-label]');
-    var countdown = featured.querySelector('[data-countdown]');
-    var countdownValue = featured.querySelector('[data-countdown-value]');
-    var polling = false;
-    var inFlight = false;
+    function updateScrollHints() {
+      var maxScroll = strip.scrollWidth - strip.clientWidth;
+      wrapper.classList.toggle('can-scroll-left', strip.scrollLeft > 4);
+      wrapper.classList.toggle('can-scroll-right', maxScroll - strip.scrollLeft > 4);
+    }
+
+    strip.addEventListener('scroll', updateScrollHints, { passive: true });
+    window.addEventListener('resize', updateScrollHints);
+    window.addEventListener('load', updateScrollHints);
+    updateScrollHints();
+  });
+
+  /* ------------------------------------------------------ match carousel */
+
+  var matchCarousel = document.getElementById('matchCarousel');
+
+  if (matchCarousel) {
+    var matchStage = matchCarousel.querySelector('.hm-match-carousel__stage');
+    var matchTrack = matchCarousel.querySelector('.hm-match-carousel__track');
+    var matchSlides = Array.prototype.slice.call(matchCarousel.querySelectorAll('.hm-match-slide'));
+    var matchCurrent = matchCarousel.querySelector('[data-match-current]');
+    var previousMatch = matchCarousel.querySelector('[data-match-prev]');
+    var nextMatch = matchCarousel.querySelector('[data-match-next]');
+    var activeMatch = Math.max(0, Math.min(matchSlides.length - 1,
+      parseInt(matchCarousel.getAttribute('data-active-index'), 10) || 0));
+    var pollTimer = null;
     var countdownTimer = null;
+    var requestToken = 0;
+    var requestInFlight = false;
 
-    function showLive() {
-      if (matchState === 'live') return;
-      matchState = 'live';
-      featured.setAttribute('data-state', 'live');
-      if (stateLabel) stateLabel.textContent = 'Live match';
+    function stopMatchTimers() {
+      if (pollTimer) window.clearInterval(pollTimer);
+      if (countdownTimer) window.clearInterval(countdownTimer);
+      pollTimer = null;
+      countdownTimer = null;
+      requestToken += 1;
+      requestInFlight = false;
+    }
+
+    function pollLive(slide) {
+      if (requestInFlight || matchSlides[activeMatch] !== slide) return;
+      requestInFlight = true;
+      var token = requestToken;
+      var status = slide.querySelector('[data-live-status]');
+      fetch(slide.getAttribute('data-live-url'), { cache: 'no-store' })
+        .then(function (response) {
+          if (!response.ok) throw new Error('Live score request failed (' + response.status + ')');
+          return response.json();
+        })
+        .then(function (data) {
+          if (token !== requestToken || matchSlides[activeMatch] !== slide) return;
+          if (!data || !data.ok) {
+            if (status) status.textContent = 'Live feed temporarily unavailable. Match Centre still has match details.';
+            return;
+          }
+          var teams = data.teams || [];
+          var sideA = teams.find(function (team) { return team.team === slide.getAttribute('data-team-a'); });
+          var sideB = teams.find(function (team) { return team.team === slide.getAttribute('data-team-b'); });
+          var scoreA = slide.querySelector('[data-live-score-a]');
+          var scoreB = slide.querySelector('[data-live-score-b]');
+          if (sideA && scoreA) scoreA.textContent = sideA.score || '—';
+          if (sideB && scoreB) scoreB.textContent = sideB.score || '—';
+          var message = data.info || data.status || '';
+          if (!message && !sideA && !sideB) message = 'Waiting for the live score feed.';
+          if (status) status.textContent = message || 'Live score updated.';
+        })
+        .catch(function (error) {
+          if (token === requestToken && status) {
+            status.textContent = 'Live feed temporarily unavailable. Match Centre still has match details.';
+            console.warn('Homepage live score refresh failed:', error);
+          }
+        })
+        .then(function () {
+          if (token === requestToken) requestInFlight = false;
+        });
+    }
+
+    function startPolling(slide) {
+      pollLive(slide);
+      pollTimer = window.setInterval(function () { pollLive(slide); }, 15000);
+    }
+
+    function showLive(slide) {
+      slide.setAttribute('data-state', 'live');
+      var label = slide.querySelector('[data-feature-state-label]');
+      var countdown = slide.querySelector('[data-countdown]');
+      var status = slide.querySelector('[data-live-status]');
+      var eyebrow = slide.querySelector('.hm-featured__eyebrow');
+      if (label) label.textContent = 'Live match';
       if (countdown) countdown.hidden = true;
       if (status) {
         status.hidden = false;
         status.textContent = 'Checking live score…';
       }
-      var eyebrow = featured.querySelector('.hm-featured__eyebrow');
       if (eyebrow && !eyebrow.querySelector('i')) {
         var dot = document.createElement('i');
         dot.setAttribute('aria-hidden', 'true');
-        eyebrow.insertBefore(dot, stateLabel);
+        eyebrow.insertBefore(dot, label);
       }
-      startPolling();
+      startPolling(slide);
     }
 
-    function renderLive(data) {
-      if (!data || !data.ok) {
-        if (status) status.textContent = 'Live feed temporarily unavailable. Match Centre still has match details.';
-        return;
-      }
-      var teams = data.teams || [];
-      var teamA = featured.getAttribute('data-team-a');
-      var teamB = featured.getAttribute('data-team-b');
-      var sideA = teams.find(function (team) { return team.team === teamA; });
-      var sideB = teams.find(function (team) { return team.team === teamB; });
-      if (sideA && scoreA) scoreA.textContent = sideA.score || '—';
-      if (sideB && scoreB) scoreB.textContent = sideB.score || '—';
-      var message = data.info || data.status || '';
-      if (!message && !sideA && !sideB) message = 'Waiting for the live score feed.';
-      if (status) status.textContent = message || 'Live score updated.';
-    }
-
-    function pollLive() {
-      if (inFlight) return;
-      inFlight = true;
-      fetch(liveUrl, { cache: 'no-store' })
-        .then(function (response) {
-          if (!response.ok) throw new Error('Live score request failed (' + response.status + ')');
-          return response.json();
-        })
-        .then(renderLive)
-        .catch(function (error) {
-          if (status) status.textContent = 'Live feed temporarily unavailable. Match Centre still has match details.';
-          console.warn('Homepage live score refresh failed:', error);
-        })
-        .then(function () { inFlight = false; });
-    }
-
-    function startPolling() {
-      if (polling) return;
-      polling = true;
-      pollLive();
-      window.setInterval(pollLive, 15000);
-    }
-
-    if (matchState === 'live') {
-      startPolling();
-    } else if (matchState === 'upcoming' && countdownValue) {
-      var kickoff = Date.parse(featured.getAttribute('data-start'));
+    function startCountdown(slide) {
+      var value = slide.querySelector('[data-countdown-value]');
+      if (!value) return;
+      var kickoff = Date.parse(slide.getAttribute('data-start'));
       function updateCountdown() {
+        if (Number.isNaN(kickoff)) {
+          value.textContent = 'Scheduled';
+          return;
+        }
         var remaining = Math.max(0, Math.floor((kickoff - Date.now()) / 1000));
         if (remaining === 0) {
+          value.textContent = 'Starting now';
           if (countdownTimer) window.clearInterval(countdownTimer);
-          countdownValue.textContent = 'Starting now';
-          showLive();
+          countdownTimer = null;
+          showLive(slide);
           return;
         }
         var days = Math.floor(remaining / 86400);
         var hours = Math.floor((remaining % 86400) / 3600);
         var minutes = Math.floor((remaining % 3600) / 60);
-        countdownValue.textContent = (days ? days + 'd ' : '') +
+        value.textContent = (days ? days + 'd ' : '') +
           String(hours).padStart(2, '0') + 'h ' +
           String(minutes).padStart(2, '0') + 'm';
       }
-      if (Number.isNaN(kickoff)) {
-        countdownValue.textContent = 'Scheduled';
-      } else {
-        updateCountdown();
+      updateCountdown();
+      if (!Number.isNaN(kickoff) && slide.getAttribute('data-state') === 'upcoming') {
         countdownTimer = window.setInterval(updateCountdown, 1000);
       }
     }
+
+    function activateMatch(index) {
+      activeMatch = Math.max(0, Math.min(matchSlides.length - 1, index));
+      stopMatchTimers();
+      matchSlides.forEach(function (slide, slideIndex) {
+        var isActive = slideIndex === activeMatch;
+        slide.classList.toggle('is-active', isActive);
+        slide.setAttribute('aria-hidden', isActive ? 'false' : 'true');
+        slide.inert = !isActive;
+      });
+      matchTrack.style.transform = 'translate3d(-' + (activeMatch * 100) + '%, 0, 0)';
+      if (matchCurrent) matchCurrent.textContent = String(activeMatch + 1);
+      if (previousMatch) previousMatch.disabled = activeMatch === 0;
+      if (nextMatch) nextMatch.disabled = activeMatch === matchSlides.length - 1;
+
+      var slide = matchSlides[activeMatch];
+      var state = slide.getAttribute('data-state');
+      if (state === 'live') startPolling(slide);
+      else if (state === 'upcoming') startCountdown(slide);
+    }
+
+    if (previousMatch) previousMatch.addEventListener('click', function () { activateMatch(activeMatch - 1); });
+    if (nextMatch) nextMatch.addEventListener('click', function () { activateMatch(activeMatch + 1); });
+    if (matchStage) {
+      matchStage.addEventListener('keydown', function (event) {
+        if (event.target !== matchStage) return;
+        if (event.key === 'ArrowLeft') {
+          event.preventDefault();
+          activateMatch(activeMatch - 1);
+        } else if (event.key === 'ArrowRight') {
+          event.preventDefault();
+          activateMatch(activeMatch + 1);
+        }
+      });
+      var touchStartX = null;
+      matchStage.addEventListener('touchstart', function (event) {
+        touchStartX = event.changedTouches[0].clientX;
+      }, { passive: true });
+      matchStage.addEventListener('touchend', function (event) {
+        if (touchStartX === null) return;
+        var distance = event.changedTouches[0].clientX - touchStartX;
+        touchStartX = null;
+        if (Math.abs(distance) < 40) return;
+        activateMatch(activeMatch + (distance < 0 ? 1 : -1));
+      }, { passive: true });
+    }
+    activateMatch(activeMatch);
   }
 
   /* --------------------------------------------------------- carousel */

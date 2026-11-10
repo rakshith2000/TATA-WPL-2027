@@ -185,58 +185,79 @@
         </nav>
     </header>
 
-    {# ===================================================== match spotlight #}
-    <section class="hm-matchday" aria-label="Featured match and recent result">
-        {% if featured %}
-        <article class="hm-featured" data-state="{{ featured_state }}"
-                 data-team-a="{{ featured.Team_A }}" data-team-b="{{ featured.Team_B }}"
-                 {% if featured_state == 'live' or featured_state == 'upcoming' %}
-                 data-live-url="{{ url_for('api.api_liveStrip', match=featured.Match_No) }}"
-                 data-start="{{ featured_start }}"
-                 {% endif %}>
-            <div class="hm-featured__top">
-                <span class="hm-featured__eyebrow">
-                    {% if featured_state == 'live' %}<i aria-hidden="true"></i>{% endif %}
-                    <b data-feature-state-label>{{ 'Live match' if featured_state == 'live' else ('Next up' if featured_state == 'upcoming' else 'Latest match') }}</b>
-                    <span>Match {{ featured.Match_No }}</span>
-                </span>
-                <span class="hm-featured__venue">{{ featured.Venue }}</span>
-            </div>
-
-            <div class="hm-featured__teams">
-                <div class="hm-featured__team">
-                    <img src="/static/images/squad_logos/{{ featured.Team_A }}.png"
-                         alt="{{ teams.get(featured.Team_A, featured.Team_A) }} logo">
-                    <span>{{ teams.get(featured.Team_A, featured.Team_A) }}</span>
-                    <b data-live-score-a class="hm-featured__score{{ ' is-winner' if featured.Win_T == featured.Team_A else (' is-loser' if featured.Win_T in [featured.Team_A, featured.Team_B] else '') }}">{{ home_score(featured.A_info) if featured_state == 'completed' else '—' }}</b>
+    {# ===================================================== match carousel #}
+    <section class="hm-matchday" aria-label="Match spotlight">
+        {% if spotlight_matches %}
+        <div class="hm-match-carousel" id="matchCarousel"
+             data-active-index="{{ spotlight_index }}"
+             role="region" aria-roledescription="carousel" aria-label="Season matches">
+            <div class="hm-match-carousel__stage" tabindex="0" aria-label="Use left and right arrow keys to browse matches">
+                <div class="hm-match-carousel__track"
+                     style="transform: translate3d(-{{ spotlight_index * 100 }}%, 0, 0)">
+                    {% for item in spotlight_matches %}
+                    {% set match = item.fixture %}
+                    <article class="hm-featured hm-match-slide{{ ' is-active' if loop.index0 == spotlight_index else '' }}"
+                             data-state="{{ item.state }}" data-state-label="{{ item.label }}"
+                             data-team-a="{{ match.Team_A }}" data-team-b="{{ match.Team_B }}"
+                             aria-hidden="{{ 'false' if loop.index0 == spotlight_index else 'true' }}"
+                             {% if loop.index0 != spotlight_index %}inert{% endif %}
+                             {% if item.state in ['live', 'upcoming'] %}
+                             data-live-url="{{ url_for('api.api_liveStrip', match=match.Match_No) }}"
+                             data-start="{{ item.start }}"
+                             {% endif %}>
+                        <div class="hm-featured__top">
+                            <span class="hm-featured__eyebrow">
+                                {% if item.state == 'live' %}<i aria-hidden="true"></i>{% endif %}
+                                <b data-feature-state-label>{{ item.label }}</b>
+                                <span>Match {{ match.Match_No }}</span>
+                            </span>
+                            <span class="hm-featured__venue">{{ match.Venue }}</span>
+                        </div>
+                        <div class="hm-featured__teams">
+                            <div class="hm-featured__team">
+                                <img src="/static/images/squad_logos/{{ match.Team_A }}.png" alt="{{ teams.get(match.Team_A, match.Team_A) }} logo">
+                                <span>{{ teams.get(match.Team_A, match.Team_A) }}</span>
+                                <b data-live-score-a class="hm-featured__score{{ ' is-winner' if match.Win_T == match.Team_A else (' is-loser' if match.Win_T in [match.Team_A, match.Team_B] else '') }}">{{ home_score(match.A_info) if item.state == 'completed' else '—' }}</b>
+                            </div>
+                            <span class="hm-featured__versus">VS</span>
+                            <div class="hm-featured__team">
+                                <img src="/static/images/squad_logos/{{ match.Team_B }}.png" alt="{{ teams.get(match.Team_B, match.Team_B) }} logo">
+                                <span>{{ teams.get(match.Team_B, match.Team_B) }}</span>
+                                <b data-live-score-b class="hm-featured__score{{ ' is-winner' if match.Win_T == match.Team_B else (' is-loser' if match.Win_T in [match.Team_A, match.Team_B] else '') }}">{{ home_score(match.B_info) if item.state == 'completed' else '—' }}</b>
+                            </div>
+                        </div>
+                        <div class="hm-featured__foot">
+                            {% if item.state == 'upcoming' %}
+                            <div class="hm-countdown" data-countdown>
+                                <span>Starts in</span><b data-countdown-value>Loading…</b>
+                                <time datetime="{{ item.start }}">{{ match.Date.strftime('%a, %d %b') }} · {{ match.Time.strftime('%I:%M %p') }} IST</time>
+                            </div>
+                            <p class="hm-featured__status" data-live-status aria-live="polite" hidden>Checking live score…</p>
+                            {% elif item.state == 'live' %}
+                            <p class="hm-featured__status" data-live-status aria-live="polite">Checking live score…</p>
+                            {% else %}
+                            <p class="hm-featured__status">{{ match.Result or 'Match complete' }}</p>
+                            {% endif %}
+                            <a class="hm-featured__cta" href="{{ url_for('main.match', match=match.Match_No) }}">
+                                Match centre<span class="material-icons-round">arrow_forward</span>
+                            </a>
+                        </div>
+                    </article>
+                    {% endfor %}
                 </div>
-                <span class="hm-featured__versus">VS</span>
-                <div class="hm-featured__team">
-                    <img src="/static/images/squad_logos/{{ featured.Team_B }}.png"
-                         alt="{{ teams.get(featured.Team_B, featured.Team_B) }} logo">
-                    <span>{{ teams.get(featured.Team_B, featured.Team_B) }}</span>
-                    <b data-live-score-b class="hm-featured__score{{ ' is-winner' if featured.Win_T == featured.Team_B else (' is-loser' if featured.Win_T in [featured.Team_A, featured.Team_B] else '') }}">{{ home_score(featured.B_info) if featured_state == 'completed' else '—' }}</b>
-                </div>
             </div>
-
-            <div class="hm-featured__foot">
-                {% if featured_state == 'upcoming' %}
-                <div class="hm-countdown" data-countdown>
-                    <span>Starts in</span>
-                    <b data-countdown-value>Loading…</b>
-                    <time datetime="{{ featured_start }}">{{ featured.Date.strftime('%a, %d %b') }} · {{ featured.Time.strftime('%I:%M %p') }} IST</time>
-                </div>
-                <p class="hm-featured__status" data-live-status aria-live="polite" hidden>Checking live score…</p>
-                {% elif featured_state == 'live' %}
-                <p class="hm-featured__status" data-live-status aria-live="polite">Checking live score…</p>
-                {% else %}
-                <p class="hm-featured__status">{{ featured.Result or 'Match complete' }}</p>
-                {% endif %}
-                <a class="hm-featured__cta" href="{{ url_for('main.match', match=featured.Match_No) }}">
-                    Match centre<span class="material-icons-round">arrow_forward</span>
-                </a>
+            {% if spotlight_matches|length > 1 %}
+            <div class="hm-match-carousel__controls" role="group" aria-label="Match carousel controls">
+                <button type="button" class="hm-match-carousel__arrow" data-match-prev aria-label="Previous match">
+                    <span class="material-icons-round" aria-hidden="true">chevron_left</span>
+                </button>
+                <span class="hm-match-carousel__count" aria-live="polite"><b data-match-current>{{ spotlight_index + 1 }}</b> / {{ spotlight_matches|length }}</span>
+                <button type="button" class="hm-match-carousel__arrow" data-match-next aria-label="Next match">
+                    <span class="material-icons-round" aria-hidden="true">chevron_right</span>
+                </button>
             </div>
-        </article>
+            {% endif %}
+        </div>
         {% else %}
         <article class="hm-featured hm-featured--empty">
             <span class="hm-featured__eyebrow">Season schedule</span>
@@ -245,36 +266,6 @@
             <a class="hm-featured__cta" href="{{ url_for('main.displayFR') }}">View matches</a>
         </article>
         {% endif %}
-
-        <aside class="hm-matchday__side">
-            {% if latest_result and (not featured or latest_result.id != featured.id) %}
-            <article class="hm-result-card">
-                <span class="hm-result-card__label">Latest result · Match {{ latest_result.Match_No }}</span>
-                <div class="hm-result-card__teams">
-                    <span><img src="/static/images/squad_logos/{{ latest_result.Team_A }}.png" alt="">
-                        {{ latest_result.Team_A }} <b class="{{ 'is-winner' if latest_result.Win_T == latest_result.Team_A else ('is-loser' if latest_result.Win_T in [latest_result.Team_A, latest_result.Team_B] else '') }}">{{ home_score(latest_result.A_info) }}</b></span>
-                    <span><img src="/static/images/squad_logos/{{ latest_result.Team_B }}.png" alt="">
-                        {{ latest_result.Team_B }} <b class="{{ 'is-winner' if latest_result.Win_T == latest_result.Team_B else ('is-loser' if latest_result.Win_T in [latest_result.Team_A, latest_result.Team_B] else '') }}">{{ home_score(latest_result.B_info) }}</b></span>
-                </div>
-                <p>{{ latest_result.Result }}</p>
-                {% if latest_result.POTM %}
-                <small>Player of the Match: <b>{{ latest_result.POTM.get('name', '') }}</b></small>
-                {% endif %}
-                <a href="{{ url_for('main.match', match=latest_result.Match_No) }}">Full scorecard
-                    <span class="material-icons-round">arrow_forward</span>
-                </a>
-            </article>
-            {% endif %}
-
-            {% if following %}
-            <a class="hm-next-card" href="{{ url_for('main.match', match=following.Match_No) }}">
-                <span class="hm-result-card__label">Then · Match {{ following.Match_No }}</span>
-                <strong>{{ following.Team_A }} <i>vs</i> {{ following.Team_B }}</strong>
-                <time>{{ following.Date.strftime('%a, %d %b') }} · {{ following.Time.strftime('%I:%M %p') }} IST</time>
-                <span class="hm-next-card__link">View fixture<span class="material-icons-round">arrow_forward</span></span>
-            </a>
-            {% endif %}
-        </aside>
     </section>
 
     {# ======================================================== standings #}
@@ -297,7 +288,8 @@
         {#- the whole table: five rows is short enough to show in full, and
             cutting it would hide the side on the wrong side of the line -#}
         {% if pt %}
-        <div class="hm-standings">
+        <div class="hm-standings-wrap">
+        <div class="hm-standings" role="region" aria-label="Points table, scroll horizontally for all teams" tabindex="0">
             {% for team in pt %}
             {% set abv = team.team_name %}
 
@@ -389,6 +381,7 @@
             {% endif %}
 
             {% endfor %}
+        </div>
         </div>
 
         {% else %}

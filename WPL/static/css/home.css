@@ -403,23 +403,90 @@ body::-webkit-scrollbar-thumb {
 .hm-sec__more:hover [class*='material-icons'] { transform: translateX(3px); }
 
 /* ====================================================================
-   Standings — the displayPT mobile card (.ptc), laid out as a grid
+   Standings — horizontally scrollable team cards
    ==================================================================== */
 
-.hm-standings {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  align-items: start;
+.hm-standings-wrap {
+  position: relative;
+  min-width: 0;
 }
 
-/* the shared card assumes a stacked list; on a grid the gap does the spacing */
-.hm-standings .ptc { margin-bottom: 0; }
+.hm-standings-wrap::before,
+.hm-standings-wrap::after {
+  position: absolute;
+  z-index: 3;
+  top: 2px;
+  bottom: 14px;
+  width: 30px;
+  content: '';
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s ease;
+}
 
-/* playoff cut-off divider spans the full grid row */
+.hm-standings-wrap::before {
+  left: 0;
+  background: linear-gradient(90deg, var(--hm-bg-1), transparent);
+}
+
+.hm-standings-wrap::after {
+  right: 0;
+  background: linear-gradient(270deg, var(--hm-bg-1), transparent);
+}
+
+.hm-standings-wrap.can-scroll-left::before,
+.hm-standings-wrap.can-scroll-right::after { opacity: 1; }
+
+.hm-standings {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 2px 2px 14px;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+.hm-standings::-webkit-scrollbar { display: none; }
+
+.hm-standings .ptc {
+  flex: 0 0 270px;
+  width: 270px;
+  margin-bottom: 0;
+  scroll-snap-align: start;
+}
+
 .hm-standings .pt-cut {
-  grid-column: 1 / -1;
-  margin: 2px 2px 1px;
+  position: relative;
+  display: flex;
+  flex: 0 0 42px;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  font-size: 9px;
+  text-align: center;
+}
+
+.hm-standings .pt-cut::before {
+  position: absolute;
+  inset: 8px auto 8px 50%;
+  flex: none;
+  width: 0;
+  height: auto;
+  border: 0;
+  border-left: 1.5px dashed rgba(255, 255, 255, 0.32);
+}
+
+.hm-standings .pt-cut::after { display: none; }
+
+.hm-standings .pt-cut span {
+  z-index: 1;
+  padding: 8px 0;
+  background: var(--hm-bg-1);
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
 }
 
 .hm-standings__empty {
@@ -987,10 +1054,6 @@ body::-webkit-scrollbar-thumb {
    Breakpoints
    ====================================================================== */
 
-@media (max-width: 900px) {
-  .hm-standings { grid-template-columns: minmax(0, 1fr); }
-}
-
 @media (max-width: 880px) {
   .hm-wrap { width: calc(100% - 22px); }
   body { padding-top: 66px; }
@@ -999,6 +1062,7 @@ body::-webkit-scrollbar-thumb {
 }
 
 @media (max-width: 640px) {
+  .hm-standings .ptc { flex-basis: min(270px, 82vw); width: min(270px, 82vw); }
   .hm-sec__head { align-items: center; }
   .hm-sec__title::after { width: 42px; }
   .hm-tp__slide { flex-basis: min(480px, 88vw); }
@@ -1055,12 +1119,45 @@ body::-webkit-scrollbar-thumb {
 /* ============================================================ matchday */
 
 .hm-matchday {
-  display: grid;
-  grid-template-columns: minmax(0, 1.65fr) minmax(240px, 0.8fr);
-  gap: 14px;
+  display: block;
   margin-top: 18px;
-  align-items: stretch;
 }
+
+.hm-match-carousel { min-width: 0; }
+.hm-match-carousel__stage { overflow: hidden; border-radius: var(--hm-r-lg); }
+.hm-match-carousel__stage:focus-visible { outline: 2px solid var(--hm-cyan); outline-offset: 4px; }
+.hm-match-carousel__track {
+  display: flex;
+  width: 100%;
+  transition: transform .72s var(--hm-bounce);
+  will-change: transform;
+}
+.hm-match-slide { flex: 0 0 100%; width: 100%; }
+.hm-match-carousel__controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 10px;
+}
+.hm-match-carousel__arrow {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--hm-line-2);
+  border-radius: 50%;
+  background: rgba(255,255,255,.07);
+  color: var(--hm-ink);
+  cursor: pointer;
+  transition: transform .2s var(--hm-bounce), background-color .2s ease, opacity .2s ease;
+}
+.hm-match-carousel__arrow:hover:not(:disabled) { transform: scale(1.08); background: rgba(255,255,255,.14); }
+.hm-match-carousel__arrow:focus-visible { outline: 2px solid var(--hm-cyan); outline-offset: 3px; }
+.hm-match-carousel__arrow:disabled { opacity: .38; cursor: default; }
+.hm-match-carousel__arrow .material-icons-round { font-size: 20px; }
+.hm-match-carousel__count { min-width: 48px; color: var(--hm-ink-3); font-size: 10px; text-align: center; }
+.hm-match-carousel__count b { color: var(--hm-ink); font-variant-numeric: tabular-nums; }
 
 .hm-featured,
 .hm-result-card,
@@ -1503,6 +1600,7 @@ body::-webkit-scrollbar-thumb {
 
 @media (prefers-reduced-motion: reduce) {
   .hm-featured__eyebrow i { animation: none; }
+  .hm-match-carousel__track, .hm-match-carousel__arrow { transition: none; }
 }
 
 @media print {

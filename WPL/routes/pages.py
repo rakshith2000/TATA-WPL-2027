@@ -188,20 +188,33 @@ def index():
 
     featured = (live[0] if live else upcoming[0] if upcoming
                 else completed[-1] if completed else None)
-    featured_state = ('live' if live else 'upcoming' if upcoming
-                      else 'completed' if featured else 'empty')
-    latest_result = completed[-1] if completed else None
-    following = next((fx for fx in upcoming if featured is None or fx.id != featured.id), None)
-    featured_start = (tz.localize(start_DT(featured.Date, featured.Time)).isoformat()
-                      if featured else None)
+    spotlight_matches = []
+    spotlight_index = 0
+    if featured:
+        featured_index = ordered.index(featured)
+        first_index = max(0, featured_index - 10)
+        last_index = min(len(ordered), featured_index + 11)
+        spotlight_index = featured_index - first_index
+        for fx in ordered[first_index:last_index]:
+            match_start = start_DT(fx.Date, fx.Time)
+            state = ('live' if fx.Win_T is None and match_start <= now else
+                     'upcoming' if fx.Win_T is None else 'completed')
+            spotlight_matches.append({
+                'fixture': fx,
+                'state': state,
+                'label': ('Live match' if state == 'live' else
+                          'Next up' if state == 'upcoming' else
+                          'Latest match' if fx.id == featured.id else 'Match result'),
+                'start': tz.localize(match_start).isoformat(),
+            })
 
     # Same extras the standings page shows, so the home cards can match it exactly
     return render_template('index.html', teams=full_name, clr=clr, pt=PT, tp=TP,
                            ranks=getRanksForPT(),
                            champion=finalsData.Win_T if finalsData else None,
-                           featured=featured, featured_state=featured_state,
-                           featured_start=featured_start, latest_result=latest_result,
-                           following=following, records=_homepage_records(fixtures))
+                           spotlight_matches=spotlight_matches,
+                           spotlight_index=spotlight_index,
+                           records=_homepage_records(fixtures))
 
 @main.route('/pointstable')
 def displayPT():
