@@ -11,17 +11,84 @@ from ..config import full_name, clr, sqclr, TEAMS
 from ..utils.dates import tz, start_DT
 from ..services.standings import getRanksForPT, getNextOpponents
 
+
+def _homepage_records(fixtures):
+    """Derive compact season records from result data already stored locally."""
+    completed = [fx for fx in fixtures if fx.Win_T is not None
+                 and 'abandoned' not in (fx.Result or '').lower()]
+    totals = []
+    margins = []
+
+    for fx in completed:
+        for side, opponent, info in (
+                (fx.Team_A, fx.Team_B, fx.A_info),
+                (fx.Team_B, fx.Team_A, fx.B_info)):
+            runs = info.get('runs', 0) if isinstance(info, dict) else 0
+            try:
+                runs = int(runs or 0)
+            except (TypeError, ValueError):
+                runs = 0
+            if runs > 0:
+                totals.append({'team': side, 'opponent': opponent, 'runs': runs,
+                               'match': fx.Match_No})
+
+        if fx.Win_T not in ('NA', None):
+            margin = re.search(r'won by\s+(\d+)\s+(runs|wickets)', fx.Result or '', re.I)
+            if margin:
+                margins.append({'value': int(margin.group(1)),
+                                'unit': margin.group(2).lower(),
+                                'winner': fx.Win_T, 'match': fx.Match_No})
+
+    ordered = sorted(completed, key=lambda fx: start_DT(fx.Date, fx.Time))
+    streaks = {team: 0 for team in TEAMS}
+    best_streak = None
+    for fx in ordered:
+        for team in (fx.Team_A, fx.Team_B):
+            if team not in streaks:
+                continue
+            if fx.Win_T == team:
+                streaks[team] += 1
+                if best_streak is None or streaks[team] > best_streak['wins']:
+                    best_streak = {'team': team, 'wins': streaks[team]}
+            elif fx.Win_T in TEAMS:
+                streaks[team] = 0
+
+    return {
+        'highest_total': max(totals, key=lambda row: row['runs']) if totals else None,
+        'closest_win': min(margins, key=lambda row: row['value']) if margins else None,
+        'winning_streak': best_streak,
+    }
+
+
 @main.route('/')
 def index():
     PT = Pointstable.query.order_by(Pointstable.Points.desc(), Pointstable.W.desc(),
                                     Pointstable.NRR.desc(), Pointstable.id.asc()).all()
     TP = {t.category: t.stats for t in Toppers.query.order_by(Toppers.id.asc())}
     finalsData = Fixture.query.filter(Fixture.Match_No == 'Final').first()
+    fixtures = Fixture.query.order_by(Fixture.id).all()
+    now = datetime.now(tz).replace(tzinfo=None)
+    ordered = sorted(fixtures, key=lambda fx: start_DT(fx.Date, fx.Time))
+    live = [fx for fx in ordered if fx.Win_T is None and start_DT(fx.Date, fx.Time) <= now]
+    upcoming = [fx for fx in ordered if fx.Win_T is None and start_DT(fx.Date, fx.Time) > now]
+    completed = [fx for fx in ordered if fx.Win_T is not None]
+
+    featured = (live[0] if live else upcoming[0] if upcoming
+                else completed[-1] if completed else None)
+    featured_state = ('live' if live else 'upcoming' if upcoming
+                      else 'completed' if featured else 'empty')
+    latest_result = completed[-1] if completed else None
+    following = next((fx for fx in upcoming if featured is None or fx.id != featured.id), None)
+    featured_start = (tz.localize(start_DT(featured.Date, featured.Time)).isoformat()
+                      if featured else None)
+
     # Same extras the standings page shows, so the home cards can match it exactly
     return render_template('index.html', teams=full_name, clr=clr, pt=PT, tp=TP,
                            ranks=getRanksForPT(),
-                           nxt=getNextOpponents([i.team_name for i in PT]),
-                           champion=finalsData.Win_T if finalsData else None)
+                           champion=finalsData.Win_T if finalsData else None,
+                           featured=featured, featured_state=featured_state,
+                           featured_start=featured_start, latest_result=latest_result,
+                           following=following, records=_homepage_records(fixtures))
 
 @main.route('/pointstable')
 def displayPT():

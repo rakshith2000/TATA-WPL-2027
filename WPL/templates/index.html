@@ -12,7 +12,7 @@
 
 {% block content %}
 
-{% from "macros/points.html" import delta_pill, form_pills, next_chip, meter, win_pct, crest_grad %}
+{% from "macros/points.html" import delta_pill, form_pills, meter, win_pct, crest_grad %}
 
 {#  ------------------------------------------------------------------ data #}
 
@@ -96,6 +96,15 @@
 
 {% set played = ((pt | sum(attribute='P')) // 2) if pt else 0 %}
 
+{% macro home_score(info) -%}
+    {%- if info and (info.get('runs') or info.get('overs')) -%}
+        {{ info.get('runs', 0) }}{{ '/' ~ info.get('wkts', 0) if info.get('wkts', 0) < 10 else '' }}
+        <small>({{ info.get('overs', 0) }})</small>
+    {%- else -%}
+        &mdash;
+    {%- endif -%}
+{%- endmacro %}
+
 <div class="hm-wrap">
 
     {# ============================================================== hero #}
@@ -152,6 +161,98 @@
         </nav>
     </header>
 
+    {# ===================================================== match spotlight #}
+    <section class="hm-matchday" aria-label="Featured match and recent result">
+        {% if featured %}
+        <article class="hm-featured" data-state="{{ featured_state }}"
+                 data-team-a="{{ featured.Team_A }}" data-team-b="{{ featured.Team_B }}"
+                 {% if featured_state == 'live' or featured_state == 'upcoming' %}
+                 data-live-url="{{ url_for('api.api_liveStrip', match=featured.Match_No) }}"
+                 data-start="{{ featured_start }}"
+                 {% endif %}>
+            <div class="hm-featured__top">
+                <span class="hm-featured__eyebrow">
+                    {% if featured_state == 'live' %}<i aria-hidden="true"></i>{% endif %}
+                    <b data-feature-state-label>{{ 'Live match' if featured_state == 'live' else ('Next up' if featured_state == 'upcoming' else 'Latest match') }}</b>
+                    <span>Match {{ featured.Match_No }}</span>
+                </span>
+                <span class="hm-featured__venue">{{ featured.Venue }}</span>
+            </div>
+
+            <div class="hm-featured__teams">
+                <div class="hm-featured__team">
+                    <img src="/static/images/squad_logos/{{ featured.Team_A }}.png"
+                         alt="{{ teams.get(featured.Team_A, featured.Team_A) }} logo">
+                    <span>{{ teams.get(featured.Team_A, featured.Team_A) }}</span>
+                    <b data-live-score-a>{{ home_score(featured.A_info) if featured_state == 'completed' else '—' }}</b>
+                </div>
+                <span class="hm-featured__versus">VS</span>
+                <div class="hm-featured__team">
+                    <img src="/static/images/squad_logos/{{ featured.Team_B }}.png"
+                         alt="{{ teams.get(featured.Team_B, featured.Team_B) }} logo">
+                    <span>{{ teams.get(featured.Team_B, featured.Team_B) }}</span>
+                    <b data-live-score-b>{{ home_score(featured.B_info) if featured_state == 'completed' else '—' }}</b>
+                </div>
+            </div>
+
+            <div class="hm-featured__foot">
+                {% if featured_state == 'upcoming' %}
+                <div class="hm-countdown" data-countdown>
+                    <span>Starts in</span>
+                    <b data-countdown-value>Loading…</b>
+                    <time datetime="{{ featured_start }}">{{ featured.Date.strftime('%a, %d %b') }} · {{ featured.Time.strftime('%I:%M %p') }} IST</time>
+                </div>
+                <p class="hm-featured__status" data-live-status aria-live="polite" hidden>Checking live score…</p>
+                {% elif featured_state == 'live' %}
+                <p class="hm-featured__status" data-live-status aria-live="polite">Checking live score…</p>
+                {% else %}
+                <p class="hm-featured__status">{{ featured.Result or 'Match complete' }}</p>
+                {% endif %}
+                <a class="hm-featured__cta" href="{{ url_for('main.match', match=featured.Match_No) }}">
+                    Match centre<span class="material-icons-round">arrow_forward</span>
+                </a>
+            </div>
+        </article>
+        {% else %}
+        <article class="hm-featured hm-featured--empty">
+            <span class="hm-featured__eyebrow">Season schedule</span>
+            <h2>Fixtures will appear here</h2>
+            <p>Check back when the season schedule is available.</p>
+            <a class="hm-featured__cta" href="{{ url_for('main.displayFR') }}">View matches</a>
+        </article>
+        {% endif %}
+
+        <aside class="hm-matchday__side">
+            {% if latest_result and (not featured or latest_result.id != featured.id) %}
+            <article class="hm-result-card">
+                <span class="hm-result-card__label">Latest result · Match {{ latest_result.Match_No }}</span>
+                <div class="hm-result-card__teams">
+                    <span><img src="/static/images/squad_logos/{{ latest_result.Team_A }}.png" alt="">
+                        {{ latest_result.Team_A }} <b>{{ home_score(latest_result.A_info) }}</b></span>
+                    <span><img src="/static/images/squad_logos/{{ latest_result.Team_B }}.png" alt="">
+                        {{ latest_result.Team_B }} <b>{{ home_score(latest_result.B_info) }}</b></span>
+                </div>
+                <p>{{ latest_result.Result }}</p>
+                {% if latest_result.POTM %}
+                <small>Player of the Match: <b>{{ latest_result.POTM.get('name', '') }}</b></small>
+                {% endif %}
+                <a href="{{ url_for('main.match', match=latest_result.Match_No) }}">Full scorecard
+                    <span class="material-icons-round">arrow_forward</span>
+                </a>
+            </article>
+            {% endif %}
+
+            {% if following %}
+            <a class="hm-next-card" href="{{ url_for('main.match', match=following.Match_No) }}">
+                <span class="hm-result-card__label">Then · Match {{ following.Match_No }}</span>
+                <strong>{{ following.Team_A }} <i>vs</i> {{ following.Team_B }}</strong>
+                <time>{{ following.Date.strftime('%a, %d %b') }} · {{ following.Time.strftime('%I:%M %p') }} IST</time>
+                <span class="hm-next-card__link">View fixture<span class="material-icons-round">arrow_forward</span></span>
+            </a>
+            {% endif %}
+        </aside>
+    </section>
+
     {# ======================================================== standings #}
     <section class="hm-sec" aria-labelledby="hmStandings">
         <div class="hm-sec__head">
@@ -163,6 +264,11 @@
                 Full table<span class="material-icons-round">arrow_forward</span>
             </a>
         </div>
+        <p class="hm-playoff-note">
+            <span class="hm-playoff-note__mark" aria-hidden="true"></span>
+            Top {{ SPOTS }} teams qualify for the playoffs.
+            {% if played %}Qualification estimates update as results come in.{% else %}Qualification estimates appear after the first result.{% endif %}
+        </p>
 
         {#- the whole table: five rows is short enough to show in full, and
             cutting it would hide the side on the wrong side of the line -#}
@@ -208,6 +314,8 @@
                         <div class="ptc__meta">
                             {% if badge %}<span class="ptc__badge ptc__badge--{{ status }}">{{ badge }}</span>{% endif %}
                             <span class="ptc__full">{{ teams[abv] }}</span>
+                            {% if loop.index == SPOTS %}<span class="hm-playoff-edge">Last playoff spot</span>
+                            {% elif loop.index == SPOTS + 1 %}<span class="hm-playoff-edge hm-playoff-edge--outside">Just outside</span>{% endif %}
                         </div>
                     </div>
 
@@ -239,22 +347,18 @@
                     </div>
                 </div>
 
-                <!--
+                {% if played %}
                 <div class="ptc__probs">
                     <div class="ptc__prob">
                         <span class="ptc__label">Qualify</span>
-                        {{ meter(team.Qual or 0, 'Qualification chance') }}
+                        {{ meter((team.Qual or 0)|round|int, 'Qualification chance') }}
                     </div>
                     <div class="ptc__prob">
                         <span class="ptc__label">Top 1</span>
-                        {{ meter(team.Top1 or 0, 'Chance of finishing first') }}
-                    </div>
-                    <div class="ptc__prob">
-                        <span class="ptc__label">Next</span>
-                        {{ next_chip(nxt.get(abv, '--')) }}
+                        {{ meter((team.Top1 or 0)|round|int, 'Chance of finishing first') }}
                     </div>
                 </div>
-                -->
+                {% endif %}
             </article>
 
             <!--
@@ -268,6 +372,71 @@
         {% else %}
         <div class="hm-standings__empty">The table opens up once the first ball is bowled.</div>
         {% endif %}
+    </section>
+
+    {# ======================================================= season records #}
+    <section class="hm-sec" aria-labelledby="hmRecords">
+        <div class="hm-sec__head">
+            <div class="hm-sec__id">
+                <span class="hm-sec__eyebrow">The numbers to beat</span>
+                <h2 class="hm-sec__title" id="hmRecords">Season Snapshot</h2>
+            </div>
+            <a class="hm-sec__more" href="{{ url_for('main.displayFR') }}">
+                Match results<span class="material-icons-round">arrow_forward</span>
+            </a>
+        </div>
+
+        {% if records.highest_total or records.closest_win or records.winning_streak %}
+        <div class="hm-records">
+            {% if records.highest_total %}
+            <article class="hm-record">
+                <span class="material-icons-round">scoreboard</span>
+                <span class="hm-record__label">Highest team total</span>
+                <b>{{ records.highest_total.runs }}</b>
+                <span>{{ teams.get(records.highest_total.team, records.highest_total.team) }}</span>
+                <small>vs {{ teams.get(records.highest_total.opponent, records.highest_total.opponent) }} · Match {{ records.highest_total.match }}</small>
+            </article>
+            {% endif %}
+            {% if records.closest_win %}
+            <article class="hm-record">
+                <span class="material-icons-round">flare</span>
+                <span class="hm-record__label">Narrowest win</span>
+                <b>{{ records.closest_win.value }} <small>{{ records.closest_win.unit }}</small></b>
+                <span>{{ teams.get(records.closest_win.winner, records.closest_win.winner) }}</span>
+                <small>Match {{ records.closest_win.match }}</small>
+            </article>
+            {% endif %}
+            {% if records.winning_streak %}
+            <article class="hm-record">
+                <span class="material-icons-round">local_fire_department</span>
+                <span class="hm-record__label">Best winning streak</span>
+                <b>{{ records.winning_streak.wins }} <small>{{ 'wins' if records.winning_streak.wins != 1 else 'win' }}</small></b>
+                <span>{{ teams.get(records.winning_streak.team, records.winning_streak.team) }}</span>
+                <small>Consecutive completed matches</small>
+            </article>
+            {% endif %}
+        </div>
+        {% else %}
+        <div class="hm-records__empty">Season records will appear here after matches are played.</div>
+        {% endif %}
+    </section>
+
+    {# ========================================================== predictor #}
+    <section class="hm-predictor" aria-labelledby="hmPredictor">
+        <div class="hm-predictor__art" aria-hidden="true">
+            <span class="material-icons-round">insights</span>
+        </div>
+        <div class="hm-predictor__copy">
+            <span class="hm-sec__eyebrow">Your season, your scenario</span>
+            <h2 id="hmPredictor">What if your team wins the next one?</h2>
+            <p>Pick match outcomes, replay completed games and see how the playoff race could change. Your scenarios stay separate from the official table.</p>
+            <div class="hm-predictor__tags">
+                <span>What-if results</span><span>Playoff odds</span><span>Run-in scenarios</span>
+            </div>
+        </div>
+        <a class="hm-predictor__cta" href="{{ url_for('main.predictor') }}">
+            Open season predictor<span class="material-icons-round">arrow_forward</span>
+        </a>
     </section>
 
     {# ==================================================== season toppers #}

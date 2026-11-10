@@ -11,6 +11,110 @@
 (function () {
   'use strict';
 
+  /* ------------------------------------------------------ match spotlight */
+
+  var featured = document.querySelector('.hm-featured[data-live-url]');
+
+  if (featured) {
+    var matchState = featured.getAttribute('data-state');
+    var liveUrl = featured.getAttribute('data-live-url');
+    var status = featured.querySelector('[data-live-status]');
+    var scoreA = featured.querySelector('[data-live-score-a]');
+    var scoreB = featured.querySelector('[data-live-score-b]');
+    var stateLabel = featured.querySelector('[data-feature-state-label]');
+    var countdown = featured.querySelector('[data-countdown]');
+    var countdownValue = featured.querySelector('[data-countdown-value]');
+    var polling = false;
+    var inFlight = false;
+    var countdownTimer = null;
+
+    function showLive() {
+      if (matchState === 'live') return;
+      matchState = 'live';
+      featured.setAttribute('data-state', 'live');
+      if (stateLabel) stateLabel.textContent = 'Live match';
+      if (countdown) countdown.hidden = true;
+      if (status) {
+        status.hidden = false;
+        status.textContent = 'Checking live score…';
+      }
+      var eyebrow = featured.querySelector('.hm-featured__eyebrow');
+      if (eyebrow && !eyebrow.querySelector('i')) {
+        var dot = document.createElement('i');
+        dot.setAttribute('aria-hidden', 'true');
+        eyebrow.insertBefore(dot, stateLabel);
+      }
+      startPolling();
+    }
+
+    function renderLive(data) {
+      if (!data || !data.ok) {
+        if (status) status.textContent = 'Live feed temporarily unavailable. Match Centre still has match details.';
+        return;
+      }
+      var teams = data.teams || [];
+      var teamA = featured.getAttribute('data-team-a');
+      var teamB = featured.getAttribute('data-team-b');
+      var sideA = teams.find(function (team) { return team.team === teamA; });
+      var sideB = teams.find(function (team) { return team.team === teamB; });
+      if (sideA && scoreA) scoreA.textContent = sideA.score || '—';
+      if (sideB && scoreB) scoreB.textContent = sideB.score || '—';
+      var message = data.info || data.status || '';
+      if (!message && !sideA && !sideB) message = 'Waiting for the live score feed.';
+      if (status) status.textContent = message || 'Live score updated.';
+    }
+
+    function pollLive() {
+      if (inFlight) return;
+      inFlight = true;
+      fetch(liveUrl, { cache: 'no-store' })
+        .then(function (response) {
+          if (!response.ok) throw new Error('Live score request failed (' + response.status + ')');
+          return response.json();
+        })
+        .then(renderLive)
+        .catch(function (error) {
+          if (status) status.textContent = 'Live feed temporarily unavailable. Match Centre still has match details.';
+          console.warn('Homepage live score refresh failed:', error);
+        })
+        .then(function () { inFlight = false; });
+    }
+
+    function startPolling() {
+      if (polling) return;
+      polling = true;
+      pollLive();
+      window.setInterval(pollLive, 15000);
+    }
+
+    if (matchState === 'live') {
+      startPolling();
+    } else if (matchState === 'upcoming' && countdownValue) {
+      var kickoff = Date.parse(featured.getAttribute('data-start'));
+      function updateCountdown() {
+        var remaining = Math.max(0, Math.floor((kickoff - Date.now()) / 1000));
+        if (remaining === 0) {
+          if (countdownTimer) window.clearInterval(countdownTimer);
+          countdownValue.textContent = 'Starting now';
+          showLive();
+          return;
+        }
+        var days = Math.floor(remaining / 86400);
+        var hours = Math.floor((remaining % 86400) / 3600);
+        var minutes = Math.floor((remaining % 3600) / 60);
+        countdownValue.textContent = (days ? days + 'd ' : '') +
+          String(hours).padStart(2, '0') + 'h ' +
+          String(minutes).padStart(2, '0') + 'm';
+      }
+      if (Number.isNaN(kickoff)) {
+        countdownValue.textContent = 'Scheduled';
+      } else {
+        updateCountdown();
+        countdownTimer = window.setInterval(updateCountdown, 1000);
+      }
+    }
+  }
+
   /* --------------------------------------------------------- carousel */
 
   var root = document.getElementById('tpCarousel');
