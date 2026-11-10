@@ -400,7 +400,7 @@
 
         {% if records.highest_total or records.highest_successful_chase or records.lowest_successful_defend
               or records.biggest_win_runs or records.biggest_win_wickets
-              or records.closest_win or records.winning_streak %}
+              or records.closest_win or records.winning_streak or records.losing_streak %}
         <div class="hm-records">
             {% if records.highest_total %}
             <article class="hm-record">
@@ -465,6 +465,15 @@
                 <b>{{ records.winning_streak.wins }} <small>{{ 'wins' if records.winning_streak.wins != 1 else 'win' }}</small></b>
                 <span>{{ teams.get(records.winning_streak.team, records.winning_streak.team) }}</span>
                 {{ record_scorecard(records.winning_streak.scorecard) }}
+            </article>
+            {% endif %}
+            {% if records.losing_streak %}
+            <article class="hm-record">
+                <span class="material-icons-round">trending_down</span>
+                <span class="hm-record__label">Longest losing streak</span>
+                <b>{{ records.losing_streak.losses }} <small>{{ 'losses' if records.losing_streak.losses != 1 else 'loss' }}</small></b>
+                <span>{{ teams.get(records.losing_streak.team, records.losing_streak.team) }}</span>
+                {{ record_scorecard(records.losing_streak.scorecard) }}
             </article>
             {% endif %}
         </div>

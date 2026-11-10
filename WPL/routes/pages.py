@@ -98,6 +98,8 @@ def _homepage_records(fixtures):
     ordered = sorted(completed, key=lambda fx: start_DT(fx.Date, fx.Time))
     streaks = {team: 0 for team in TEAMS}
     best_streak = None
+    losing_streaks = {team: 0 for team in TEAMS}
+    worst_streak = None
     for fx in ordered:
         sides = (fx.Team_A, fx.Team_B)
         if fx.Win_T in TEAMS:
@@ -109,12 +111,18 @@ def _homepage_records(fixtures):
                     if best_streak is None or streaks[team] > best_streak['wins']:
                         best_streak = {'team': team, 'wins': streaks[team],
                                        'scorecard': match_card(fx)}
+                    losing_streaks[team] = 0
                 else:
                     streaks[team] = 0
+                    losing_streaks[team] += 1
+                    if worst_streak is None or losing_streaks[team] > worst_streak['losses']:
+                        worst_streak = {'team': team, 'losses': losing_streaks[team],
+                                        'scorecard': match_card(fx)}
         else:
             for team in sides:
                 if team in streaks:
                     streaks[team] = 0
+                    losing_streaks[team] = 0
 
     return {
         'highest_total': max(totals, key=lambda row: row['runs']) if totals else None,
@@ -128,6 +136,7 @@ def _homepage_records(fixtures):
         'lowest_successful_defend': min(successful_defends, key=lambda row: row['runs'],
                                         default=None),
         'winning_streak': best_streak,
+        'losing_streak': worst_streak,
     }
 
 
