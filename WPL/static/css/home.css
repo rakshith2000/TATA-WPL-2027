@@ -1186,11 +1186,17 @@ body::-webkit-scrollbar-thumb {
   line-height: 1;
 }
 
+.hm-featured__team > b.is-winner { color: var(--hm-green); }
+.hm-featured__team > b.is-loser { color: var(--hm-ink-3); opacity: .58; }
+
 .hm-featured__team > b small {
   color: var(--hm-ink-3);
   font-family: 'Inter', sans-serif;
   font-size: .56em;
 }
+
+.hm-featured__team > b.is-winner small { color: rgba(46,226,122,.78); }
+.hm-featured__team > b.is-loser small { color: var(--hm-ink-3); }
 
 .hm-featured__versus {
   display: grid;
@@ -1303,6 +1309,8 @@ body::-webkit-scrollbar-thumb {
 
 .hm-result-card__teams img { width: 21px; height: 21px; object-fit: contain; }
 .hm-result-card__teams b { margin-left: auto; color: #fff; font-variant-numeric: tabular-nums; }
+.hm-result-card__teams b.is-winner { color: var(--hm-green); }
+.hm-result-card__teams b.is-loser { color: var(--hm-ink-3); opacity: .58; }
 .hm-result-card p { margin: 0; color: var(--hm-ink-3); font-size: 11px; line-height: 1.45; }
 .hm-result-card > small { color: var(--hm-ink-3); font-size: 10px; }
 .hm-result-card > small b { color: var(--hm-ink-2); }
@@ -1399,6 +1407,10 @@ body::-webkit-scrollbar-thumb {
 .hm-record__score img { width: 18px; height: 18px; object-fit: contain; }
 .hm-record__score > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hm-record__score b { color: #fff; font-size: 10px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.hm-record__score.is-winner { color: var(--hm-green); }
+.hm-record__score.is-winner b { color: var(--hm-green); }
+.hm-record__score.is-loser { color: var(--hm-ink-3); opacity: .58; }
+.hm-record__score.is-loser b { color: var(--hm-ink-3); }
 .hm-record__score b small { color: var(--hm-ink-3); font-size: 9px; font-weight: 500; }
 .hm-record__matchno { color: var(--hm-ink-3); font-size: 8px; letter-spacing: .06em; text-transform: uppercase; }
 .hm-records__empty { padding: 24px; border: 1px dashed var(--hm-line-2); border-radius: var(--hm-r-md); color: var(--hm-ink-3); font-size: 12px; text-align: center; }

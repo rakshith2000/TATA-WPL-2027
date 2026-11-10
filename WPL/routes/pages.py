@@ -38,6 +38,7 @@ def _homepage_records(fixtures):
             'match': fx.Match_No,
             'team_a': fx.Team_A,
             'team_b': fx.Team_B,
+            'winner': fx.Win_T,
             'score_a': score(fx.A_info),
             'score_b': score(fx.B_info),
         }

@@ -108,7 +108,7 @@
 {% macro record_scorecard(card) -%}
     <div class="hm-record__match" aria-label="Match {{ card.match }} scorecard">
         {% for side, score in [(card.team_a, card.score_a), (card.team_b, card.score_b)] %}
-        <div class="hm-record__score">
+        <div class="hm-record__score{{ ' is-winner' if card.winner == side else (' is-loser' if card.winner in [card.team_a, card.team_b] else '') }}">
             <img src="/static/images/squad_logos/{{ side }}.png"
                  alt="{{ teams.get(side, side) }} logo" loading="lazy">
             <span title="{{ teams.get(side, side) }}">{{ side }}</span>
@@ -198,14 +198,14 @@
                     <img src="/static/images/squad_logos/{{ featured.Team_A }}.png"
                          alt="{{ teams.get(featured.Team_A, featured.Team_A) }} logo">
                     <span>{{ teams.get(featured.Team_A, featured.Team_A) }}</span>
-                    <b data-live-score-a>{{ home_score(featured.A_info) if featured_state == 'completed' else '—' }}</b>
+                    <b data-live-score-a class="hm-featured__score{{ ' is-winner' if featured.Win_T == featured.Team_A else (' is-loser' if featured.Win_T in [featured.Team_A, featured.Team_B] else '') }}">{{ home_score(featured.A_info) if featured_state == 'completed' else '—' }}</b>
                 </div>
                 <span class="hm-featured__versus">VS</span>
                 <div class="hm-featured__team">
                     <img src="/static/images/squad_logos/{{ featured.Team_B }}.png"
                          alt="{{ teams.get(featured.Team_B, featured.Team_B) }} logo">
                     <span>{{ teams.get(featured.Team_B, featured.Team_B) }}</span>
-                    <b data-live-score-b>{{ home_score(featured.B_info) if featured_state == 'completed' else '—' }}</b>
+                    <b data-live-score-b class="hm-featured__score{{ ' is-winner' if featured.Win_T == featured.Team_B else (' is-loser' if featured.Win_T in [featured.Team_A, featured.Team_B] else '') }}">{{ home_score(featured.B_info) if featured_state == 'completed' else '—' }}</b>
                 </div>
             </div>
 
@@ -242,9 +242,9 @@
                 <span class="hm-result-card__label">Latest result · Match {{ latest_result.Match_No }}</span>
                 <div class="hm-result-card__teams">
                     <span><img src="/static/images/squad_logos/{{ latest_result.Team_A }}.png" alt="">
-                        {{ latest_result.Team_A }} <b>{{ home_score(latest_result.A_info) }}</b></span>
+                        {{ latest_result.Team_A }} <b class="{{ 'is-winner' if latest_result.Win_T == latest_result.Team_A else ('is-loser' if latest_result.Win_T in [latest_result.Team_A, latest_result.Team_B] else '') }}">{{ home_score(latest_result.A_info) }}</b></span>
                     <span><img src="/static/images/squad_logos/{{ latest_result.Team_B }}.png" alt="">
-                        {{ latest_result.Team_B }} <b>{{ home_score(latest_result.B_info) }}</b></span>
+                        {{ latest_result.Team_B }} <b class="{{ 'is-winner' if latest_result.Win_T == latest_result.Team_B else ('is-loser' if latest_result.Win_T in [latest_result.Team_A, latest_result.Team_B] else '') }}">{{ home_score(latest_result.B_info) }}</b></span>
                 </div>
                 <p>{{ latest_result.Result }}</p>
                 {% if latest_result.POTM %}
@@ -411,14 +411,13 @@
                 {{ record_scorecard(records.highest_total.scorecard) }}
             </article>
             {% endif %}
-            {% if records.highest_successful_chase %}
+            {% if records.closest_win %}
             <article class="hm-record">
-                <span class="material-icons-round">sports_cricket</span>
-                <span class="hm-record__label">Highest successful chase</span>
-                <b>{{ records.highest_successful_chase.target }}</b>
-                <span>{{ teams.get(records.highest_successful_chase.team, records.highest_successful_chase.team) }}</span>
-                <small class="hm-record__detail">Target chased · {{ records.highest_successful_chase.runs }} runs</small>
-                {{ record_scorecard(records.highest_successful_chase.scorecard) }}
+                <span class="material-icons-round">flare</span>
+                <span class="hm-record__label">Narrowest win</span>
+                <b>{{ records.closest_win.value }} <small>{{ records.closest_win.unit }}</small></b>
+                <span>{{ teams.get(records.closest_win.winner, records.closest_win.winner) }}</span>
+                {{ record_scorecard(records.closest_win.scorecard) }}
             </article>
             {% endif %}
             {% if records.biggest_win_runs %}
@@ -439,6 +438,16 @@
                 {{ record_scorecard(records.biggest_win_wickets.scorecard) }}
             </article>
             {% endif %}
+            {% if records.highest_successful_chase %}
+            <article class="hm-record">
+                <span class="material-icons-round">sports_cricket</span>
+                <span class="hm-record__label">Highest successful chase</span>
+                <b>{{ records.highest_successful_chase.target }}</b>
+                <span>{{ teams.get(records.highest_successful_chase.team, records.highest_successful_chase.team) }}</span>
+                <small class="hm-record__detail">Target chased · {{ records.highest_successful_chase.runs }} runs</small>
+                {{ record_scorecard(records.highest_successful_chase.scorecard) }}
+            </article>
+            {% endif %}
             {% if records.lowest_successful_defend %}
             <article class="hm-record">
                 <span class="material-icons-round">shield</span>
@@ -447,15 +456,6 @@
                 <span>{{ teams.get(records.lowest_successful_defend.team, records.lowest_successful_defend.team) }}</span>
                 <small class="hm-record__detail">Runs defended</small>
                 {{ record_scorecard(records.lowest_successful_defend.scorecard) }}
-            </article>
-            {% endif %}
-            {% if records.closest_win %}
-            <article class="hm-record">
-                <span class="material-icons-round">flare</span>
-                <span class="hm-record__label">Narrowest win</span>
-                <b>{{ records.closest_win.value }} <small>{{ records.closest_win.unit }}</small></b>
-                <span>{{ teams.get(records.closest_win.winner, records.closest_win.winner) }}</span>
-                {{ record_scorecard(records.closest_win.scorecard) }}
             </article>
             {% endif %}
             {% if records.winning_streak %}
