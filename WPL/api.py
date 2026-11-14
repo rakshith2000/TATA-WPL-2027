@@ -64,7 +64,9 @@ def api_liveStrip(match):
 @api.route('/api/predictor/state')
 def api_predictor_state():
     """Fixtures, the live table and the per-match prices. Fetched once."""
-    return jsonify(predictor.get_state())
+    resp = jsonify(predictor.get_state())
+    resp.headers['Cache-Control'] = 'no-store'
+    return resp
 
 @api.route('/api/predictor/simulate', methods=['POST'])
 def api_predictor_simulate():

@@ -70,3 +70,11 @@ class Toppers(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     category = db.Column(db.String(255))
     stats = db.Column(db.JSON)
+
+
+class TeamIntelligence(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    season = db.Column(db.String(16), nullable=False, index=True)
+    team_name = db.Column(db.String(64), nullable=False, index=True)
+    refreshed_at = db.Column(db.DateTime, nullable=False, index=True)
+    data = db.Column(db.JSON, nullable=False)

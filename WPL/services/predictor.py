@@ -29,6 +29,7 @@ from ..utils.overs import ovToPer
 from .playoffs import (calibrate_match_model, simulate_season, match_win_prob,
                        home_venue_map, innings_observations)
 from .pointstable import _booked
+from .team_intelligence import current_team_signals, latest_team_research
 
 # Sims are shared out so the wall clock stays roughly flat however much season
 # is left. Measured best-of-five on a laptop, the cost fits
@@ -95,7 +96,20 @@ def get_model(replay=False, skip=()):
         home_of = home_venue_map()
         obs = [] if replay else innings_observations(home_of, skip=key[2])
         _MODEL_CACHE[key] = calibrate_match_model(observations=obs, home_of=home_of)
-    return _MODEL_CACHE[key]
+    fitted = _MODEL_CACHE[key]
+    model = dict(fitted)
+    model['attack'] = dict(fitted['attack'])
+    model['defence'] = dict(fitted['defence'])
+    signals = current_team_signals()
+    adjustments = {}
+    for team, signal in signals.items():
+        if team not in model['attack']:
+            continue
+        model['attack'][team] += signal['batting']
+        model['defence'][team] += signal['bowling']
+        adjustments[team] = signal
+    model['research_adjustments'] = adjustments
+    return model
 
 
 # --------------------------------------------------------------------- state
@@ -173,6 +187,7 @@ def get_state():
         'playoff_labels': pofs,
         'spots': PLAYOFF_SPOTS,
         'unplayed': sum(1 for m in league if not m['played']),
+        'research': latest_team_research(),
     }
 
 

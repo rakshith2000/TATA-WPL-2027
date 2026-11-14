@@ -82,6 +82,7 @@ def create_app():
 
     from . import models
     from .main import refresh_qualification, update_toppers
+    from .services.team_intelligence import refresh_team_intelligence
 
     scheduler = APScheduler()
     scheduler.init_app(app)
@@ -102,6 +103,13 @@ def create_app():
     def seed_command():
         """Load reference data into the tables."""
         seed_all()
+
+    @app.cli.command('refresh-team-intelligence')
+    def refresh_team_intelligence_command():
+        """Fetch, validate, and store source-backed team research now."""
+        with app.app_context():
+            result = refresh_team_intelligence()
+            print(f"Team research refreshed for {result['teams']} teams.")
 
     with app.app_context():
         db.create_all()
@@ -128,5 +136,20 @@ def create_app():
                 print("Top players updated.")
             except Exception as e:
                 print(f"Error updating toppers: {e}")
+
+    @scheduler.task(
+        'cron', id='team_intelligence_task', hour='0,12', minute=0,
+        timezone='UTC', misfire_grace_time=3600,
+    )
+    def update_team_intelligence_task():
+        with app.app_context():
+            try:
+                result = refresh_team_intelligence()
+                app.logger.info(
+                    "Team research refreshed for %s teams at %s",
+                    result['teams'], result['refreshed_at'],
+                )
+            except Exception:
+                app.logger.exception("Scheduled team research refresh failed")
 
     return app

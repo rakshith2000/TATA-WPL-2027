@@ -516,7 +516,52 @@
                '<tbody>' + rows + '</tbody>' +
              '</table></div>' +
            '</section>' +
+           researchPanel() +
            LAST.table.map(scenarioCard).join('');
+  }
+
+  function researchPanel() {
+    var research = STATE && STATE.research;
+    if (!research) return '';
+    var teams = Object.keys(research.teams || {}).map(function (code) {
+      var item = research.teams[code] || {};
+      var reports = (item.reports || []).slice(0, 3).map(function (report) {
+        var title = report.source_title || report.player || 'Source';
+        var topic = String(report.topic || 'update').replace(/_/g, ' ');
+        var publishedAt = String(report.published_at || '').slice(0, 10);
+        return '<li><b>' + esc(report.player || 'Team update') + '</b> · ' +
+          esc(topic) + ' · ' + esc(publishedAt) + ' — ' +
+          esc(report.evidence) + ' <a href="' + esc(report.source) +
+          '" target="_blank" rel="noopener noreferrer">' + esc(title) + '</a></li>';
+      }).join('');
+      var adjustment = item.active
+        ? '<small class="pr-research__adjustment">Applied to match scores: batting ' +
+          (item.batting_adjustment_runs > 0 ? '+' : '') +
+          Number(item.batting_adjustment_runs || 0).toFixed(1) +
+          ' runs · bowling concessions ' +
+          (item.bowling_adjustment_runs > 0 ? '+' : '') +
+          Number(item.bowling_adjustment_runs || 0).toFixed(1) + ' runs</small>'
+        : '<small class="pr-research__adjustment">No active score adjustment</small>';
+      return '<article class="pr-research__team">' +
+        '<div class="pr-research__teamhead">' + crest(code, 'pr-crest--xs') +
+        '<b>' + esc(team(code).name) + '</b><span>' +
+        (item.fresh ? 'Fresh' : item.refreshed_at ? 'Stale' : 'Not researched') +
+        '</span></div>' +
+        '<p>' + esc(item.summary || 'No cached research snapshot.') + '</p>' +
+        adjustment +
+        (reports ? '<ul>' + reports + '</ul>' : '') +
+        '</article>';
+    }).join('');
+    var status = research.all_teams_refreshed
+      ? 'Snapshots are refreshed twice daily; stale or uncited research is excluded from probabilities.'
+      : 'Team research is not configured or has not completed its first refresh.';
+    return '<section class="pr-card pr-research">' +
+      '<div class="pr-card__head"><span class="material-icons-round">manage_search</span>' +
+      'Team research signals<small>' +
+      (research.refreshed_at ? 'Latest refresh ' + esc(research.refreshed_at.replace('T', ' ').slice(0, 16)) + ' UTC' : 'No refresh yet') +
+      '</small></div><p class="pr-research__note">' + status +
+      ' Match results already included in the statistical model are not counted twice.</p>' +
+      '<div class="pr-research__grid">' + teams + '</div></section>';
   }
 
   /* One team's route in. The two lines the server works out — what it has to
