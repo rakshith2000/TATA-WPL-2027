@@ -26,6 +26,13 @@
   const sizer = document.getElementById('playoffBracketSizer');
   const stage = document.getElementById('playoffBracketStage');
   if (!wrap || !sizer || !stage) return;
+  const scrollShell = wrap.parentElement;
+
+  const updateScrollHints = () => {
+    const maxScroll = wrap.scrollWidth - wrap.clientWidth;
+    scrollShell.classList.toggle('can-scroll-left', wrap.scrollLeft > 4);
+    scrollShell.classList.toggle('can-scroll-right', maxScroll - wrap.scrollLeft > 4);
+  };
 
   stage.style.width = `${STAGE_W}px`;
   stage.style.height = `${STAGE_H}px`;
@@ -58,8 +65,7 @@
   const slotCenterY = (matchId, index) =>
     matches[matchId].y + index * (SLOT_H + SLOT_GAP) + SLOT_H / 2;
 
-  Object.keys(matches).forEach((id) => {
-    const match = matches[id];
+  Object.entries(matches).filter(([id]) => id !== 'eliminator').forEach(([id, match]) => {
     const x = match.x - BAR_GAP;
     const y0 = slotCenterY(id, 0);
     const y1 = slotCenterY(id, 1);
@@ -117,8 +123,11 @@
     stage.style.transform = `scale(${scale})`;
     sizer.style.width = `${STAGE_W * scale}px`;
     sizer.style.height = `${STAGE_H * scale}px`;
+    updateScrollHints();
   };
 
+  wrap.addEventListener('scroll', updateScrollHints, { passive: true });
   window.addEventListener('resize', fit);
+  window.addEventListener('load', updateScrollHints);
   fit();
 })();

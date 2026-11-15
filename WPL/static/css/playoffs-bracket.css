@@ -3,7 +3,7 @@
   --br-panel: #131b26;
   --br-panel-hover: #18222f;
   --br-line: #232e3d;
-  --br-line-strong: #364459;
+  --br-line-strong: rgba(190, 220, 255, .52);
   --br-text: #dde3ec;
   --br-text-dim: #8c97a7;
   --br-win: #2e9a2e;
@@ -21,10 +21,55 @@
   box-sizing: border-box;
 }
 
+.hm-playoffs .bracket-scroll-shell {
+  position: relative;
+  overflow: hidden;
+  padding: 20px;
+  border: 1px solid var(--hm-line);
+  border-radius: var(--hm-r-md);
+  background: linear-gradient(145deg, rgba(255,255,255,.075), rgba(255,255,255,.025));
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+.hm-playoffs .bracket-scroll-shell::before,
+.hm-playoffs .bracket-scroll-shell::after {
+  position: absolute;
+  z-index: 3;
+  top: 1px;
+  bottom: 1px;
+  width: 24px;
+  content: '';
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s ease;
+}
+
+.hm-playoffs .bracket-scroll-shell::before {
+  left: 1px;
+  background: linear-gradient(90deg, var(--hm-bg-1), transparent);
+}
+
+.hm-playoffs .bracket-scroll-shell::after {
+  right: 1px;
+  background: linear-gradient(270deg, var(--hm-bg-1), transparent);
+}
+
+.hm-playoffs .bracket-scroll-shell.can-scroll-left::before,
+.hm-playoffs .bracket-scroll-shell.can-scroll-right::after {
+  opacity: .7;
+}
+
 .hm-playoffs .bracket-wrap {
   overflow-x: auto;
-  padding: 28px 0 8px;
-  scrollbar-color: var(--br-line-strong) transparent;
+  overflow-y: hidden;
+  padding: 0;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.hm-playoffs .bracket-wrap::-webkit-scrollbar {
+  display: none;
 }
 
 .hm-playoffs .bracket-sizer {
@@ -48,7 +93,8 @@
 .hm-playoffs .lines path {
   fill: none;
   stroke: var(--br-line-strong);
-  stroke-width: 1.5;
+  stroke-width: 2;
+  filter: drop-shadow(0 0 2px rgba(110, 190, 255, .28));
   transition: stroke 0.25s ease;
 }
 
@@ -80,10 +126,11 @@
   width: 220px;
   height: 48px;
   padding: 0 14px;
-  color: var(--br-text-dim);
-  background: var(--br-panel);
-  border: 1px solid var(--br-line);
-  border-radius: var(--br-radius);
+  color: var(--hm-ink);
+  background: linear-gradient(145deg, rgba(255,255,255,.14), rgba(255,255,255,.065));
+  border: 1px solid var(--hm-line-2);
+  border-radius: var(--hm-r-md);
+  box-shadow: 0 8px 20px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.08);
   font: inherit;
   font-size: 14px;
   font-weight: 500;
@@ -91,7 +138,7 @@
   text-decoration: none;
   text-transform: uppercase;
   letter-spacing: 0.01em;
-  transition: background 0.15s ease, border-color 0.15s ease, opacity 0.2s ease;
+  transition: background 0.15s ease, border-color 0.15s ease, opacity 0.2s ease, box-shadow 0.15s ease;
 }
 
 .hm-playoffs .slot:first-child { top: 0; }
@@ -109,7 +156,7 @@
   flex: none;
   font-size: 12px;
   font-weight: 600;
-  color: var(--br-text-dim);
+  color: var(--hm-ink-3);
 }
 
 .hm-playoffs .slot .team-logo {
@@ -119,12 +166,13 @@
   object-fit: contain;
 }
 
-.hm-playoffs .slot.filled { color: var(--br-text); }
+.hm-playoffs .slot.filled { color: #fff; }
 .hm-playoffs .slot:hover,
 .hm-playoffs .slot:focus-visible {
-  color: var(--br-text);
-  background: var(--br-panel-hover);
-  border-color: var(--br-line-strong);
+  color: #fff;
+  background: linear-gradient(145deg, rgba(255,255,255,.13), rgba(255,255,255,.055));
+  border-color: var(--hm-line-2);
+  box-shadow: 0 8px 20px rgba(0,0,0,.2);
   text-decoration: none;
 }
 
@@ -135,21 +183,21 @@
 }
 
 .hm-playoffs .slot.is-winner {
-  border-color: var(--br-win);
-  background: var(--br-win-soft);
-  box-shadow: inset 3px 0 0 var(--br-win);
+  border-color: rgba(46,226,122,.72);
+  background: linear-gradient(100deg, rgba(46,226,122,.2), rgba(255,255,255,.065) 72%);
+  box-shadow: inset 4px 0 0 var(--hm-green), 0 8px 22px rgba(0,0,0,.28);
 }
 
-.hm-playoffs .slot.is-loser { opacity: 0.45; }
+.hm-playoffs .slot.is-loser { color: var(--hm-ink-3); opacity: .58; }
 
 .hm-playoffs .slot .score {
-  color: var(--br-text);
+  color: #fff;
   font-size: 11px;
   white-space: nowrap;
 }
 
 .hm-playoffs .slot .score small {
-  color: var(--br-text-dim);
+  color: var(--hm-ink-3);
   font-size: 9px;
 }
 
@@ -163,10 +211,11 @@
   margin: -13px 0 0 -13px;
   color: #fff;
   border-radius: 50%;
-  border: 2px solid var(--br-bg);
+  border: 2px solid var(--hm-bg-1);
   font-size: 11px;
   font-weight: 700;
-  opacity: 0.55;
+  opacity: 0.88;
+  box-shadow: 0 0 12px rgba(41,197,232,.28);
   transition: opacity 0.25s ease, transform 0.25s ease;
 }
 
@@ -183,18 +232,18 @@
   width: 210px;
   min-height: 48px;
   padding: 8px 14px;
-  color: var(--br-gold);
-  background: var(--br-panel);
-  border: 1px solid var(--br-line);
-  border-radius: var(--br-radius);
+  color: var(--hm-gold);
+  background: linear-gradient(145deg, rgba(255,255,255,.075), rgba(255,255,255,.025));
+  border: 1px solid var(--hm-line);
+  border-radius: var(--hm-r-md);
   font-size: 15px;
   font-weight: 600;
   transition: border-color 0.25s ease, background 0.25s ease;
 }
 
 .hm-playoffs .champion.decided {
-  border-color: var(--br-gold);
-  background: rgba(240, 169, 59, 0.1);
+  border-color: rgba(255,194,71,.52);
+  background: linear-gradient(100deg, rgba(255,194,71,.16), rgba(255,255,255,.025) 72%);
 }
 
 .hm-playoffs .champion .trophy {

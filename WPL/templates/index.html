@@ -559,26 +559,28 @@
             Official fixtures and results. Select a team panel to open its match centre.
         </p>
 
-        <div class="bracket-wrap" id="playoffBracketWrap">
-            <div class="bracket-sizer" id="playoffBracketSizer">
-                <div class="bracket-stage" id="playoffBracketStage">
-                    {% set eliminator = playoff_matches.get('eliminator') %}
-                    {% set final = playoff_matches.get('final') %}
-                    <div class="match" data-match="eliminator"
-                         data-winner="{{ eliminator.Win_T if eliminator and eliminator.Win_T in [eliminator.Team_A, eliminator.Team_B] else '' }}">
-                        {{ playoff_slot(eliminator, 'A', '2nd place team', 'Eliminator') }}
-                        {{ playoff_slot(eliminator, 'B', '3rd place team', 'Eliminator') }}
-                        <div class="match-label">Eliminator</div>
-                    </div>
-                    <div class="match" data-match="final"
-                         data-winner="{{ final.Win_T if final and final.Win_T in [final.Team_A, final.Team_B] else '' }}">
-                        {{ playoff_slot(final, 'A', '1st place team', 'Final') }}
-                        {{ playoff_slot(final, 'B', 'Winner Eliminator', 'Final') }}
-                        <div class="match-label">Final</div>
-                    </div>
-                    <div class="champion{{ ' decided' if final and final.Win_T in [final.Team_A, final.Team_B] }}">
-                        <img class="trophy" src="{{ url_for('static', filename='images/trophy.png') }}" alt="">
-                        <span class="champion-name">{{ teams.get(final.Win_T, 'Winner') if final and final.Win_T in [final.Team_A, final.Team_B] else 'Winner' }}</span>
+        <div class="bracket-scroll-shell">
+            <div class="bracket-wrap" id="playoffBracketWrap">
+                <div class="bracket-sizer" id="playoffBracketSizer">
+                    <div class="bracket-stage" id="playoffBracketStage">
+                        {% set eliminator = playoff_matches.get('eliminator') %}
+                        {% set final = playoff_matches.get('final') %}
+                        <div class="match" data-match="eliminator"
+                             data-winner="{{ eliminator.Win_T if eliminator and eliminator.Win_T in [eliminator.Team_A, eliminator.Team_B] else '' }}">
+                            {{ playoff_slot(eliminator, 'A', '2nd place team', 'Eliminator') }}
+                            {{ playoff_slot(eliminator, 'B', '3rd place team', 'Eliminator') }}
+                            <div class="match-label">Eliminator</div>
+                        </div>
+                        <div class="match" data-match="final"
+                             data-winner="{{ final.Win_T if final and final.Win_T in [final.Team_A, final.Team_B] else '' }}">
+                            {{ playoff_slot(final, 'A', '1st place team', 'Final') }}
+                            {{ playoff_slot(final, 'B', 'Winner Eliminator', 'Final') }}
+                            <div class="match-label">Final</div>
+                        </div>
+                        <div class="champion{{ ' decided' if final and final.Win_T in [final.Team_A, final.Team_B] }}">
+                            <img class="trophy" src="{{ url_for('static', filename='images/trophy.png') }}" alt="">
+                            <span class="champion-name">{{ teams.get(final.Win_T, 'Winner') if final and final.Win_T in [final.Team_A, final.Team_B] else 'Winner' }}</span>
+                        </div>
                     </div>
                 </div>
             </div>
