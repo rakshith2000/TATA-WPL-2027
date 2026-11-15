@@ -192,7 +192,7 @@
 
 .hm-playoffs .slot .score {
   color: #fff;
-  font-size: 11px;
+  font-size: .9em;
   white-space: nowrap;
 }
 
@@ -270,21 +270,22 @@
 
 @media (max-width: 600px) {
   .hm-playoffs { margin-top: 28px; }
-  .hm-playoffs .match { width: 260px; }
+  .hm-playoffs .bracket-wrap { --br-mobile-scale: .72; }
+  .hm-playoffs .match { width: 280px; }
   .hm-playoffs .match-label {
-    top: 140px;
-    width: 260px;
+    top: 152px;
+    width: 280px;
   }
   .hm-playoffs .slot {
-    width: 260px;
-    height: 60px;
+    width: 280px;
+    height: 66px;
     padding: 0 16px;
-    font-size: 15px;
+    font-size: 16px;
   }
-  .hm-playoffs .slot:nth-child(2) { top: 68px; }
+  .hm-playoffs .slot:nth-child(2) { top: 74px; }
   .hm-playoffs .slot .team-logo {
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
   }
   .hm-playoffs .champion { width: 210px; }
 }
