@@ -7,7 +7,7 @@ from sqlalchemy.sql import text
 from .. import db
 from ..main import main
 from ..models import Pointstable, Fixture, Toppers
-from ..config import full_name, clr, sqclr, TEAMS
+from ..config import full_name, clr, sqclr, TEAMS, pofs
 from ..utils.dates import tz, start_DT
 from ..services.standings import getRanksForPT, getNextOpponents
 
@@ -179,6 +179,10 @@ def index():
                                     Pointstable.NRR.desc(), Pointstable.id.asc()).all()
     TP = {t.category: t.stats for t in Toppers.query.order_by(Toppers.id.asc())}
     finalsData = Fixture.query.filter(Fixture.Match_No == 'Final').first()
+    playoff_matches = {
+        label.lower(): Fixture.query.filter_by(Match_No=label).first()
+        for label in pofs.values()
+    }
     fixtures = Fixture.query.order_by(Fixture.id).all()
     now = datetime.now(tz).replace(tzinfo=None)
     ordered = sorted(fixtures, key=lambda fx: start_DT(fx.Date, fx.Time))
@@ -214,6 +218,7 @@ def index():
                            champion=finalsData.Win_T if finalsData else None,
                            spotlight_matches=spotlight_matches,
                            spotlight_index=spotlight_index,
+                           playoff_matches=playoff_matches,
                            records=_homepage_records(fixtures))
 
 @main.route('/pointstable')

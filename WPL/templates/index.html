@@ -7,6 +7,7 @@
 {#- the standings strip reuses the .ptc team card from the points table -#}
 <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/pointstable.css') }}">
 <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/home.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/playoffs-bracket.css') }}">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
 {% endblock %}
 
@@ -127,6 +128,29 @@
               title="Match {{ item.match }}: {{ item.description }}">{{ item.result }}</span>
         {% endfor %}
     </div>
+{%- endmacro %}
+
+{% macro playoff_slot(fixture, side, placeholder, match_label) -%}
+    {%- set team = fixture['Team_' ~ side] if fixture else 'TBA' -%}
+    {%- set winner = fixture.Win_T if fixture and fixture.Win_T in [fixture.Team_A, fixture.Team_B] else none -%}
+    {%- set score = fixture['A_info' if side == 'A' else 'B_info'] if fixture else none -%}
+    {%- set label = teams.get(team, team) if team != 'TBA' else placeholder -%}
+    <a class="slot{{ ' filled' if team != 'TBA' }}{{ ' is-winner' if winner == team }}{{ ' is-loser' if winner and winner != team }}"
+       href="{{ url_for('main.match', match=fixture.Match_No) if fixture else url_for('main.displayFR') }}"
+       data-team="{{ team if team != 'TBA' else '' }}"
+       aria-label="{{ label }}, {{ match_label }}. Open match centre."
+       title="{{ label }} — {{ match_label }}">
+        {% if team != 'TBA' %}
+        <img class="team-logo" src="{{ url_for('static', filename='images/squad_logos/' ~ team ~ '.png') }}"
+             alt="" loading="lazy">
+        <span class="name">{{ team }}</span>
+        {% if winner %}
+        <span class="code score">{{ home_score(score) }}</span>
+        {% endif %}
+        {% else %}
+        <span class="name">{{ placeholder }}</span>
+        {% endif %}
+    </a>
 {%- endmacro %}
 
 <div class="hm-wrap">
@@ -522,6 +546,45 @@
         </a>
     </section>
 
+    {# ======================================================== playoffs bracket #}
+    <section class="hm-sec hm-playoffs" aria-labelledby="hmPlayoffs">
+        <div class="hm-sec__head">
+            <div class="hm-sec__id">
+                <span class="hm-sec__eyebrow">The road to the final</span>
+                <h2 class="hm-sec__title" id="hmPlayoffs">Playoffs Bracket</h2>
+            </div>
+        </div>
+        <p class="hm-playoff-note">
+            <span class="hm-playoff-note__mark" aria-hidden="true"></span>
+            Official fixtures and results. Select a team panel to open its match centre.
+        </p>
+
+        <div class="bracket-wrap" id="playoffBracketWrap">
+            <div class="bracket-sizer" id="playoffBracketSizer">
+                <div class="bracket-stage" id="playoffBracketStage">
+                    {% set eliminator = playoff_matches.get('eliminator') %}
+                    {% set final = playoff_matches.get('final') %}
+                    <div class="match" data-match="eliminator"
+                         data-winner="{{ eliminator.Win_T if eliminator and eliminator.Win_T in [eliminator.Team_A, eliminator.Team_B] else '' }}">
+                        {{ playoff_slot(eliminator, 'A', '2nd place team', 'Eliminator') }}
+                        {{ playoff_slot(eliminator, 'B', '3rd place team', 'Eliminator') }}
+                        <div class="match-label">Eliminator</div>
+                    </div>
+                    <div class="match" data-match="final"
+                         data-winner="{{ final.Win_T if final and final.Win_T in [final.Team_A, final.Team_B] else '' }}">
+                        {{ playoff_slot(final, 'A', '1st place team', 'Final') }}
+                        {{ playoff_slot(final, 'B', 'Winner Eliminator', 'Final') }}
+                        <div class="match-label">Final</div>
+                    </div>
+                    <div class="champion{{ ' decided' if final and final.Win_T in [final.Team_A, final.Team_B] }}">
+                        <img class="trophy" src="{{ url_for('static', filename='images/trophy.png') }}" alt="">
+                        <span class="champion-name">{{ teams.get(final.Win_T, 'Winner') if final and final.Win_T in [final.Team_A, final.Team_B] else 'Winner' }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
     {# ==================================================== season toppers #}
     <section class="hm-sec" aria-labelledby="hmToppers">
         <div class="hm-sec__head">
@@ -703,5 +766,6 @@
   </nav>
 
 <script src="{{ url_for('static', filename='js/home.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/playoffs-bracket.js') }}" defer></script>
 
 {% endblock %}
