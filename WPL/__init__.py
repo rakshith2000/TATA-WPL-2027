@@ -138,7 +138,7 @@ def create_app():
                 print(f"Error updating toppers: {e}")
 
     @scheduler.task(
-        'cron', id='team_intelligence_task', hour='0,12', minute=0,
+        'interval', id='team_intelligence_task', minutes=10,
         timezone='UTC', misfire_grace_time=3600,
     )
     def update_team_intelligence_task():
