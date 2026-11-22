@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block head %}
+{{ super() }}
+<title>LLM Usage | WPL 2027</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='extended_beauty.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/bottom-nav.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/llm-usage.css') }}">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<main class="llm-page">
+  <header class="llm-header">
+    <div>
+      <p class="llm-eyebrow">ADMIN ANALYTICS · {{ usage.model }}</p>
+      <h1>LLM Usage</h1>
+      <p>Token consumption and estimated API spend for team intelligence.</p>
+    </div>
+    <nav class="llm-periods" aria-label="Select reporting period">
+      {% for period in usage.periods %}
+      <a href="{{ url_for('main.llm_usage', period=period) }}"
+         class="{{ 'is-active' if usage.period == period else '' }}">
+        {{ {'7d': '7 days', '30d': '30 days', '90d': '90 days', 'all': 'All time'}[period] }}
+      </a>
+      {% endfor %}
+    </nav>
+  </header>
+
+  {% if usage.untracked_calls %}
+  <aside class="llm-notice" role="status">
+    Usage metadata was unavailable for {{ usage.untracked_calls }} call{{ '' if usage.untracked_calls == 1 else 's' }}.
+    Those calls are counted, but excluded from token and cost totals.
+  </aside>
+  {% endif %}
+
+  <section class="llm-kpis" aria-label="Usage summary">
+    <article class="llm-kpi llm-kpi--spend">
+      <span class="llm-kpi__label">Estimated spend</span>
+      <strong>${{ '%.6f'|format(usage.total_cost) }}</strong>
+      <small>Input, cache and output rates</small>
+    </article>
+    <article class="llm-kpi">
+      <span class="llm-kpi__label">Total tokens</span>
+      <strong>{{ "{:,}".format(usage.total_tokens) }}</strong>
+      <small>Input (including cache) + output</small>
+    </article>
+    <article class="llm-kpi">
+      <span class="llm-kpi__label">LLM calls</span>
+      <strong>{{ "{:,}".format(usage.calls) }}</strong>
+      <small>{{ usage.tracked_calls }} with usage metadata</small>
+    </article>
+    <article class="llm-kpi">
+      <span class="llm-kpi__label">Average cost / call</span>
+      <strong>${{ '%.6f'|format(usage.average_cost) }}</strong>
+      <small>Across tracked calls</small>
+    </article>
+  </section>
+
+  <section class="llm-charts" aria-label="Usage visualizations">
+    <article class="llm-panel llm-panel--wide">
+      <div class="llm-panel__heading">
+        <div>
+          <h2>Token usage trend</h2>
+          <p>Daily input, cached input and output tokens</p>
+        </div>
+        <span class="llm-panel__unit">TOKENS / DAY</span>
+      </div>
+      <div class="llm-chart" id="tokenTrend" role="img" aria-label="Daily token usage stacked bar chart"></div>
+    </article>
+
+    <article class="llm-panel">
+      <div class="llm-panel__heading">
+        <div>
+          <h2>Daily spend</h2>
+          <p>Estimated cost over time</p>
+        </div>
+        <span class="llm-panel__unit">USD</span>
+      </div>
+      <div class="llm-chart" id="costTrend" role="img" aria-label="Daily estimated API cost line chart"></div>
+    </article>
+
+    <article class="llm-panel">
+      <div class="llm-panel__heading">
+        <div>
+          <h2>Token mix</h2>
+          <p>Share of tracked token volume</p>
+        </div>
+      </div>
+      <div class="llm-donut-wrap">
+        <div id="tokenMix" class="llm-donut" role="img" aria-label="Token usage composition chart"></div>
+        <div id="tokenLegend" class="llm-legend"></div>
+      </div>
+    </article>
+
+    <article class="llm-panel llm-panel--wide">
+      <div class="llm-panel__heading">
+        <div>
+          <h2>Cost by token type</h2>
+          <p>GPT-5.1 rates: input $1.25/M · cache $0.125/M · output $10/M</p>
+        </div>
+        <span class="llm-panel__unit">USD</span>
+      </div>
+      <div id="costBreakdown" class="llm-cost-breakdown"></div>
+    </article>
+  </section>
+
+  <section class="llm-panel llm-recent">
+    <div class="llm-panel__heading">
+      <div>
+        <h2>Recent calls</h2>
+        <p>Latest 20 team-intelligence requests</p>
+      </div>
+    </div>
+    <div class="llm-table-wrap">
+      <table class="llm-table">
+        <thead>
+          <tr>
+            <th scope="col">Time (UTC)</th>
+            <th scope="col">Operation</th>
+            <th scope="col">Input total</th>
+            <th scope="col">Cache</th>
+            <th scope="col">Output</th>
+            <th scope="col">Total</th>
+            <th scope="col">Estimated cost</th>
+            <th scope="col">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for call in usage.recent_calls %}
+          <tr>
+            <td>{{ call.created_at }}</td>
+            <td>{{ call.operation|replace('_', ' ')|title }}</td>
+            <td>{{ "{:,}".format(call.input_tokens) }}</td>
+            <td>{{ "{:,}".format(call.cached_tokens) }}</td>
+            <td>{{ "{:,}".format(call.output_tokens) }}</td>
+            <td>{{ "{:,}".format(call.total_tokens) }}</td>
+            <td>{{ '$%.6f'|format(call.cost_usd) if call.usage_available else '—' }}</td>
+            <td>
+              <span class="llm-status {{ 'llm-status--ok' if call.usage_available else 'llm-status--missing' }}">
+                {{ 'Tracked' if call.usage_available else 'Unavailable' }}
+              </span>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td class="llm-empty" colspan="8">No LLM calls in this period.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer class="llm-footnote">
+    Input totals include cached input; charts split uncached and cached tokens so each token is counted once.
+    Costs are estimates using the configured GPT-5.1 rates.
+  </footer>
+</main>
+<script>window.llmUsageData = {{ usage|tojson }};</script>
+<script src="{{ url_for('static', filename='js/llm-usage.js') }}" defer></script>
+{% endblock %}

@@ -78,3 +78,16 @@ class TeamIntelligence(db.Model):
     team_name = db.Column(db.String(64), nullable=False, index=True)
     refreshed_at = db.Column(db.DateTime, nullable=False, index=True)
     data = db.Column(db.JSON, nullable=False)
+
+
+class LLMUsage(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    created_at = db.Column(db.DateTime, nullable=False, index=True)
+    model = db.Column(db.String(64), nullable=False)
+    operation = db.Column(db.String(32), nullable=False)
+    input_tokens = db.Column(db.Integer, nullable=False, default=0)
+    cached_tokens = db.Column(db.Integer, nullable=False, default=0)
+    output_tokens = db.Column(db.Integer, nullable=False, default=0)
+    total_tokens = db.Column(db.Integer, nullable=False, default=0)
+    cost_usd = db.Column(db.Numeric(18, 12), nullable=False, default=0)
+    usage_available = db.Column(db.Boolean, nullable=False, default=True)

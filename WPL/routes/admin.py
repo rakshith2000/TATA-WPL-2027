@@ -19,6 +19,7 @@ from ..services.standings import update_rank_for_fixture, delete_rank_for_fixtur
 from ..services.results import (upMatchNormal, upMatchSuperOver, upMatchTied, upMatchAbandoned,
                                 upMatchDLS, delMatchNormal, delMatchSuperOver, delMatchTied,
                                 delMatchAbandoned, delMatchDLS)
+from ..services.llm_usage import dashboard_data
 
 # Everything an admin may name: the twenty league matches by number, and the two
 # playoff ties by the label they are stored under. Read off config rather than
@@ -275,3 +276,12 @@ def updateelimination():
     db.session.commit()
     flash('Updated Elimination status for {} successfully'.format(eteam), category='success')
     return redirect(url_for('main.update', key=key))
+
+
+@main.route('/admin/llm-usage')
+@login_required
+def llm_usage():
+    period = request.args.get('period', '30d')
+    if period not in ('7d', '30d', '90d', 'all'):
+        period = '30d'
+    return render_template('llm_usage.html', usage=dashboard_data(period))

@@ -10,6 +10,7 @@ import requests
 from .. import db
 from ..config import SEASON_YEAR, TEAMS, full_name
 from ..models import Squad, TeamIntelligence
+from .llm_usage import record_llm_usage
 
 MAX_REPORT_AGE_DAYS = 30
 ACTIVE_SNAPSHOT_AGE = timedelta(hours=36)
@@ -61,7 +62,7 @@ def _has_web_search(response):
                for item in _response_value(response, "output", []) or [])
 
 
-def _request_responses(payload):
+def _request_responses(payload, operation):
     endpoint = os.environ.get("AZURE_OPENAI_ENDPOINT", "").rstrip("/")
     api_key = os.environ.get("AZURE_OPENAI_API_KEY")
     deployment = os.environ.get("AZURE_OPENAI_DEPLOYMENT")
@@ -83,6 +84,7 @@ def _request_responses(payload):
     result = response.json()
     if not isinstance(result, dict):
         raise RuntimeError("Azure OpenAI returned an invalid Responses API payload.")
+    record_llm_usage(result, operation)
     return result
 
 
@@ -315,7 +317,7 @@ def _extract_teams(search_response, citations):
             }
         },
         "max_output_tokens": 7000,
-    })
+    }, "team_extraction")
     text = _output_text(response)
     try:
         result = json.loads(text)
@@ -370,7 +372,7 @@ def refresh_team_intelligence():
         "input": search_prompt,
         "tools": [{"type": "web_search"}],
         "max_output_tokens": 5000,
-    })
+    }, "web_search")
     if not _has_web_search(search_response):
         raise RuntimeError("Azure OpenAI did not execute the required web search.")
     citations = _grounded_citations(search_response)
