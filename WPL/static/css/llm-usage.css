@@ -81,8 +81,47 @@
 .llm-panel__heading h2 { margin: 0 0 4px; font-size: 1.05rem; }
 .llm-panel__heading p { margin: 0; color: #837987; font-size: .8rem; }
 .llm-panel__unit { white-space: nowrap; font-size: .65rem; }
-.llm-chart { width: 100%; min-height: 240px; overflow: hidden; }
-.llm-chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.llm-chart {
+  position: relative;
+  width: 100%;
+  min-height: 0;
+  aspect-ratio: 20 / 9;
+  overflow: visible;
+  touch-action: pan-y;
+}
+.llm-chart svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.llm-chart .llm-chart-hit-area { fill: transparent; pointer-events: all; }
+.llm-chart .llm-crosshair {
+  stroke: #ffc247;
+  stroke-width: 1.5;
+  stroke-dasharray: 4 4;
+  visibility: hidden;
+  pointer-events: none;
+}
+.llm-chart-tooltip {
+  position: absolute;
+  z-index: 3;
+  top: 8px;
+  display: grid;
+  gap: 5px;
+  min-width: 155px;
+  max-width: min(230px, calc(100% - 8px));
+  padding: 9px 11px;
+  border: 1px solid rgba(255, 255, 255, .18);
+  border-radius: 9px;
+  color: #fceef6;
+  background: rgba(25, 8, 19, .94);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, .35);
+  font-size: .72rem;
+  line-height: 1.35;
+  pointer-events: none;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+.llm-chart-tooltip[hidden] { display: none; }
+.llm-chart-tooltip > strong { color: #ffc247; font-size: .76rem; }
+.llm-chart-tooltip > span { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.llm-chart-tooltip i { width: 7px; height: 7px; flex: none; border-radius: 50%; }
 .llm-chart text, .llm-donut text { fill: #8a7f8e; font: 11px system-ui, sans-serif; }
 .llm-chart .llm-axis { stroke: #eee8ef; stroke-width: 1; }
 .llm-chart .llm-line { fill: none; stroke: #bd1680; stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; }
@@ -139,6 +178,7 @@
   .llm-periods a { flex: 1; padding: 8px 4px; font-size: .76rem; text-align: center; }
   .llm-donut-wrap { gap: 12px; }
   .llm-donut svg { width: 138px; height: 138px; }
+  .llm-chart-tooltip { top: 5px; padding: 7px 9px; font-size: .68rem; }
 }
 
 /* Match the dark, glassy WPL pages (fixtures and points table). */
@@ -277,4 +317,85 @@ body {
 
 @media (max-width: 620px) {
   .llm-page { padding: 24px 0 30px; }
+}
+
+.llm-header__controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+}
+
+.llm-currency-control {
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+  min-width: 155px;
+}
+
+.llm-currency-control small {
+  min-height: 1em;
+  color: var(--llm-ink-3);
+  font-size: .68rem;
+}
+
+.llm-currency-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0;
+  color: var(--llm-ink-2);
+  font-size: .78rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.llm-currency-toggle input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.llm-currency-toggle__track {
+  display: inline-flex;
+  align-items: center;
+  width: 40px;
+  height: 22px;
+  padding: 3px;
+  border: 1px solid var(--llm-line-2);
+  border-radius: 99px;
+  background: rgba(255, 255, 255, .09);
+  transition: background .2s ease, border-color .2s ease;
+}
+
+.llm-currency-toggle__track > span {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ffcfec, #ffc247);
+  transition: transform .2s ease;
+}
+
+.llm-currency-toggle input:checked + .llm-currency-toggle__track {
+  border-color: rgba(255, 194, 71, .55);
+  background: rgba(236, 0, 140, .3);
+}
+
+.llm-currency-toggle input:checked + .llm-currency-toggle__track > span {
+  transform: translateX(18px);
+}
+
+.llm-currency-toggle input:focus-visible + .llm-currency-toggle__track {
+  outline: 2px solid #ffc247;
+  outline-offset: 3px;
+}
+
+.llm-currency-toggle input:disabled + .llm-currency-toggle__track {
+  opacity: .55;
+  cursor: progress;
 }

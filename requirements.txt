@@ -22,3 +22,4 @@ webauthn
 passlib
 lxml
 cloudscraper
+forex-python>=1.9.2,<2

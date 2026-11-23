@@ -1,8 +1,13 @@
 """Persistence and dashboard aggregation for LLM token usage."""
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
+import threading
+import time
+from zoneinfo import ZoneInfo
 
 from flask import current_app
+import requests
+from forex_python.converter import CurrencyRates, RatesNotAvailableError
 
 from .. import db
 from ..models import LLMUsage
@@ -13,6 +18,51 @@ CACHE_COST_PER_MILLION = Decimal("0.125")
 OUTPUT_COST_PER_MILLION = Decimal("10")
 _MILLION = Decimal("1000000")
 _PERIOD_DAYS = {"7d": 7, "30d": 30, "90d": 90}
+_IST = ZoneInfo("Asia/Kolkata")
+_RATE_CACHE_SECONDS = 3600
+_rate_lock = threading.Lock()
+_cached_usd_inr_rate = None
+_rate_fetched_at = 0.0
+
+
+class _TimedCurrencyRates(CurrencyRates):
+    def get_rate(self, base_cur, dest_cur, date_obj=None):
+        if base_cur == dest_cur:
+            return Decimal("1") if self._force_decimal else 1.0
+
+        date_string = self._get_date_string(date_obj)
+        response = requests.get(
+            self._source_url() + date_string,
+            params={"base": base_cur, "symbols": dest_cur, "rtype": "fpy"},
+            timeout=(3, 8),
+        )
+        if response.status_code != 200:
+            raise RatesNotAvailableError("Currency rates source is not available.")
+        rate = self._get_decoded_rate(response, dest_cur, date_str=date_string)
+        if rate is None:
+            raise RatesNotAvailableError(
+                f"Currency rate {base_cur} => {dest_cur} is not available."
+            )
+        return rate
+
+
+def usd_inr_rate():
+    """Fetch and briefly cache the live USD-to-INR rate from forex-python."""
+    global _cached_usd_inr_rate, _rate_fetched_at
+    with _rate_lock:
+        now = time.monotonic()
+        if (
+            _cached_usd_inr_rate is not None
+            and now - _rate_fetched_at < _RATE_CACHE_SECONDS
+        ):
+            return _cached_usd_inr_rate
+
+        rate = _TimedCurrencyRates(force_decimal=True).get_rate("USD", "INR")
+        if not isinstance(rate, Decimal) or not rate.is_finite() or rate <= 0:
+            raise RatesNotAvailableError("The USD-to-INR rate was invalid.")
+        _cached_usd_inr_rate = rate
+        _rate_fetched_at = now
+        return rate
 
 
 def _token_count(value):
@@ -85,24 +135,30 @@ def _decimal_sum(rows, attribute):
 
 def dashboard_data(period):
     """Build aggregates and daily chart series for the requested date range."""
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    now_utc = datetime.now(timezone.utc)
+    now_ist = now_utc.astimezone(_IST)
     query = LLMUsage.query
     if period in _PERIOD_DAYS:
         query = query.filter(
-            LLMUsage.created_at >= now - timedelta(days=_PERIOD_DAYS[period])
+            LLMUsage.created_at >= (
+                now_utc - timedelta(days=_PERIOD_DAYS[period])
+            ).replace(tzinfo=None)
         )
     rows = query.order_by(LLMUsage.created_at.desc()).all()
     tracked = [row for row in rows if row.usage_available]
 
     if period in _PERIOD_DAYS:
-        first_day = (now - timedelta(days=_PERIOD_DAYS[period])).date()
+        first_day = (now_ist - timedelta(days=_PERIOD_DAYS[period])).date()
     elif rows:
-        first_day = min(row.created_at.date() for row in rows)
+        first_day = min(
+            row.created_at.replace(tzinfo=timezone.utc).astimezone(_IST).date()
+            for row in rows
+        )
     else:
-        first_day = (now - timedelta(days=29)).date()
+        first_day = (now_ist - timedelta(days=29)).date()
     days = [
         first_day + timedelta(days=offset)
-        for offset in range((now.date() - first_day).days + 1)
+        for offset in range((now_ist.date() - first_day).days + 1)
     ]
     daily = {
         day.isoformat(): {
@@ -112,7 +168,8 @@ def dashboard_data(period):
         for day in days
     }
     for row in tracked:
-        point = daily.get(row.created_at.date().isoformat())
+        local_time = row.created_at.replace(tzinfo=timezone.utc).astimezone(_IST)
+        point = daily.get(local_time.date().isoformat())
         if point is None:
             continue
         point["input"] += row.input_tokens - row.cached_tokens
@@ -171,7 +228,10 @@ def dashboard_data(period):
         ],
         "recent_calls": [
             {
-                "created_at": row.created_at.isoformat(timespec="seconds") + "Z",
+                "created_at": (
+                    row.created_at.replace(tzinfo=timezone.utc)
+                    .astimezone(_IST).strftime("%Y-%m-%d %I:%M:%S %p")
+                ),
                 "model": row.model,
                 "operation": row.operation,
                 "input_tokens": row.input_tokens,

@@ -17,14 +17,25 @@
       <h1>LLM Usage</h1>
       <p>Token consumption and estimated API spend for team intelligence.</p>
     </div>
-    <nav class="llm-periods" aria-label="Select reporting period">
-      {% for period in usage.periods %}
-      <a href="{{ url_for('main.llm_usage', period=period) }}"
-         class="{{ 'is-active' if usage.period == period else '' }}">
-        {{ {'7d': '7 days', '30d': '30 days', '90d': '90 days', 'all': 'All time'}[period] }}
-      </a>
-      {% endfor %}
-    </nav>
+    <div class="llm-header__controls">
+      <nav class="llm-periods" aria-label="Select reporting period">
+        {% for period in usage.periods %}
+        <a href="{{ url_for('main.llm_usage', period=period) }}"
+           class="{{ 'is-active' if usage.period == period else '' }}">
+          {{ {'7d': '7 days', '30d': '30 days', '90d': '90 days', 'all': 'All time'}[period] }}
+        </a>
+        {% endfor %}
+      </nav>
+      <div class="llm-currency-control">
+        <label class="llm-currency-toggle" for="currencyToggle">
+          <span>USD</span>
+          <input type="checkbox" id="currencyToggle" aria-label="Show costs in Indian rupees">
+          <span class="llm-currency-toggle__track" aria-hidden="true"><span></span></span>
+          <span>INR</span>
+        </label>
+        <small id="exchangeRate" role="status" aria-live="polite">Costs shown in USD</small>
+      </div>
+    </div>
   </header>
 
   {% if usage.untracked_calls %}
@@ -37,7 +48,7 @@
   <section class="llm-kpis" aria-label="Usage summary">
     <article class="llm-kpi llm-kpi--spend">
       <span class="llm-kpi__label">Estimated spend</span>
-      <strong>${{ '%.6f'|format(usage.total_cost) }}</strong>
+      <strong id="totalCost">${{ '%.6f'|format(usage.total_cost) }}</strong>
       <small>Input, cache and output rates</small>
     </article>
     <article class="llm-kpi">
@@ -52,7 +63,7 @@
     </article>
     <article class="llm-kpi">
       <span class="llm-kpi__label">Average cost / call</span>
-      <strong>${{ '%.6f'|format(usage.average_cost) }}</strong>
+      <strong id="averageCost">${{ '%.6f'|format(usage.average_cost) }}</strong>
       <small>Across tracked calls</small>
     </article>
   </section>
@@ -75,7 +86,7 @@
           <h2>Daily spend</h2>
           <p>Estimated cost over time</p>
         </div>
-        <span class="llm-panel__unit">USD</span>
+        <span class="llm-panel__unit" id="dailyCostUnit">USD</span>
       </div>
       <div class="llm-chart" id="costTrend" role="img" aria-label="Daily estimated API cost line chart"></div>
     </article>
@@ -99,7 +110,7 @@
           <h2>Cost by token type</h2>
           <p>GPT-5.1 rates: input $1.25/M · cache $0.125/M · output $10/M</p>
         </div>
-        <span class="llm-panel__unit">USD</span>
+        <span class="llm-panel__unit" id="breakdownCostUnit">USD</span>
       </div>
       <div id="costBreakdown" class="llm-cost-breakdown"></div>
     </article>
@@ -116,7 +127,7 @@
       <table class="llm-table">
         <thead>
           <tr>
-            <th scope="col">Time (UTC)</th>
+            <th scope="col">Time (IST)</th>
             <th scope="col">Operation</th>
             <th scope="col">Input total</th>
             <th scope="col">Cache</th>
@@ -135,7 +146,11 @@
             <td>{{ "{:,}".format(call.cached_tokens) }}</td>
             <td>{{ "{:,}".format(call.output_tokens) }}</td>
             <td>{{ "{:,}".format(call.total_tokens) }}</td>
-            <td>{{ '$%.6f'|format(call.cost_usd) if call.usage_available else '—' }}</td>
+            <td>
+              {% if call.usage_available %}
+              <span class="llm-cost-value" data-usd="{{ call.cost_usd }}">{{ '$%.6f'|format(call.cost_usd) }}</span>
+              {% else %}—{% endif %}
+            </td>
             <td>
               <span class="llm-status {{ 'llm-status--ok' if call.usage_available else 'llm-status--missing' }}">
                 {{ 'Tracked' if call.usage_available else 'Unavailable' }}

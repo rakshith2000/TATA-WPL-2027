@@ -6,9 +6,11 @@ both re-stamp the standings rank and kick off a qualification refresh in the
 background once the table has moved.
 """
 import threading
-from flask import render_template, request, redirect, url_for, flash
+import requests
+from flask import current_app, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required
 from sqlalchemy.sql import text
+from forex_python.converter import RatesNotAvailableError
 
 from .. import db
 from ..main import main
@@ -19,7 +21,7 @@ from ..services.standings import update_rank_for_fixture, delete_rank_for_fixtur
 from ..services.results import (upMatchNormal, upMatchSuperOver, upMatchTied, upMatchAbandoned,
                                 upMatchDLS, delMatchNormal, delMatchSuperOver, delMatchTied,
                                 delMatchAbandoned, delMatchDLS)
-from ..services.llm_usage import dashboard_data
+from ..services.llm_usage import dashboard_data, usd_inr_rate
 
 # Everything an admin may name: the twenty league matches by number, and the two
 # playoff ties by the label they are stored under. Read off config rather than
@@ -285,3 +287,14 @@ def llm_usage():
     if period not in ('7d', '30d', '90d', 'all'):
         period = '30d'
     return render_template('llm_usage.html', usage=dashboard_data(period))
+
+
+@main.route('/admin/llm-usage/exchange-rate')
+@login_required
+def llm_usage_exchange_rate():
+    try:
+        rate = usd_inr_rate()
+    except (RatesNotAvailableError, requests.RequestException, ValueError):
+        current_app.logger.exception("Failed to fetch the USD/INR exchange rate.")
+        return jsonify({"error": "The current USD/INR exchange rate is unavailable."}), 502
+    return jsonify({"base": "USD", "quote": "INR", "rate": str(rate)})
