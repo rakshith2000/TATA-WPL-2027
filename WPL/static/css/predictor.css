@@ -25,7 +25,7 @@
   --pr-r-lg: 20px;
   --pr-r-md: 14px;
   --pr-r-sm: 9px;
-  --pr-dock-h: 122px;
+  --pr-dock-h: 174px;
   --pr-ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -1203,7 +1203,7 @@ body.is-working .pr-panel { opacity: 0.5; transition: opacity 0.12s linear; }
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: thin;
-  max-height: 96px;
+  max-height: 140px;
   opacity: 1;
   transition: max-height 0.3s var(--pr-ease), opacity 0.2s linear, padding 0.3s var(--pr-ease);
 }
@@ -1216,17 +1216,43 @@ body.is-working .pr-panel { opacity: 0.5; transition: opacity 0.12s linear; }
 }
 
 .pr-odds {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   flex: none;
   width: 84px;
-  padding: 10px 5px;
+  padding: 7px 5px;
   border: 1px solid var(--pr-line);
   border-radius: var(--pr-r-md);
   background: linear-gradient(170deg, color-mix(in srgb, var(--c1, #29c5e8) 18%, transparent),
               rgba(255, 255, 255, 0.035));
+}
+
+.pr-odds .pr-crest--sm { width: 28px; height: 28px; padding: 3px; border-radius: 9px; }
+
+.pr-odds__top {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.pr-odds__qual {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 17px;
+  height: 17px;
+  border: 1px solid rgba(46, 226, 122, 0.65);
+  border-radius: 5px;
+  color: var(--pr-green);
+  font-size: 0.62rem;
+  font-weight: 800;
 }
 
 .pr-odds b {
@@ -1238,7 +1264,7 @@ body.is-working .pr-panel { opacity: 0.5; transition: opacity 0.12s linear; }
 
 .pr-odds__v {
   font-family: 'Outfit', sans-serif;
-  font-size: 1.02rem;
+  font-size: 0.94rem;
   font-weight: 800;
   color: var(--pr-cyan);
   font-variant-numeric: tabular-nums;
@@ -1246,11 +1272,41 @@ body.is-working .pr-panel { opacity: 0.5; transition: opacity 0.12s linear; }
 
 .pr-odds.is-out .pr-odds__v { color: var(--pr-ink-3); }
 .pr-odds.is-safe .pr-odds__v { color: var(--pr-green); }
+.pr-odds.is-qualified {
+  border-color: rgba(46, 226, 122, 0.22);
+  background: rgba(9, 54, 29, 0.38);
+}
+.pr-odds.is-qualified .pr-odds__v { font-size: 0.82rem; }
+
+.pr-odds__delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.76rem;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.pr-odds__delta .material-icons-round { font-size: 15px; }
+.pr-odds__delta.is-up { color: var(--pr-green); }
+.pr-odds__delta.is-down { color: var(--pr-red); }
+.pr-odds__delta.is-flat { color: var(--pr-ink-3); }
+
+.pr-odds__confirmed {
+  max-width: 100%;
+  margin-top: 6px;
+  color: var(--pr-green);
+  font-size: 0.74rem;
+  line-height: 1.15;
+  text-align: center;
+}
 
 /* -------------------------------------------------------------- narrow */
 
 @media (max-width: 560px) {
-  :root { --pr-dock-h: 118px; }
+  :root { --pr-dock-h: 174px; }
   .pr-wrap { width: calc(100% - 20px); }
   .pr-hero { padding-top: 18px; }
   .pr-btn__label { display: none; }

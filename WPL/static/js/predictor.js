@@ -26,6 +26,8 @@
 
   var STATE = null;        /* fixtures + team colours, fetched once */
   var LAST = null;         /* the most recent simulate() answer */
+  var BASELINE = null;     /* qualification odds before any local picks */
+  var baselineToken = 0;
   /* How many sides reach the playoffs. The server is the authority — it
      reads it off config.json — so this is only the value to draw with
      before the first payload lands. */
@@ -599,14 +601,43 @@
 
   function renderDock() {
     if (!LAST) return;
-    var ranked = LAST.table.slice().sort(function (x, y) { return y.qual - x.qual; });
+    var ranked = LAST.table.slice().sort(function (x, y) {
+      var xQualified = x.qual >= 100;
+      var yQualified = y.qual >= 100;
+      if (xQualified !== yQualified) return xQualified ? -1 : 1;
+      return xQualified ? y.top1 - x.top1 : y.qual - x.qual;
+    });
 
     dockStrip.innerHTML = ranked.map(function (r) {
+      var qualified = r.qual >= 100;
+      var top1Confirmed = qualified && r.top1 >= 100;
       var cls = r.qual >= 99.5 ? ' is-safe' : (r.qual < 0.5 ? ' is-out' : '');
+      if (qualified) cls += ' is-qualified';
+      var metric = qualified ? r.top1 : r.qual;
+      var baselineOdds = BASELINE && BASELINE[r.team];
+      var baselineMetric = baselineOdds
+        ? (qualified ? baselineOdds.top1 : baselineOdds.qual) : null;
+      var delta = baselineMetric === null
+        ? null : Math.round((metric - baselineMetric) * 10) / 10;
+      var movement = delta === null
+        ? '<span class="pr-odds__delta is-flat" title="Change unavailable until baseline odds load">—</span>'
+        : '<span class="pr-odds__delta ' +
+            (delta > 0 ? 'is-up' : delta < 0 ? 'is-down' : 'is-flat') +
+            '" title="Change vs no-picks baseline, in percentage points" aria-label="' +
+            (delta > 0 ? 'Increase of ' : delta < 0 ? 'Decrease of ' : 'No change, ') +
+            Math.abs(delta).toFixed(1) + ' percentage points">' +
+            '<span class="material-icons-round">' +
+              (delta > 0 ? 'trending_up' : delta < 0 ? 'trending_down' : 'trending_flat') +
+            '</span>' + (delta > 0 ? '+' : '') + delta.toFixed(1) + '%</span>';
+      var outcome = top1Confirmed
+        ? '<span class="pr-odds__confirmed">Top 1 Confirmed</span>'
+        : '<span class="pr-odds__v">' + (qualified ? 'T1: ' : '') + pct(metric) + '</span>' +
+          movement;
       return '<span class="pr-odds' + cls + '" style="' + tint(r.team) + '">' +
-               crest(r.team, 'pr-crest--sm') +
+               '<span class="pr-odds__top">' + crest(r.team, 'pr-crest--sm') + '</span>' +
+               (qualified ? '<span class="pr-odds__qual" aria-label="Qualified">Q</span>' : '') +
                '<b>' + esc(r.team) + '</b>' +
-               '<span class="pr-odds__v">' + pct(r.qual) + '</span>' +
+               outcome +
              '</span>';
     }).join('');
 
@@ -816,10 +847,39 @@
   }
 
   function setReplay(on) {
+    var changed = REPLAY !== !!on;
     REPLAY = !!on;
     store(REPLAY_STORE, REPLAY);
     replayBtn.setAttribute('aria-pressed', String(REPLAY));
     banner.hidden = !REPLAY;
+    if (changed && STATE) loadBaseline();
+  }
+
+  function loadBaseline() {
+    var token = ++baselineToken;
+    BASELINE = null;
+    renderDock();
+    fetch('/api/predictor/simulate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ picks: {}, replay: REPLAY })
+    })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function (data) {
+        if (token !== baselineToken) return;
+        BASELINE = {};
+        data.table.forEach(function (r) {
+          BASELINE[r.team] = { qual: r.qual, top1: r.top1 };
+        });
+        renderDock();
+      })
+      .catch(function (err) {
+        if (token !== baselineToken) return;
+        if (window.console) console.warn('predictor baseline:', err);
+        BASELINE = null;
+        renderDock();
+      });
   }
 
   /* Open the whole season at once. Mid-season there is no sane way to do this
@@ -913,6 +973,7 @@
       Object.keys(PICKS).forEach(function (no) { if (!known[no]) delete PICKS[no]; });
       save();
       render();
+      loadBaseline();
       runSim();
     })
     .catch(function (err) {
