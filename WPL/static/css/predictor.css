@@ -725,6 +725,15 @@ body.is-working .pr-panel { opacity: 0.5; transition: opacity 0.12s linear; }
   text-transform: uppercase;
 }
 
+.pr-score__sim {
+  display: block;
+  margin: -4px 0 10px 30px;
+  color: var(--pr-cyan);
+  font-size: 0.75rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
 /* One figure, stacked: the plus row, the total, the minus row. Runs carry a
    coarse step as well as a fine one, so their rows split in two — tens on the
    left, ones on the right, lining up top and bottom. The total is an input,

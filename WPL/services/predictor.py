@@ -2,9 +2,11 @@
 
 Nothing here writes. The page hands back a set of picks - "RCBW beat MIW", "match
 14 was a no result", "GG 180/5 chasing 176/8" - and this answers with the table
-those picks produce and a fresh Monte-Carlo of everything still unpicked. The
-admin result path (services/results.py) is the only thing that may touch a
-fixture or the points table, and the predictor deliberately shares none of it.
+those picks produce and a fresh Monte-Carlo of everything still unpicked.
+Winner-only picks get a model-generated scoreline in each simulation, so their
+net run rate is part of the predicted qualification odds too. The admin result
+path (services/results.py) is the only thing that may touch a fixture or the
+points table, and the predictor deliberately shares none of it.
 
 The table is rebuilt from the fixture list every time rather than started from
 the stored Pointstable, because a simulator has to let you replay a match that
@@ -246,6 +248,10 @@ def build_table(picks, state=None, replay=False):
     'open' has its real result set aside and is simulated like any unplayed one
     - which is what the per-match Re-predict button means, and without it that
     button could only ever re-show a result that was still being counted.
+    A winner-only pick also gets a generated scoreline in each Monte-Carlo run;
+    those stochastic innings are returned separately so they can affect NRR
+    without making the picked points/win count stochastic.
+
     Anything else falls back to what really happened, or is simulated if it has
     not been played.
 
@@ -256,7 +262,7 @@ def build_table(picks, state=None, replay=False):
     state = state or get_state()
     rows = {t['team']: _blank(t['team']) for t in state['base']}
 
-    used, remaining = {}, []
+    used, remaining, generated_scores = {}, [], []
     for m in state['league']:
         a_row, b_row = rows.get(m['a']), rows.get(m['b'])
         pick = (picks or {}).get(m['no']) or {}
@@ -272,8 +278,10 @@ def build_table(picks, state=None, replay=False):
         if mine:
             used[m['no']] = choice
             _award(a_row, b_row, 'NR' if choice == 'NR' else ('a' if choice == m['a'] else 'b'))
-            # scores are optional: a pick says who won, not by how much, and
-            # inventing a margin would move net run rate on no evidence
+            if choice != 'NR' and not pick.get('a') and not pick.get('b'):
+                generated_scores.append((m['no'], m['a'], m['b'], choice, m['venue']))
+            # Explicit scores are booked as entered. A winner-only pick gets
+            # generated innings in simulate_season so NRR remains in play.
             _apply_score(a_row, pick.get('a'), pick.get('b'))
             _apply_score(b_row, pick.get('b'), pick.get('a'))
             continue
@@ -292,7 +300,7 @@ def build_table(picks, state=None, replay=False):
         row['nrr'] = round(scored - conceded, 3) if (row['of'] and row['ob']) else 0.0
 
     ranked = sorted(rows.values(), key=lambda r: (-r['pts'], -r['w'], -r['nrr'], r['team']))
-    return ranked, remaining, used
+    return ranked, remaining, used, generated_scores
 
 
 def _book(row, mine, theirs):
@@ -418,7 +426,11 @@ def _scenario(odds, row, remaining, sim, model):
 # ------------------------------------------------------------------ simulate
 
 def simulate(picks=None, sims=None, detail=True, replay=False):
-    """The whole answer for one set of picks: table, odds and scenarios."""
+    """The whole answer for one set of picks: table, odds and scenarios.
+
+    NRR from generated scorelines is the Monte-Carlo mean for those picked
+    matches; the qualification odds use each sampled scoreline individually.
+    """
     started = time.perf_counter()
     state = get_state()
     picks = picks or {}
@@ -430,19 +442,25 @@ def simulate(picks=None, sims=None, detail=True, replay=False):
             and ((picks.get(m['no']) or {}).get('w')
                  or (picks.get(m['no']) or {}).get('open'))}
     model = get_model(replay, held)
-    ranked, remaining, used = build_table(picks, state, replay)
+    ranked, remaining, used, generated_scores = build_table(picks, state, replay)
 
     teams_in = {r['team']: {'points': r['pts'], 'wins': r['w'], 'runs_for': r['rf'],
                             'overs_faced': r['of'], 'runs_against': r['ra'],
                             'overs_bowled': r['ob']} for r in ranked}
-    count = _sim_count(len(remaining)) if sims is None else sims
-    sim = simulate_season(teams_in, remaining, model=model, sims=count, detail=detail)
+    count = _sim_count(len(remaining) + len(generated_scores)) if sims is None else sims
+    sim = simulate_season(teams_in, remaining, model=model, sims=count, detail=detail,
+                          forced_score_matches=generated_scores)
     odds = sim['teams']
 
     left = {}
     for a, b, _venue in remaining:
         left[a] = left.get(a, 0) + 1
         left[b] = left.get(b, 0) + 1
+
+    picked_nrr = sim.get('picked_nrr', {})
+    for r in ranked:
+        r['nrr'] = round(picked_nrr.get(r['team'], r['nrr']), 3)
+    ranked.sort(key=lambda r: (-r['pts'], -r['w'], -r['nrr'], r['team']))
 
     rows = []
     for pos, r in enumerate(ranked, start=1):
@@ -458,8 +476,9 @@ def simulate(picks=None, sims=None, detail=True, replay=False):
         'table': rows,
         'remaining': len(remaining),
         'picked': used,
+        'generated_scores': sim.get('generated_scores', {}),
         'spots': PLAYOFF_SPOTS,
-        'sims': count if remaining else 0,
+        'sims': count if remaining or generated_scores else 0,
         'ms': int((time.perf_counter() - started) * 1000),
         'replay': bool(replay),
         'held': sorted(held),
@@ -542,12 +561,14 @@ def impact(match_no, picks=None, replay=False):
     for side in (match['a'], match['b']):
         forced = dict(picks)
         forced[match_no] = dict(forced.get(match_no) or {}, w=side)
-        ranked, remaining, _ = build_table(forced, state, replay)
+        ranked, remaining, _, generated_scores = build_table(forced, state, replay)
         teams_in = {r['team']: {'points': r['pts'], 'wins': r['w'], 'runs_for': r['rf'],
                                 'overs_faced': r['of'], 'runs_against': r['ra'],
                                 'overs_bowled': r['ob']} for r in ranked}
         odds = simulate_season(teams_in, remaining, model=model,
-                               sims=_sim_count(len(remaining), IMPACT_FRACTION))['teams']
+                               sims=_sim_count(len(remaining) + len(generated_scores),
+                                               IMPACT_FRACTION),
+                               forced_score_matches=generated_scores)['teams']
         out[side] = {t: o['qual'] for t, o in odds.items()}
 
     a, b = match['a'], match['b']

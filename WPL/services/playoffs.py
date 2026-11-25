@@ -204,6 +204,53 @@ def _pct(count, total):
         return 100.0
     return float(min(99.9, max(0.1, round(count / total * 100.0, 1))))
 
+def _conditioned_scorelines(n, exp_a, exp_b, winner_a, sigma, chase_adj, rng):
+    """Draw scorecards from the match model, conditioned on the picked winner.
+
+    Rejection sampling preserves the model's score distribution while ensuring
+    each simulated scorecard agrees with the user's selected result.
+    """
+    a_runs = np.empty(n)
+    a_overs = np.empty(n)
+    b_runs = np.empty(n)
+    b_overs = np.empty(n)
+    pending = np.arange(n)
+
+    while pending.size:
+        size = pending.size
+        a_first = rng.random(size) < 0.5
+        exp_1 = np.where(a_first, exp_a, exp_b)
+        exp_2 = np.where(a_first, exp_b, exp_a) + chase_adj
+
+        first = np.rint(rng.standard_normal(size) * sigma + exp_1)
+        np.clip(first, SCORE_FLOOR, SCORE_CEIL, out=first)
+        second = np.rint(rng.standard_normal(size) * sigma + exp_2)
+        np.clip(second, SCORE_FLOOR - 20, SCORE_CEIL + 20, out=second)
+
+        target = first + 1.0
+        chased = second >= target
+        over_hit = np.minimum(rng.integers(0, 5, size),
+                              np.maximum(second - target, 0.0))
+        pace = np.clip(rng.standard_normal(size) * 0.07 + 1.0, 0.7, 1.15)
+        spare = 1.0 - CHASE_PACING * (1.0 - target / np.maximum(second, 1.0))
+        balls = np.clip(np.ceil(120.0 * spare * pace), 24, 120)
+        runs_2 = np.where(chased, target + over_hit, second)
+        overs_2 = np.where(chased, balls / 6.0, float(OVERS))
+
+        tied = (~chased) & (second == first)
+        super_over = rng.random(size) < 0.5
+        first_won = (~chased & ~tied) | (tied & super_over)
+        a_won = np.where(a_first, first_won, chased | (tied & ~super_over))
+        accepted = a_won == winner_a
+        slots = pending[accepted]
+        a_runs[slots] = np.where(a_first, first, runs_2)[accepted]
+        a_overs[slots] = np.where(a_first, float(OVERS), overs_2)[accepted]
+        b_runs[slots] = np.where(a_first, runs_2, first)[accepted]
+        b_overs[slots] = np.where(a_first, overs_2, float(OVERS))[accepted]
+        pending = pending[~accepted]
+
+    return a_runs, a_overs, b_runs, b_overs
+
 def _norm_cdf(x):
     return 0.5 * math.erfc(-x / math.sqrt(2.0))
 
@@ -235,13 +282,16 @@ def _win_matrix(model, names):
                 out[i, j] = match_win_prob(model, a, b, neutral=True)
     return out
 
-def simulate_season(teams, remaining_matches, model=None, sims=None, detail=False):
+def simulate_season(teams, remaining_matches, model=None, sims=None, detail=False,
+                    forced_score_matches=()):
     """Monte-Carlo the rest of the league, and the bracket after it.
 
     teams:             {team: {points, wins, runs_for, overs_faced, runs_against, overs_bowled}}
                        with overs as DECIMAL overs (run ovToPer() on the stored x.y values).
                        Iteration order breaks exact ties, so pass it ranked.
     remaining_matches: (team_a, team_b) or (team_a, team_b, venue) rows, league matches only.
+    forced_score_matches: (match_no, team_a, team_b, winner, venue) rows. Their
+                          points are already booked; generated scorelines affect NRR.
 
     Each simulated match plays out as a real one: a first innings of 20 overs, then
     a chase that either falls short over the full 20 or gets there early - which is
@@ -249,8 +299,10 @@ def simulate_season(teams, remaining_matches, model=None, sims=None, detail=Fals
     are ranked on points, then wins, then NRR, matching both the WPL playing
     conditions and the table this feeds.
 
-    Returns {'teams': {team: {...}}} plus, under detail, the season-wide figures
-    that belong to no single side.
+    Returns {'teams': {team: {...}}, 'picked_nrr': {team: mean_nrr}} plus, under
+    detail, the season-wide figures that belong to no single side. The picked
+    NRR is measured after generated scorelines for forced results, before any
+    unpicked fixtures are played.
 
     detail=True also returns what the predictor page needs and the hourly refresh
     does not, so it is kept behind the flag: where each side finishes, who lifts
@@ -283,12 +335,21 @@ def simulate_season(teams, remaining_matches, model=None, sims=None, detail=Fals
         exp_b = mu + attack.get(b, 0.0) + defence.get(a, 0.0) + (home_adv if home == b else 0.0)
         fixtures.append((idx[a], idx[b], exp_a, exp_b))
 
+    forced_fixtures = []
+    for match_no, a, b, winner, venue in forced_score_matches:
+        if a not in idx or b not in idx or winner not in (a, b):
+            continue
+        home = home_of.get(venue)
+        exp_a = mu + attack.get(a, 0.0) + defence.get(b, 0.0) + (home_adv if home == a else 0.0)
+        exp_b = mu + attack.get(b, 0.0) + defence.get(a, 0.0) + (home_adv if home == b else 0.0)
+        forced_fixtures.append((match_no, idx[a], idx[b], exp_a, exp_b, winner == a))
+
     base = {k: np.array([float(teams[t].get(k, 0) or 0) for t in names])
             for k in ('points', 'wins', 'runs_for', 'overs_faced', 'runs_against', 'overs_bowled')}
 
     want = SIMULATIONS if sims is None else max(1, int(sims))
-    total = want if fixtures else 1            # nothing left to play => one deterministic pass
-    rng = np.random.default_rng(SIM_SEED + len(fixtures))
+    total = want if fixtures or forced_fixtures else 1
+    rng = np.random.default_rng(SIM_SEED + len(fixtures) + len(forced_fixtures))
     counts = np.zeros((n_t, 2))                # through to the playoffs | finished first
     # detail accumulators
     max_wins = int(base['wins'].max()) + len(fixtures) + 1
@@ -297,6 +358,8 @@ def simulate_season(teams, remaining_matches, model=None, sims=None, detail=Fals
     wins_total = np.zeros((n_t, max_wins))
     wins_through = np.zeros((n_t, max_wins))
     cut_nrr = []                               # the last qualifier's NRR, one per sim
+    picked_nrr_sum = np.zeros(n_t)
+    generated_scores = {}
     pwin = _win_matrix(model, names) if detail else None
     done = 0
     while done < total:
@@ -306,6 +369,29 @@ def simulate_season(teams, remaining_matches, model=None, sims=None, detail=Fals
         pts, wins, runs_for, overs_faced, runs_against, overs_bowled = (
             np.repeat(base[k][:, None], n, axis=1) for k in
             ('points', 'wins', 'runs_for', 'overs_faced', 'runs_against', 'overs_bowled'))
+
+        for match_no, i, j, exp_a, exp_b, winner_a in forced_fixtures:
+            a_runs, a_overs, b_runs, b_overs = _conditioned_scorelines(
+                n, exp_a, exp_b, winner_a, sigma, chase_adj, rng)
+            if done == 0:
+                generated_scores[match_no] = {
+                    'a': {'runs': int(a_runs[0]), 'overs': float(a_overs[0])},
+                    'b': {'runs': int(b_runs[0]), 'overs': float(b_overs[0])},
+                }
+            runs_for[i] += a_runs
+            overs_faced[i] += a_overs
+            runs_against[i] += b_runs
+            overs_bowled[i] += b_overs
+            runs_for[j] += b_runs
+            overs_faced[j] += b_overs
+            runs_against[j] += a_runs
+            overs_bowled[j] += a_overs
+
+        scored_now = np.divide(runs_for, overs_faced, out=np.zeros_like(runs_for),
+                               where=overs_faced > 0)
+        conceded_now = np.divide(runs_against, overs_bowled, out=np.zeros_like(runs_against),
+                                 where=overs_bowled > 0)
+        picked_nrr_sum += (scored_now - conceded_now).mean(axis=1) * n
 
         for i, j, exp_a, exp_b in fixtures:
             a_first = rng.random(n) < 0.5           # who bats first is close to a coin toss
@@ -404,8 +490,10 @@ def simulate_season(teams, remaining_matches, model=None, sims=None, detail=Fals
 
     out = {t: {'qual': _pct(counts[k, 0], total),
                'top1': _pct(counts[k, 1], total)} for t, k in idx.items()}
+    picked_nrr = {t: float(picked_nrr_sum[k] / total) for t, k in idx.items()}
     if not detail:
-        return {'teams': out}
+        return {'teams': out, 'picked_nrr': picked_nrr,
+                'generated_scores': generated_scores}
     for t, k in idx.items():
         out[t]['title'] = _pct(title_counts[k], total)
         out[t]['seeds'] = [_pct(seed_counts[k, p], total) for p in range(spots)]
@@ -415,7 +503,8 @@ def simulate_season(teams, remaining_matches, model=None, sims=None, detail=Fals
             (int(w), float(wins_total[k, w] / total), float(wins_through[k, w] / wins_total[k, w]))
             for w in range(max_wins) if wins_total[k, w] > 0]
     cut = np.concatenate(cut_nrr) if cut_nrr else np.zeros(1)
-    return {'teams': out,
+    return {'teams': out, 'picked_nrr': picked_nrr,
+            'generated_scores': generated_scores,
             # the median is the bar in a typical season; the upper quartile is
             # what it takes to be comfortable rather than lucky
             'cut_nrr': float(np.median(cut)),

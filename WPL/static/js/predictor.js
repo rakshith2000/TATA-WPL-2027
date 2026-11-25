@@ -26,6 +26,7 @@
 
   var STATE = null;        /* fixtures + team colours, fetched once */
   var LAST = null;         /* the most recent simulate() answer */
+  var SIMULATED_SCORES = {};
   var BASELINE = null;     /* qualification odds before any local picks */
   var baselineToken = 0;
   /* How many sides reach the playoffs. The server is the authority — it
@@ -168,6 +169,7 @@
       .then(function (data) {
         if (token !== simToken) return;        /* a newer click already won */
         LAST = data;
+        SIMULATED_SCORES = data.generated_scores || {};
         if (data.spots) SPOTS = data.spots;
         render();
       })
@@ -368,8 +370,14 @@
 
   function scoreCol(m, side, abv) {
     var v = (PICKS[m.no] || {})[side + '_raw'] || {};
+    var simulated = SIMULATED_SCORES[m.no] && SIMULATED_SCORES[m.no][side];
+    var simulatedScore = simulated
+      ? '<small class="pr-score__sim">Simulated example: ' + simulated.runs +
+        ' runs · ' + formatOvers(simulated.overs) + ' ov</small>'
+      : '';
     return '<div class="pr-score">' +
              '<div class="pr-score__head">' + crest(abv, 'pr-crest--xs') + esc(abv) + ' innings</div>' +
+             simulatedScore +
              '<div class="pr-score__grid">' +
                FIELDS.map(function (f) {
                  var at = 'data-no="' + esc(m.no) + '" data-side="' + side +
@@ -396,6 +404,13 @@
                }).join('') +
              '</div>' +
            '</div>';
+  }
+
+  function formatOvers(overs) {
+    var whole = Math.floor(overs);
+    var balls = Math.round((overs - whole) * 6);
+    if (balls === 6) return (whole + 1) + '.0';
+    return whole + '.' + balls;
   }
 
   /* ======================================================================
@@ -518,8 +533,8 @@
                '<tbody>' + rows + '</tbody>' +
              '</table></div>' +
            '</section>' +
-           researchPanel() +
-           LAST.table.map(scenarioCard).join('');
+           LAST.table.map(scenarioCard).join('') +
+           researchPanel();
   }
 
   function researchPanel() {
